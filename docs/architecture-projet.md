@@ -80,7 +80,7 @@ sbox-naruto-rp/
 └── UnitTests/
 ```
 
-`worker/` (Cloudflare) vit dans un **autre dossier/dépôt** (ou `../worker/`), pas dans le projet s&box, pour ne pas être publié avec le jeu.
+Le backend Cloudflare vit dans `backend/` (même dépôt Git). **Vérifié** avec l'aperçu de publication s&box : ce dossier n'est pas publié avec le jeu. Schéma : `backend/migrations/0001_init.sql`, routes : `backend/README.md`.
 
 ## 3. Conventions
 

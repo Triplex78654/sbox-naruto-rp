@@ -28,12 +28,12 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 ## Prochaines tâches (dans l'ordre)
 
 1. [x] **Setup** : repo Git, `.gitignore` (template s&box + secrets), projet s&box `nrp` (template player controller, ident `local.nrp`). Se charge et tourne dans l'éditeur.
-2. [~] **Architecte** : format des fiches jutsus figé et vérifié (`Code/Jutsus/JutsuDefinition.cs`), points vérifiés notés dans `sbox-reference.md` §11. **Reste** : schéma de données des persos (à faire avec la tâche 7).
+2. [x] **Architecte** : format des fiches jutsus (`Code/Jutsus/JutsuDefinition.cs`) et schéma des persos (`backend/migrations/0001_init.sql`) figés et vérifiés. Points vérifiés dans `sbox-reference.md` §11.
 3. [x] **Joueur de base** : `GameManager` (lobby + spawn par connexion, `OwnerTransfer.Fixed`), prefab `prefabs/player.prefab`, `SpawnPoint` dans la scène. Testé à 2 joueurs.
 4. [x] **Jauges** : `NinjaStats` (vie, chakra avec régén concentration à l'arrêt, endurance qui baisse en courant), à terre à 0 PV, étourdi, ralenti. Tout en `[Sync(FromHost)]`.
 5. [x] **Système de jutsus** : `JutsuCaster` (touches 1-9 → `RequestCast` validé par l'hôte), cooldowns, incantation interruptible par un coup, livraisons contact / projectile / zone / soi. 3 fiches de test dans `data/jutsus/test/`. Écart avec l'architecture : logique dans un component par joueur au lieu d'un `CombatSystem` global (plus simple, état local au joueur).
-6. [x] **Combat** : `NinjaDefense` (garde clic droit : -60 % dégâts contre de l'endurance ; esquive X : invulnérable 0,35 s, 25 endurance ; substitution Z : 20 chakra, cooldown 30 s, le prochain coup dans la seconde est évité + recul), `ReviveAction` (médic-nin maintient E sur un ninja à terre 4 s, annulé par un coup ou l'éloignement, relève à 25 % PV). Choix de design : **la garde ignore étourdissement et ralenti** (à confirmer par l'utilisateur). Testé à 2 joueurs, relu. `IsMedic` réglé dans le prefab en attendant les données du perso.
-7. [ ] **Backend Cloudflare** : Worker + D1 (tables persos, jutsus_appris, sanctions, logs), clé serveur, endpoints de lecture/écriture du perso.
+6. [x] **Combat** : `NinjaDefense` (garde clic droit : -60 % dégâts contre de l'endurance ; esquive X : invulnérable 0,35 s, 25 endurance ; substitution Z : 20 chakra, cooldown 30 s, le prochain coup dans la seconde est évité + recul), `ReviveAction` (médic-nin maintient E sur un ninja à terre 4 s, annulé par un coup ou l'éloignement, relève à 25 % PV). Choix validé par l'utilisateur : **la garde ignore étourdissement et ralenti**. Testé à 2 joueurs, relu. `IsMedic` réglé dans le prefab en attendant les données du perso.
+7. [~] **Backend Cloudflare** : fait **en local** dans `backend/` (Worker TypeScript + D1 : persos, jutsus appris, historique des grades, sanctions, logs, staff). Clé serveur en Bearer, droits staff revérifiés, 15 tests de routes OK (`npm test`), relu. **Reste** : mise en ligne quand l'utilisateur aura un compte Cloudflare (étapes dans `backend/README.md`).
 8. [ ] **Persistance** : le serveur charge le perso à la connexion et le sauvegarde (déconnexion + intervalle).
 9. [ ] **Création de perso** : UI Razor en 6 étapes du GDD, filtre de noms canon.
 10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance et relu (jauges, barre de jutsus avec coût et cooldown, états, garde / substitution, barre de relève visible par le médic et le blessé). **Reste** : style définitif.
@@ -49,8 +49,7 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 
 ## Questions en attente pour l'utilisateur
 
-- La garde doit-elle bloquer l'étourdissement et le ralenti (choix actuel) ou seulement réduire les dégâts ?
-- Pour la tâche 7 : compte Cloudflare de l'utilisateur (gratuit) à connecter, ou on prépare d'abord le Worker en local ?
+- Mise en ligne du backend : quand l'utilisateur veut, avec son compte Cloudflare gratuit (`backend/README.md`).
 Voir « Questions ouvertes » dans `docs/GDD.md`.
 
 ## Journal
@@ -60,3 +59,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : projet s&box `nrp` créé par l'utilisateur ; doc + dépôt Git déplacés dans ce dossier. Console : seulement des erreurs moteur sans gravité (son `denyundo.vsnd_c` manquant, renommage du cache de shaders).
 - 2026-11-09 : tâches 3, 4, 5 faites et testées en direct via `sbox-cli` (2 joueurs). Deux relectures faites (corrections : zone bloquée par les murs, cooldowns envoyés au client, ralentis qui ne se prolongent pas ; puis : vitesse mesurée sur la position, seuil d'endurance, init dans OnAwake, auteur des dégâts loggé)). Vérifié : l'hôte ne peut pas déplacer un joueur client → blocages de mouvement côté client (limite notée dans le code).
 - 2026-11-09 : tâche 6 (garde, esquive, substitution, relève médic-nin) faite et testée à 2 joueurs. Nouvelles touches X / Z dans `Input.config`.
+- 2026-11-09 : tâche 7 en local (Worker + D1 + tests). Le dossier `backend/` n'est pas publié avec le jeu (vérifié). Prochaine : tâche 8, brancher le serveur de jeu sur l'API (`IApiClient` + client mémoire pour l'éditeur).

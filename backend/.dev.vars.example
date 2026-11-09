@@ -1,0 +1,2 @@
+# Copier en .dev.vars (ignoré par Git) pour `npm run dev`.
+SERVER_KEY=change-moi-en-local

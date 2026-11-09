@@ -1,0 +1,15 @@
+name = "narutorp-api"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "narutorp"
+# À remplacer par l'id donné par `wrangler d1 create narutorp` avant le premier déploiement.
+# En local (wrangler dev), cet id n'est pas utilisé.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# SERVER_KEY : secret, jamais ici.
+#   en ligne : wrangler secret put SERVER_KEY
+#   en local : fichier .dev.vars (ignoré par Git), voir .dev.vars.example
