@@ -662,6 +662,8 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - **Piège prefab (bis)** : à chaque modification du `.prefab` sur disque, le premier rechargement casse le cache ; une 2e modification (même un saut de ligne) le répare. Vérifier avec `ResourceLibrary.Get<PrefabFile>( path ).GetScene()`.
 - **Nouvelles actions d'input** : ajoutées dans `ProjectSettings/Input.config` (JSON, champs `Name`, `GroupName`, `Title`, `KeyboardCode`, `GamepadCode`), elles ne sont prises en compte qu'au redémarrage de l'éditeur (le runtime `Input` lit la config au chargement du projet). `Input.ReadConfig( InputSettings )` existe mais n'est pas public (appelable par réflexion depuis `run_csharp` pour éviter le redémarrage).
 - `Rigidbody.Velocity` est modifiable : utilisé pour l'élan d'esquive, appliqué par le propriétaire.
+- **Impulsion verticale** (bond) : `body.Velocity += Vector3.Up * …` seul ne décolle pas, le `PlayerController` se recolle au sol à la frame suivante (hauteur mesurée : 0). Appeler `Controller.PreventGrounding( 0.3f )` avant (mesuré : ~100 unités de haut pour 420 vers le haut). `PlayerController.Jump( Vector3 )` existe aussi (même résultat).
+- **Tests via `run_csharp`** : `await Task.Yield()` n'attend pas une frame ; pour mesurer un mouvement, boucler avec `await Task.Delay( 10 )` et un `Stopwatch`.
 
 - **`FileSystem.Data` dans l'éditeur** : `D:\SteamLibrary\steamapps\common\sbox\data\local\nrp#local` (projet local `nrp`). `FileSystem.Data.WriteJson / ReadJson / DeleteFile / FileExists / GetFullPath` vérifiés.
 - **`Http.RequestAsync`** + `Http.CreateJsonContent( objetAnonyme )` + `[JsonPropertyName]` (System.Text.Json) + `Json.Deserialize<T>` : vérifiés de bout en bout contre le Worker local (chargement, sauvegarde, logs).

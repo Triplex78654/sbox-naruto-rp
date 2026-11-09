@@ -91,6 +91,8 @@ public sealed class JutsuCaster : Component
 		if ( jutsu is null ) return;
 		if ( !float.IsFinite( aim.x ) || !float.IsFinite( aim.y ) || !float.IsFinite( aim.z ) || aim.Length < 0.01f ) return;
 		if ( !CanCast( jutsu ) ) return;
+		// Shunshin visé à la verticale : refusé avant de payer.
+		if ( jutsu.Delivery == JutsuDeliveryType.Movement && aim.WithZ( 0 ).Length < 0.01f ) return;
 
 		Casting = jutsu;
 		BroadcastCastFx( jutsu, Controller.EyePosition - Vector3.Up * 20f );
@@ -149,6 +151,12 @@ public sealed class JutsuCaster : Component
 		// Les conditions ont pu changer pendant les signes.
 		if ( Stats.IsDowned || Stats.IsStunned ) return;
 		if ( GetComponent<NinjaDefense>()?.IsGuarding == true ) return;
+		if ( GetComponent<Staff.StaffCommands>()?.IsInvisible == true ) return;
+
+		// Shunshin sans sol où atterrir : annulé sans rien payer.
+		Vector3 shunshinDest = default;
+		if ( jutsu.Delivery == JutsuDeliveryType.Movement && !TryGetShunshinDestination( jutsu, out shunshinDest ) ) return;
+
 		if ( !Stats.TrySpendChakra( jutsu.ChakraCost ) ) return;
 
 		var cooldown = MathF.Max( 0f, jutsu.CooldownSeconds );
@@ -194,20 +202,42 @@ public sealed class JutsuCaster : Component
 				break;
 
 			case JutsuDeliveryType.Movement:
-			{
-				// Bond éclair à l'horizontale, arrêté avant un mur.
-				var flat = _castAim.WithZ( 0 );
-				if ( flat.Length < 0.01f ) break;
-				var up = Vector3.Up * 40f;
-				var aimPoint = WorldPosition + flat.Normal * jutsu.Range;
-				var wall = Scene.Trace.Ray( WorldPosition + up, aimPoint + up ).Radius( 16f ).IgnoreGameObjectHierarchy( GameObject ).Run();
-				var dest = wall.Hit ? wall.EndPosition - up : aimPoint;
-				BroadcastImpactFx( jutsu, WorldPosition + up, 40f * jutsu.FxSize );
-				BroadcastImpactFx( jutsu, dest + up, 40f * jutsu.FxSize );
-				GetComponent<NinjaMovement>()?.ApplyTeleport( dest );
+				BroadcastImpactFx( jutsu, WorldPosition + Vector3.Up * 40f, 40f * jutsu.FxSize );
+				BroadcastImpactFx( jutsu, shunshinDest + Vector3.Up * 40f, 40f * jutsu.FxSize );
+				var movement = GetComponent<NinjaMovement>();
+				if ( movement is not null ) movement.LastBurst = 0;
+				movement?.ApplyTeleport( shunshinDest );
 				break;
-			}
 		}
+	}
+
+	/// <summary>
+	/// Destination du Shunshin : vers l'avant sur Range, arrêtée avant un mur (traces à hauteur du torse et de la tête),
+	/// puis posée sur le sol. Faux si pas de sol sous le point d'arrivée ou si une pente raide l'enterre.
+	/// </summary>
+	bool TryGetShunshinDestination( JutsuDefinition jutsu, out Vector3 dest )
+	{
+		dest = WorldPosition;
+		var flat = _castAim.WithZ( 0 );
+		if ( flat.Length < 0.01f ) return false;
+
+		var distance = jutsu.Range;
+		foreach ( var height in new[] { 40f, 64f } )
+		{
+			var up = Vector3.Up * height;
+			var wall = Scene.Trace.Ray( WorldPosition + up, WorldPosition + up + flat.Normal * distance ).Radius( 16f )
+				.IgnoreGameObjectHierarchy( GameObject ).WithoutTags( Core.NetConstants.TagInvisible ).Run();
+			if ( wall.Hit ) distance = MathF.Min( distance, wall.Distance );
+		}
+
+		// Sol sous le point d'arrivée : jusqu'à 72 au-dessus (montée) et 256 en dessous (descente).
+		var point = WorldPosition + flat.Normal * distance;
+		var ground = Scene.Trace.Ray( point + Vector3.Up * 72f, point - Vector3.Up * 256f )
+			.IgnoreGameObjectHierarchy( GameObject ).WithoutTags( Core.NetConstants.TagInvisible ).Run();
+		if ( !ground.Hit || ground.StartedSolid ) return false;
+
+		dest = ground.HitPosition;
+		return true;
 	}
 
 	void TickProjectiles()

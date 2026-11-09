@@ -54,6 +54,7 @@ public sealed class NinjaStats : Component
 	Vector3 _lastPos;
 	TimeSince _speedWindow;
 	float _speed;
+	TimeSince _lastSpeedLog; // 0 au spawn : pas de signalement les 10 premières secondes (saut de position au spawn).
 
 	float _walkSpeed;
 	float _runSpeed;
@@ -94,6 +95,7 @@ public sealed class NinjaStats : Component
 			_speedWindow = 0;
 		}
 		var speed = _speed;
+		CheckSpeed( speed );
 
 		var running = speed > _walkSpeed * 1.2f;
 		var ninjaRunning = speed > _runSpeed * 1.25f;
@@ -120,13 +122,33 @@ public sealed class NinjaStats : Component
 		if ( SpeedMultiplier < 1f && _slowEnd ) SpeedMultiplier = 1f;
 	}
 
+	/// <summary>
+	/// La position appartient au client : l'hôte ne peut pas bloquer un speedhack, mais le signale au staff.
+	/// Plus rapide que la course ninja (+30 %), ou plus rapide que la marche épuisé, hors bond / Shunshin récent.
+	/// </summary>
+	void CheckSpeed( float speed )
+	{
+		var movement = GetComponent<NinjaMovement>();
+		if ( movement is null || movement.LastBurst < 1.5f || _lastSpeedLog < 10f ) return;
+
+		var max = IsExhausted ? _walkSpeed * 1.3f : _runSpeed * movement.NinjaRunMultiplier * 1.3f;
+		if ( speed <= max ) return;
+
+		_lastSpeedLog = 0;
+		var ninja = GetComponent<NinjaPlayer>();
+		Log.Warning( $"[Anti-triche] {GameObject.Name} : vitesse {speed:0} (max {max:0})" );
+		GameManager.Current?.LogEvent( "speed_suspect", ninja?.SteamId, null,
+			new { name = ninja?.CharacterName, speed = MathF.Round( speed ), max = MathF.Round( max ), exhausted = IsExhausted } );
+	}
+
 	void TickOwner()
 	{
 		// shortcut: vitesse, blocage à terre et étourdissement sont appliqués par le client : le moteur laisse
 		// la position à l'owner (vérifié : l'hôte ne peut pas la réécrire). Un tricheur peut bouger à terre,
 		// mais ne peut ni lancer de jutsu ni éviter les dégâts (validés par l'hôte). Upgrade : détection côté hôte + log staff.
 		Controller.WalkSpeed = _walkSpeed * SpeedMultiplier;
-		var ninja = GetComponent<NinjaMovement>()?.IsNinjaRunning == true ? GetComponent<NinjaMovement>().NinjaRunMultiplier : 1f;
+		var movement = GetComponent<NinjaMovement>();
+		var ninja = movement?.IsNinjaRunning == true ? movement.NinjaRunMultiplier : 1f;
 		Controller.RunSpeed = (IsExhausted ? _walkSpeed : _runSpeed * ninja) * SpeedMultiplier;
 
 		// N'écrit UseInputControls qu'au changement, pour ne pas écraser d'autres systèmes (menus...).

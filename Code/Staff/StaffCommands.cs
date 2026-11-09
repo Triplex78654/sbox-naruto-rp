@@ -102,6 +102,13 @@ public sealed class StaffCommands : Component
 
 	// ─── Déplacement (la position appartient au client : l'hôte le lui demande) ───
 
+	/// <summary>Hôte : la téléportation ne doit pas être signalée comme vitesse suspecte.</summary>
+	static void MarkTeleported( GameObject go )
+	{
+		var movement = go.GetComponent<NinjaMovement>();
+		if ( movement is not null ) movement.LastBurst = 0;
+	}
+
 	[Rpc.Owner( NetFlags.HostOnly )]
 	void ApplyTeleport( Vector3 position )
 	{
@@ -113,6 +120,7 @@ public sealed class StaffCommands : Component
 	public void RequestTeleportTo( NinjaPlayer target )
 	{
 		if ( !Allowed( StaffAction.Teleport ) || !target.IsValid() ) return;
+		MarkTeleported( GameObject );
 		ApplyTeleport( target.WorldPosition + target.WorldRotation.Backward * 60f );
 		LogStaff( "staff_teleport", target, new { to = target.CharacterName } );
 	}
@@ -121,6 +129,7 @@ public sealed class StaffCommands : Component
 	public void RequestBring( NinjaPlayer target )
 	{
 		if ( !Allowed( StaffAction.Teleport ) || !target.IsValid() ) return;
+		MarkTeleported( target.GameObject );
 		target.GetComponent<StaffCommands>()?.ApplyTeleport( WorldPosition + WorldRotation.Forward * 60f );
 		target.GetComponent<StaffCommands>()?.Notify( "Un membre du staff t'a téléporté." );
 		LogStaff( "staff_bring", target, new { target = target.CharacterName } );

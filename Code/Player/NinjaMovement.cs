@@ -25,6 +25,9 @@ public sealed class NinjaMovement : Component
 	/// <summary>Course ninja en cours (écrit par le propriétaire : purement visuel / HUD, l'hôte mesure la vitesse réelle).</summary>
 	[Sync] public bool IsNinjaRunning { get; private set; }
 
+	/// <summary>Dernier bond / Shunshin (hôte) : la vitesse mesurée juste après n'est pas suspecte.</summary>
+	public TimeSince LastBurst { get; set; } = 10f;
+
 	TimeSince _lastRunPress = 10f;
 	TimeUntil _leapCooldown;
 
@@ -56,17 +59,28 @@ public sealed class NinjaMovement : Component
 	{
 		if ( !float.IsFinite( direction.x ) || !float.IsFinite( direction.y ) || !float.IsFinite( direction.z ) ) return;
 		if ( Stats.IsDowned || Stats.IsStunned || !_leapCooldown ) return;
+		if ( GetComponent<Combat.NinjaDefense>()?.IsGuarding == true ) return;
+		if ( GetComponent<Staff.StaffCommands>()?.IsInvisible == true ) return;
+		var flat = direction.WithZ( 0 );
+		if ( flat.Length < 0.01f ) return;
+
+		// Au sol, vérifié par l'hôte : sinon un client modifié enchaîne les bonds en l'air (vol).
+		var ground = Scene.Trace.Ray( WorldPosition + Vector3.Up * 4f, WorldPosition - Vector3.Up * 12f )
+			.IgnoreGameObjectHierarchy( GameObject ).Run();
+		if ( !ground.Hit ) return;
+
 		if ( !Stats.TrySpendChakra( LeapChakraCost ) ) return;
 
 		_leapCooldown = LeapCooldown;
-		var flat = direction.WithZ( 0 );
-		if ( flat.Length < 0.01f ) return;
+		LastBurst = 0;
 		ApplyImpulse( flat.Normal * LeapForward + Vector3.Up * LeapUp );
 	}
 
 	[Rpc.Owner( NetFlags.HostOnly )]
 	void ApplyImpulse( Vector3 velocity )
 	{
+		// Sans ça, le contrôleur se recolle au sol à la frame suivante et annule la vitesse verticale (vérifié).
+		Controller.PreventGrounding( 0.3f );
 		var body = GetComponent<Rigidbody>();
 		if ( body.IsValid() ) body.Velocity += velocity;
 	}
