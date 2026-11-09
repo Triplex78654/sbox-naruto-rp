@@ -1,0 +1,24 @@
+# Généré par s&box / Visual Studio
+.sbox/
+.vs/
+.idea/
+obj/
+bin/
+*.csproj
+*.sln
+*.user
+*.suo
+
+# Assets compilés par l'éditeur (regénérés automatiquement)
+*_c
+
+# Secrets : jamais dans Git
+Code/**/Secrets.Server.cs
+server_secrets.json
+.dev.vars
+.env*
+
+# Système
+Thumbs.db
+desktop.ini
+.DS_Store
