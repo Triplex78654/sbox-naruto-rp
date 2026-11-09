@@ -21,11 +21,11 @@ for f in glob.glob(os.path.join(src, "*.json")):
 STYLES = {
     "konoha": dict(angle=180, ground=None, rock=(0.5, 0.45, 0.4), built=(0.9, 0.86, 0.76), roof=(0.7, 0.2, 0.15),
                  roofs=[(0.7, 0.2, 0.15), (0.2, 0.35, 0.6), (0.25, 0.45, 0.25), (0.55, 0.3, 0.2)],
-                 tower=(0.85, 0.5, 0.25), rampart_h=(650, 650), house_h=(260, 500), spawn=True, pays=False),
+                 tower=(0.85, 0.5, 0.25), rampart_h=(650, 650), house_h=(260, 500), pays=False),
     "suna": dict(angle=60, ground=(0.86, 0.74, 0.5), rock=(0.74, 0.56, 0.36), built=(0.9, 0.8, 0.62), roof=(0.78, 0.62, 0.42),
-                 tower=(0.86, 0.68, 0.42), rampart_h=(900, 1200), house_h=(220, 340), spawn=False, pays=True),
+                 tower=(0.86, 0.68, 0.42), rampart_h=(900, 1200), house_h=(220, 340), pays=True),
     "kumo": dict(angle=-60, ground=(0.56, 0.55, 0.52), rock=(0.48, 0.48, 0.5), built=(0.82, 0.82, 0.8), roof=(0.3, 0.45, 0.62),
-                 tower=(0.35, 0.5, 0.72), rampart_h=(1600, 2800), house_h=(260, 420), spawn=False, pays=True),
+                 tower=(0.35, 0.5, 0.72), rampart_h=(1600, 2800), house_h=(260, 420), pays=True),
 }
 COMMON = dict(road=(0.55, 0.5, 0.42), water=(0.2, 0.45, 0.75), zone=(0.68, 0.58, 0.42), mark=(0.25, 0.55, 0.6),
               rock2=(0.62, 0.6, 0.55), park=(0.3, 0.55, 0.28), mountain=(0.5, 0.45, 0.4), wall=(0.78, 0.7, 0.55),
@@ -155,7 +155,7 @@ for v, style in STYLES.items():
                     ang, rad = tr.uniform(0, 2 * math.pi), s["r"] * math.sqrt(tr.random()) * 0.9
                     tx, ty = (s["x"] + math.cos(ang) * rad) * M, (s["y"] + math.sin(ang) * rad) * M
                     B(g, "Tronc", tx, ty, 50, 50, 450, COMMON["wood"]); S(g, "Feuillage", tx, ty, 560, 380, COMMON["leaf"])
-            else:
+            elif f not in FLAT:
                 h = HEIGHT.get(f, 400)
                 disk(g, tag, s["x"] * M, s["y"] * M, s["r"] * M, h, c, 0, True)
                 if f == "tower": S(g, f"{tag} (dôme)", s["x"] * M, s["y"] * M, h, s["r"] * 2 * M * 0.85, style["roof"])
@@ -188,7 +188,7 @@ for v, style in STYLES.items():
     sp = next((e for e in lst if e["code"] in ("V6", "B2") and "appar" in e["name"].lower()), None)
     if sp:
         for dx, dy in ((-500, 500), (500, 500), (-500, -500), (500, -500)):
-            lines.append(f'{{ var s = new GameObject({g}, true, "Spawn"); s.LocalPosition = new Vector3({sp["shape"]["x"] * M + dx:.0f}f,{sp["shape"]["y"] * M + dy:.0f}f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = {"true" if style["spawn"] else "false"}; s.Components.Create<SpawnPoint>(); }}')
+            lines.append(f'{{ var s = new GameObject({g}, true, "Spawn"); s.LocalPosition = new Vector3({sp["shape"]["x"] * M + dx:.0f}f,{sp["shape"]["y"] * M + dy:.0f}f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }}')
     if not style["pays"]: continue  # Konoha : frontière, poste et route déjà faits par monde-blocage
     # Frontière : bornes tous les 10°, sauf sur la route ; poste-frontière sur la route
     for i in range(36):

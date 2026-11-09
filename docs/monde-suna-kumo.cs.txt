@@ -850,10 +850,10 @@ using ( scene.Push() )
 	B(konoha,"Toit 9",-647f,4227f,513f,513f,30f,new Color(0.7f,0.2f,0.15f),313f,0.0f,true);
 	B(konoha,"Maison 10",4245f,-2606f,484f,484f,406f,new Color(0.9f,0.86f,0.76f),0f,0.0f,true);
 	B(konoha,"Toit 10",4245f,-2606f,537f,537f,30f,new Color(0.25f,0.45f,0.25f),406f,0.0f,true);
-	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = true; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = true; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = true; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = true; s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(konoha, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
 	// ═══ SUNA ═══
 	var suna = new GameObject( true, "Suna (blocage)" ); suna.WorldPosition = new Vector3(30000.0f,51961.5f,0); suna.WorldRotation = Rotation.FromYaw(-30f);
 	B(suna,"Sol du pays",0f,-20869f,4688f,268f,1.5f,new Color(0.86f,0.74f,0.5f),1f,0.0f,false);
@@ -1189,20 +1189,6 @@ using ( scene.Push() )
 	B(suna,"V6 Place du Vent (apparition)",0f,771f,1838f,175f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(suna,"V6 Place du Vent (apparition)",0f,943f,1485f,175f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(suna,"V6 Place du Vent (apparition)",0f,1114f,891f,175f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
-	B(suna,"V6 Place du Vent (apparition)",0f,-1114f,891f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-943f,1485f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-771f,1838f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-600f,2078f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-429f,2242f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-257f,2344f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,-86f,2394f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,86f,2394f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,257f,2344f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,429f,2242f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,600f,2078f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,771f,1838f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,943f,1485f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(suna,"V6 Place du Vent (apparition)",0f,1114f,891f,175f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
 	B(suna,"R1 Avenue principale",0f,-5840f,9920f,640f,5f,new Color(0.55f,0.5f,0.42f),0f,90.0f,false);
 	B(suna,"R3 Allée du Kazekage",0f,1800f,1680f,480f,5f,new Color(0.55f,0.5f,0.42f),0f,90.0f,false);
 	B(suna,"M7 Marché couvert (gauche)",-760f,-3800f,480f,3800f,400f,new Color(0.9f,0.8f,0.62f),0f,0.0f,true);
@@ -1223,20 +1209,6 @@ using ( scene.Push() )
 	B(suna,"V8 Réservoir d'eau",-7120f,2166f,1348f,128f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
 	B(suna,"V8 Réservoir d'eau",-7120f,2291f,1089f,128f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
 	B(suna,"V8 Réservoir d'eau",-7120f,2417f,653f,128f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
-	B(suna,"V8 Réservoir d'eau",-7120f,783f,653f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,909f,1089f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1034f,1348f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1160f,1524f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1286f,1644f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1411f,1719f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1537f,1756f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1663f,1756f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1789f,1719f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,1914f,1644f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,2040f,1524f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,2166f,1348f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,2291f,1089f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(suna,"V8 Réservoir d'eau",-7120f,2417f,653f,128f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
 	B(suna,"M9 Ateliers de marionnettistes",6400f,3800f,1120f,800f,400f,new Color(0.9f,0.8f,0.62f),0f,0.0f,true);
 	B(suna,"M9 Ateliers de marionnettistes (toit)",6400f,3800f,1180f,860f,40f,new Color(0.78f,0.62f,0.42f),400f,0.0f,true);
 	B(suna,"F3 Arène des examens (sol)",-6400f,-4240f,831f,163f,4f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
@@ -1580,10 +1552,10 @@ using ( scene.Push() )
 	S(suna,"Dôme 9",-817f,1835f,264f,527f,new Color(0.78f,0.62f,0.42f));
 	B(suna,"Maison 10",3946f,-2423f,508f,508f,281f,new Color(0.9f,0.8f,0.62f),0f,0.0f,true);
 	S(suna,"Dôme 10",3946f,-2423f,281f,508f,new Color(0.78f,0.62f,0.42f));
-	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(suna, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
 	B(suna,"Borne",3621f,-20533f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);
 	B(suna,"Borne",7131f,-19593f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);
 	B(suna,"Borne",10425f,-18057f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);
@@ -1937,20 +1909,6 @@ using ( scene.Push() )
 	B(kumo,"V6 Esplanade (apparition)",0f,720f,1716f,163f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(kumo,"V6 Esplanade (apparition)",0f,880f,1386f,163f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(kumo,"V6 Esplanade (apparition)",0f,1040f,831f,163f,6f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
-	B(kumo,"V6 Esplanade (apparition)",0f,-1040f,831f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-880f,1386f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-720f,1716f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-560f,1940f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-400f,2092f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-240f,2188f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,-80f,2234f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,80f,2234f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,240f,2188f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,400f,2092f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,560f,1940f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,720f,1716f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,880f,1386f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
-	B(kumo,"V6 Esplanade (apparition)",0f,1040f,831f,163f,400f,new Color(0.68f,0.58f,0.42f),0f,0.0f,true);
 	B(kumo,"R1 Grand escalier",-440f,-8860f,3530f,480f,5f,new Color(0.55f,0.5f,0.42f),0f,106.8f,false);
 	B(kumo,"R1 Grand escalier",-80f,-6000f,3705f,480f,5f,new Color(0.55f,0.5f,0.42f),0f,60.3f,false);
 	B(kumo,"R1 Grand escalier",360f,-2900f,3955f,480f,5f,new Color(0.55f,0.5f,0.42f),0f,102.0f,false);
@@ -1971,20 +1929,6 @@ using ( scene.Push() )
 	B(kumo,"V3 Bains chauds",4800f,-5086f,1226f,117f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
 	B(kumo,"V3 Bains chauds",4800f,-4971f,990f,117f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
 	B(kumo,"V3 Bains chauds",4800f,-4857f,594f,117f,4f,new Color(0.2f,0.45f,0.75f),0f,0.0f,false);
-	B(kumo,"V3 Bains chauds",4800f,-6343f,594f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-6229f,990f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-6114f,1226f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-6000f,1386f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5886f,1494f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5771f,1563f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5657f,1596f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5543f,1596f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5429f,1563f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5314f,1494f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5200f,1386f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-5086f,1226f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-4971f,990f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
-	B(kumo,"V3 Bains chauds",4800f,-4857f,594f,117f,400f,new Color(0.2f,0.45f,0.75f),0f,0.0f,true);
 	B(kumo,"F3 Arène des examens (sol)",-6000f,-5040f,831f,163f,4f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(kumo,"F3 Arène des examens (sol)",-6000f,-4880f,1386f,163f,4f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
 	B(kumo,"F3 Arène des examens (sol)",-6000f,-4720f,1716f,163f,4f,new Color(0.68f,0.58f,0.42f),0f,0.0f,false);
@@ -2312,10 +2256,10 @@ using ( scene.Push() )
 	B(kumo,"Toit 9",-845f,-3988f,447f,447f,30f,new Color(0.3f,0.45f,0.62f),287f,0.0f,true);
 	B(kumo,"Maison 10",3647f,-2239f,484f,484f,398f,new Color(0.82f,0.82f,0.8f),0f,0.0f,true);
 	B(kumo,"Toit 10",3647f,-2239f,537f,537f,30f,new Color(0.3f,0.45f,0.62f),398f,0.0f,true);
-	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
-	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(-500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(500f,500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(-500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
+	{ var s = new GameObject(kumo, true, "Spawn"); s.LocalPosition = new Vector3(500f,-500f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Components.Create<SpawnPoint>(); }
 	B(kumo,"Borne",3621f,-20533f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);
 	B(kumo,"Borne",7131f,-19593f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);
 	B(kumo,"Borne",10425f,-18057f,90f,90f,360f,new Color(0.62f,0.6f,0.55f),0f,0.0f,true);

@@ -124,7 +124,7 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 			return;
 		}
 
-		var player = PlayerPrefab.Clone( PickSpawn(), name: $"Ninja - {channel.DisplayName}" );
+		var player = PlayerPrefab.Clone( PickSpawn( character.Village ), name: $"Ninja - {channel.DisplayName}" );
 		player.Tags.Add( NetConstants.TagPlayer );
 
 		var ninja = player.Components.Get<NinjaPlayer>();
@@ -237,12 +237,14 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		_menus.Remove( channel.Id );
 	}
 
-	Transform PickSpawn()
+	/// <summary>Point d'apparition du village (groupe racine « Konoha (blocage) »…), sinon n'importe lequel.</summary>
+	Transform PickSpawn( string village )
 	{
 		var points = Scene.GetAllComponents<SpawnPoint>().ToArray();
 		if ( points.Length == 0 )
 			return WorldTransform;
 
-		return Game.Random.FromArray( points ).WorldTransform;
+		var home = points.Where( p => !string.IsNullOrEmpty( village ) && p.GameObject.Root.Name.StartsWith( village, StringComparison.OrdinalIgnoreCase ) ).ToArray();
+		return Game.Random.FromArray( home.Length > 0 ? home : points ).WorldTransform;
 	}
 }
