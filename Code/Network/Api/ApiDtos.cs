@@ -31,6 +31,8 @@ public sealed class CharacterDto
 	[JsonPropertyName( "nature" )] public string Nature { get; set; }
 	[JsonPropertyName( "path" )] public string Path { get; set; }
 	[JsonPropertyName( "clan" )] public string Clan { get; set; }
+	/// <summary>Clan original validé par le staff (GDD).</summary>
+	[JsonPropertyName( "clan_validated" )] public bool ClanValidated { get; set; }
 	[JsonPropertyName( "grade" )] public string Grade { get; set; }
 	[JsonPropertyName( "is_medic" )] public bool IsMedic { get; set; }
 	[JsonPropertyName( "ryo" )] public long Ryo { get; set; }
@@ -39,8 +41,31 @@ public sealed class CharacterDto
 	public string FullName => $"{FirstName} {LastName}";
 }
 
+/// <summary>Formulaire de création (étapes du GDD). Validé par l'hôte puis par le Worker.</summary>
+public sealed class NewCharacter
+{
+	public int Slot { get; set; }
+	public string FirstName { get; set; }
+	public string LastName { get; set; }
+	public string Village { get; set; }
+	public string Nature { get; set; }
+	public string Path { get; set; }
+	/// <summary>Vide = sans clan.</summary>
+	public string Clan { get; set; }
+}
+
 /// <summary>Erreur d'appel à l'API (réseau, statut HTTP, réponse illisible).</summary>
 public sealed class ApiException : Exception
 {
-	public ApiException( string message ) : base( message ) { }
+	/// <summary>Statut HTTP (0 = pas de réponse).</summary>
+	public int Status { get; }
+
+	/// <summary>Message du Worker affichable au joueur (ex. « emplacement déjà occupé »), sinon générique.</summary>
+	public string UserMessage { get; }
+
+	public ApiException( string message, int status = 0, string userMessage = null ) : base( message )
+	{
+		Status = status;
+		UserMessage = userMessage ?? "Serveur de personnages indisponible, réessaie dans un instant.";
+	}
 }

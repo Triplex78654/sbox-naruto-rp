@@ -11,7 +11,7 @@ namespace NarutoRp.Core;
 /// Crée le lobby, charge le perso de chaque joueur depuis l'API puis le fait apparaître,
 /// et le sauvegarde régulièrement et à la déconnexion. Tout se passe sur l'hôte.
 /// </summary>
-public sealed class GameManager : Component, Component.INetworkListener
+public sealed partial class GameManager : Component, Component.INetworkListener
 {
 	[Property] public GameObject PlayerPrefab { get; set; }
 
@@ -59,12 +59,19 @@ public sealed class GameManager : Component, Component.INetworkListener
 	// Appelé sur l'hôte seulement, quand le client a fini de charger.
 	void Component.INetworkListener.OnActive( Connection channel )
 	{
-		_ = LoadAndSpawn( channel );
+		_ = LoadAndOpenMenu( channel );
 	}
 
-	async Task LoadAndSpawn( Connection channel )
+	async Task LoadAndOpenMenu( Connection channel )
 	{
 		var steamId = channel.SteamId.ValueUnsigned;
+
+		if ( !PlayerPrefab.IsValid() )
+		{
+			Log.Error( "[Core] GameManager : aucun PlayerPrefab assigné" );
+			Refuse( channel, "Serveur mal configuré (prefab joueur absent)." );
+			return;
+		}
 
 		var api = GetApi();
 		if ( api is null )
@@ -105,9 +112,8 @@ public sealed class GameManager : Component, Component.INetworkListener
 			return;
 		}
 
-		// shortcut: premier perso vivant ; choix du slot et création avec l'UI de la tâche 9.
-		var character = data.Characters.OrderBy( c => c.Slot ).FirstOrDefault();
-		Spawn( channel, data, character );
+		// Le joueur choisit ou crée son perso (GameManager.Characters.cs).
+		OpenCharacterMenu( channel, data, null );
 	}
 
 	void Spawn( Connection channel, PlayerDto data, CharacterDto character )
@@ -224,6 +230,7 @@ public sealed class GameManager : Component, Component.INetworkListener
 	void Component.INetworkListener.OnDisconnected( Connection channel )
 	{
 		Log.Info( $"[Core] {channel.DisplayName} s'est déconnecté" );
+		_menus.Remove( channel.Id );
 	}
 
 	Transform PickSpawn()

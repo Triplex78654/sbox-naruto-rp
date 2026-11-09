@@ -1,0 +1,202 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Core;
+@using NarutoRp.Player;
+@using NarutoRp.Characters;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* Choix et création de perso (6 étapes du GDD). N'envoie que des demandes : l'hôte et le Worker valident. *@
+@if ( Visible )
+{
+	<root>
+		<div class="window">
+			<div class="title">@Title</div>
+
+			@if ( !string.IsNullOrEmpty( CharacterMenuState.Message ) )
+			{
+				<div class="message">@CharacterMenuState.Message</div>
+			}
+
+			@if ( _step == 0 )
+			{
+				<div class="list">
+					@foreach ( var c in CharacterMenuState.Characters )
+					{
+						<div class="character">
+							<div class="info">
+								<div class="name">@c.Name</div>
+								<div class="sub">@($"{CharacterRules.Label( c.Village )} · {CharacterRules.Label( c.Grade )} · {CharacterRules.Label( c.Path )}")</div>
+							</div>
+							<Button class="primary" disabled=@CharacterMenuState.Busy onclick=@(() => Play( c.Id ))>Jouer</Button>
+						</div>
+					}
+					@if ( FreeSlot > 0 )
+					{
+						<Button class="create" onclick=@StartCreation>+ Créer un personnage (@CharacterMenuState.Characters.Count / @CharacterRules.MaxSlots)</Button>
+					}
+				</div>
+			}
+			else
+			{
+				<div class="steps">
+					@for ( var i = 1; i <= 6; i++ )
+					{
+						<div class="dot @(i == _step ? "current" : "") @(i < _step ? "done" : "")">@i</div>
+					}
+				</div>
+
+				<div class="step">
+					@switch ( _step )
+					{
+						case 1:
+							<label>Prénom</label>
+							<TextEntry Value:bind=@_firstName MaxLength=@(20) Placeholder="Ex. Ren" />
+							<div class="hint">@NameHint( _firstName )</div>
+							<label>Nom</label>
+							<TextEntry Value:bind=@_lastName MaxLength=@(20) Placeholder="Ex. Kazuma" />
+							<div class="hint">@NameHint( _lastName )</div>
+							<div class="note">Noms libres. Les noms de personnages et clans canon sont refusés.</div>
+							break;
+
+						case 2:
+							<label>Village</label>
+							<div class="choices">
+								@foreach ( var v in CharacterRules.Villages )
+								{
+									<Button class="choice" Active=@(_village == v) onclick=@(() => _village = v)>@CharacterRules.Label( v )</Button>
+								}
+							</div>
+							<div class="note">Changer de village plus tard se fait en RP, avec l'accord du staff.</div>
+							break;
+
+						case 3:
+							<label>Apparence</label>
+							<div class="note">Pour l'instant, ton perso porte ton avatar s&box. Le choix du corps, du visage, de la coiffure et de la tenue arrivera plus tard.</div>
+							break;
+
+						case 4:
+							<label>Nature de chakra</label>
+							<div class="choices">
+								@foreach ( var n in CharacterRules.Natures )
+								{
+									<Button class="choice" Active=@(_nature == n) onclick=@(() => _nature = n)>@CharacterRules.Label( n )</Button>
+								}
+							</div>
+							<div class="note">Une seule au départ. La deuxième s'obtient au grade de chûnin.</div>
+							break;
+
+						case 5:
+							<label>Voie</label>
+							<div class="choices">
+								@foreach ( var p in CharacterRules.Paths )
+								{
+									<Button class="choice" Active=@(_path == p) onclick=@(() => _path = p)>@CharacterRules.Label( p )</Button>
+								}
+							</div>
+							break;
+
+						case 6:
+							<label>Clan (facultatif)</label>
+							<TextEntry Value:bind=@_clan MaxLength=@(20) Placeholder="Vide = sans clan" />
+							<div class="hint">@(string.IsNullOrWhiteSpace( _clan ) ? "Sans clan" : (CharacterRules.CheckClan( _clan ) ?? "Clan original : à faire valider par le staff"))</div>
+							<div class="recap">
+								<div>@($"{_firstName?.Trim()} {_lastName?.Trim()}")</div>
+								<div>@($"{CharacterRules.Label( _village )} · {CharacterRules.Label( _nature )} · {CharacterRules.Label( _path )}")</div>
+								<div>Tu commences élève de l'académie.</div>
+							</div>
+							break;
+					}
+				</div>
+
+				<div class="nav">
+					<Button onclick=@Back>@(_step == 1 ? "Annuler" : "Retour")</Button>
+					@if ( _step < 6 )
+					{
+						<Button class="primary" disabled=@(!StepValid) onclick=@(() => _step++)>Suivant</Button>
+					}
+					else
+					{
+						<Button class="primary" disabled=@(!StepValid || CharacterMenuState.Busy) onclick=@Create>Créer mon perso</Button>
+					}
+				</div>
+			}
+		</div>
+	</root>
+}
+
+@code
+{
+	int _step;
+	string _firstName = "", _lastName = "", _village, _nature, _path, _clan = "";
+
+	/// <summary>Visible tant que l'hôte a ouvert le menu et que le joueur n'est pas en jeu.</summary>
+	bool Visible => CharacterMenuState.Open && !NinjaPlayer.Local.IsValid();
+
+	string Title => _step == 0 ? "Choisis ton personnage" : "Création de personnage";
+
+	int FreeSlot => Enumerable.Range( 1, CharacterRules.MaxSlots ).FirstOrDefault( s => CharacterMenuState.Characters.All( c => c.Slot != s ) );
+
+	string NameHint( string name ) => string.IsNullOrWhiteSpace( name ) ? "" : CharacterRules.CheckName( name ) ?? "OK";
+
+	bool StepValid => _step switch
+	{
+		1 => CharacterRules.CheckName( _firstName ) is null && CharacterRules.CheckName( _lastName ) is null,
+		2 => _village is not null,
+		4 => _nature is not null,
+		5 => _path is not null,
+		6 => CharacterRules.CheckClan( _clan ) is null,
+		_ => true,
+	};
+
+	void StartCreation()
+	{
+		CharacterMenuState.Message = null;
+		_step = 1;
+	}
+
+	void Back()
+	{
+		_step = _step == 1 ? 0 : _step - 1;
+	}
+
+	void Play( long id )
+	{
+		CharacterMenuState.Busy = true;
+		GameManager.RequestPlayCharacter( id );
+	}
+
+	void Create()
+	{
+		CharacterMenuState.Busy = true;
+		CharacterMenuState.Message = null;
+		GameManager.RequestCreateCharacter( FreeSlot, _firstName, _lastName, _village, _nature, _path, _clan );
+		// En cas de refus, l'hôte renvoie le menu avec le message : on revient au récapitulatif.
+	}
+
+	TimeSince _busySince;
+	bool _wasBusy;
+
+	protected override void OnUpdate()
+	{
+		// Pas de réponse de l'hôte : on rend la main au joueur après quelques secondes.
+		if ( CharacterMenuState.Busy && !_wasBusy ) _busySince = 0;
+		_wasBusy = CharacterMenuState.Busy;
+		if ( CharacterMenuState.Busy && _busySince > 8f && !NinjaPlayer.Local.IsValid() )
+		{
+			CharacterMenuState.Busy = false;
+			CharacterMenuState.Message = "Pas de réponse du serveur, réessaie.";
+		}
+
+		// Le joueur est entré en jeu : on remet le menu à zéro pour une prochaine fois.
+		if ( CharacterMenuState.Open && NinjaPlayer.Local.IsValid() )
+		{
+			CharacterMenuState.Open = false;
+			_step = 0;
+		}
+	}
+
+	protected override int BuildHash() => System.HashCode.Combine(
+		Visible, _step, CharacterMenuState.Message, CharacterMenuState.Busy, CharacterMenuState.Characters.Count,
+		System.HashCode.Combine( _firstName, _lastName, _village, _nature, _path, _clan ) );
+}

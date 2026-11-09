@@ -35,7 +35,7 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 6. [x] **Combat** : `NinjaDefense` (garde clic droit : -60 % dégâts contre de l'endurance ; esquive X : invulnérable 0,35 s, 25 endurance ; substitution Z : 20 chakra, cooldown 30 s, le prochain coup dans la seconde est évité + recul), `ReviveAction` (médic-nin maintient E sur un ninja à terre 4 s, annulé par un coup ou l'éloignement, relève à 25 % PV). Choix validé par l'utilisateur : **la garde ignore étourdissement et ralenti**. Testé à 2 joueurs, relu. `IsMedic` réglé dans le prefab en attendant les données du perso.
 7. [~] **Backend Cloudflare** : fait **en local** dans `backend/` (Worker TypeScript + D1 : persos, jutsus appris, historique des grades, sanctions, logs, staff). Clé serveur en Bearer, droits staff revérifiés, 15 tests de routes OK (`npm test`), relu. **Reste** : mise en ligne quand l'utilisateur aura un compte Cloudflare (étapes dans `backend/README.md`).
 8. [x] **Persistance** : `IApiClient` (+ `WorkerApiClient`, `MemoryApiClient`, `ApiConfig`). À la connexion : chargement du perso (nom, village, grade, médic, ryô, jutsus appris → barre de jutsus), joueur banni refusé, API indisponible → refusé (jamais de partie sans données). Sauvegarde toutes les 2 min et à la déconnexion. Logs `downed` / `revived`. Testé de bout en bout dans l'éditeur contre le Worker local (port 8080), relu (corrections : sauvegardes dans l'ordre, sauvegarde de tous à l'arrêt, pas de double objet pour un même joueur, serveur dédié sans config refuse les connexions).
-9. [ ] **Création de perso** : UI Razor en 6 étapes du GDD, filtre de noms canon.
+9. [x] **Création de perso** : à la connexion, écran de choix (2 emplacements) puis assistant en 6 étapes (nom, village, apparence, nature, voie, clan). Filtre canon côté UI, hôte et Worker. Choix et création par RPC statiques validés par l'hôte (`GameManager.Characters.cs`). Testé dans l'éditeur et contre le Worker local. **Apparence** : avatar s&box pour l'instant (étape affichée comme « plus tard »). Relu ; corrigé : contournement du filtre (lettres cyrilliques, « N'aruto »), joueur bloqué si le rechargement échoue après création. Clan original : colonne `clan_validated` (migration 0002), **validation par le staff à faire avec la tâche 11**.
 10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance et relu (jauges, barre de jutsus avec coût et cooldown, états, garde / substitution, barre de relève visible par le médic et le blessé). **Reste** : style définitif.
 11. [ ] **Staff de base** : rangs staff, téléportation, spectateur, kick, logs envoyés au Worker.
 12. [ ] **Contenu MVP** : 3 jutsus par nature + médical, taijutsu, kenjutsu (fiches de données).
@@ -43,7 +43,8 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 
 ## À tester par l'utilisateur
 
-- Lancer Play dans l'éditeur, appuyer sur **1**, **2**, **3** : le HUD en bas montre les jauges et les cooldowns ; pas encore d'effet visuel des jutsus, mais la console affiche `[Combat] ... lance ...`. Courir (Shift) longtemps : la course doit s'arrêter quand l'endurance est vide.
+- Lancer Play : l'écran **Choisis ton personnage** s'affiche. Créer un perso (essayer un nom canon pour voir le refus), puis jouer. Avec l'API en mémoire, un perso créé reçoit les 3 jutsus de test et le statut médic (les vrais persos commencent élèves, sans jutsu).
+- En jeu, appuyer sur **1**, **2**, **3** : le HUD en bas montre les jauges et les cooldowns ; pas encore d'effet visuel des jutsus, mais la console affiche `[Combat] ... lance ...`. Courir (Shift) longtemps : la course doit s'arrêter quand l'endurance est vide.
 - Touches de défense : **clic droit** maintenu (garde), **X** (esquive dans la direction ZQSD), **Z** (substitution). Le HUD affiche Garde / Substitution prête / cooldown. Pour la relève il faut 2 joueurs : un à terre, l'autre maintient **E** en le regardant.
 - Plus tard, avec un ami : vérifier que les jutsus le touchent bien à distance réelle (ping).
 
@@ -63,3 +64,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : tâche 6 (garde, esquive, substitution, relève médic-nin) faite et testée à 2 joueurs. Nouvelles touches X / Z dans `Input.config`.
 - 2026-11-09 : tâche 7 en local (Worker + D1 + tests). Le dossier `backend/` n'est pas publié avec le jeu (vérifié). Prochaine : tâche 8, brancher le serveur de jeu sur l'API (`IApiClient` + client mémoire pour l'éditeur).
 - 2026-11-09 : tâche 8 faite. Vérifié : dans l'éditeur, HTTP vers localhost seulement sur 80/443/8080/8443.
+- 2026-11-09 : tâche 9 (choix + création de perso) faite.

@@ -1,0 +1,123 @@
+CharacterMenu {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	justify-content: center;
+	align-items: center;
+	background-color: rgba(5, 8, 15, 0.85);
+	font-family: Poppins;
+	color: white;
+	// Rend la souris visible et cliquable sur ce panel.
+	pointer-events: all;
+}
+
+.window {
+	width: 560px;
+	flex-direction: column;
+	gap: 14px;
+	padding: 28px;
+	background-color: #151a24;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 10px;
+}
+
+.title {
+	font-size: 26px;
+	font-weight: bold;
+}
+
+.message {
+	padding: 8px 12px;
+	background-color: rgba(192, 57, 43, 0.25);
+	border: 1px solid #c0392b;
+	border-radius: 6px;
+	font-size: 14px;
+}
+
+.list {
+	flex-direction: column;
+	gap: 10px;
+}
+
+.character {
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 14px;
+	background-color: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+
+	.info { flex-direction: column; }
+	.name { font-size: 18px; font-weight: bold; }
+	.sub { font-size: 13px; opacity: 0.7; }
+}
+
+.steps {
+	gap: 8px;
+
+	.dot {
+		width: 28px;
+		height: 28px;
+		justify-content: center;
+		align-items: center;
+		border-radius: 14px;
+		font-size: 13px;
+		background-color: rgba(255, 255, 255, 0.08);
+
+		&.done { background-color: rgba(46, 134, 222, 0.5); }
+		&.current { background-color: #2e86de; font-weight: bold; }
+	}
+}
+
+.step {
+	flex-direction: column;
+	gap: 8px;
+	min-height: 200px;
+
+	label { font-size: 15px; font-weight: bold; margin-top: 6px; }
+	.hint { font-size: 12px; opacity: 0.7; min-height: 16px; }
+	.note { font-size: 13px; opacity: 0.7; }
+
+	.recap {
+		flex-direction: column;
+		gap: 2px;
+		margin-top: 10px;
+		padding: 10px 12px;
+		background-color: rgba(255, 255, 255, 0.05);
+		border-radius: 6px;
+		font-size: 14px;
+	}
+}
+
+TextEntry {
+	padding: 8px 10px;
+	background-color: rgba(0, 0, 0, 0.4);
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	border-radius: 6px;
+	font-size: 15px;
+}
+
+.choices {
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+Button {
+	padding: 8px 16px;
+	background-color: rgba(255, 255, 255, 0.08);
+	border-radius: 6px;
+	font-size: 14px;
+	cursor: pointer;
+
+	&:hover { background-color: rgba(255, 255, 255, 0.16); }
+	&.active { background-color: #2e86de; }
+	&.primary { background-color: #2e86de; }
+	&.primary:hover { background-color: #3d95ec; }
+	&.create { justify-content: center; border: 1px dashed rgba(255, 255, 255, 0.3); }
+	&:disabled { opacity: 0.4; }
+}
+
+.nav {
+	justify-content: space-between;
+}

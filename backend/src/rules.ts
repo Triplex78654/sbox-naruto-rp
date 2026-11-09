@@ -71,9 +71,11 @@ const CANON = new Set([
 export function checkName(v: unknown): string | null {
 	if (typeof v !== 'string') return 'nom manquant';
 	const name = v.trim();
-	if (!/^[\p{L}][\p{L}'\- ]{1,19}$/u.test(name)) return 'nom invalide (2 à 20 lettres)';
-	// Chaque mot est testé : « Naruto Uzumaki » ou « Sasuke-kun » sont refusés.
+	// Lettres latines seulement (accents compris) : pas de lettres d'autres alphabets qui imitent le latin.
+	if (!/^[A-Za-zÀ-ÖØ-öø-ÿ][A-Za-zÀ-ÖØ-öø-ÿ'\- ]{1,19}$/.test(name)) return 'nom invalide (2 à 20 lettres latines)';
+	// Mot par mot (« Naruto Uzumaki », « Sasuke-kun ») et collé (« N'aruto »).
 	const lower = name.toLowerCase();
-	if (CANON.has(lower) || lower.split(/[\s'\-]+/).some(w => CANON.has(w))) return 'nom de personnage ou clan canon interdit';
+	const joined = lower.replace(/[\s'\-]+/g, '');
+	if (CANON.has(lower) || CANON.has(joined) || lower.split(/[\s'\-]+/).some(w => CANON.has(w))) return 'nom de personnage ou clan canon interdit';
 	return null;
 }

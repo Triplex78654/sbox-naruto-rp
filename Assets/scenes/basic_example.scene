@@ -1282,6 +1282,7 @@
             "_type": "gameobject",
             "prefab": "prefabs/player.prefab"
           },
+          "SaveIntervalSeconds": 120,
           "StartServer": true
         }
       ],
@@ -1325,6 +1326,18 @@
         {
           "__type": "NarutoRp.UI.Hud",
           "__guid": "26f4351b-2d32-42bf-bd5b-73075fc3fc55",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        },
+        {
+          "__type": "NarutoRp.UI.CharacterMenu",
+          "__guid": "476f20a6-3d8f-46cf-8708-b5f55c275c62",
           "__enabled": true,
           "Flags": 0,
           "OnComponentDestroy": null,

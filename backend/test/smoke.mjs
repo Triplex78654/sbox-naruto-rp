@@ -77,6 +77,8 @@ test('nom canon, village inconnu, steamId faux → 400', async () => {
 	assert.equal((await call('POST', '/characters', { ...perso, slot: 2, firstName: 'Naruto Uzumaki' })).status, 400);
 	assert.equal((await call('POST', '/characters', { ...perso, slot: 2, firstName: 'Sasuke-kun' })).status, 400);
 	assert.equal((await call('POST', '/characters', { ...perso, slot: 2, appearance: 'texte' })).status, 400);
+	assert.equal((await call('POST', '/characters', { ...perso, slot: 2, firstName: "N'aruto" })).status, 400, 'canon avec apostrophe');
+	assert.equal((await call('POST', '/characters', { ...perso, slot: 2, firstName: 'Nаruto' })).status, 400, 'a cyrillique');
 });
 
 test('un staff ne se valide pas lui-même', async () => {
@@ -107,6 +109,7 @@ test('jutsus et médic débloqués par le staff', async () => {
 	assert.equal(c.grade, 'genin');
 	assert.equal(c.ryo, 250);
 	assert.equal(c.is_medic, true);
+	assert.equal(c.clan_validated, false);
 	assert.deepEqual(c.jutsus, ['raiton_decharge']);
 });
 

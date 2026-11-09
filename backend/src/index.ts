@@ -106,6 +106,7 @@ async function getPlayer(env: Env, steamId: string) {
 		characters: chars.results.map(c => ({
 			...c,
 			is_medic: c.is_medic === 1,
+			clan_validated: c.clan_validated === 1,
 			appearance: JSON.parse(String(c.appearance)),
 			jutsus: jutsus.results.filter(j => j.character_id === c.id).map(j => j.jutsu_id),
 		})),

@@ -40,7 +40,16 @@ public sealed class WorkerApiClient : IApiClient
 		{
 			var text = await resp.Content.ReadAsStringAsync();
 			if ( !resp.IsSuccessStatusCode )
-				throw new ApiException( $"{method} {path} : {(int)resp.StatusCode} {text}" );
+			{
+				var status = (int)resp.StatusCode;
+				// Erreurs 4xx : le Worker explique en français ce qui ne va pas, affichable au joueur.
+				string userMessage = null;
+				if ( status is >= 400 and < 500 && status != 401 && status != 403 )
+				{
+					try { userMessage = Json.Deserialize<ErrorDto>( text )?.Error; } catch { }
+				}
+				throw new ApiException( $"{method} {path} : {status} {text}", status, userMessage );
+			}
 			return text;
 		}
 	}
@@ -49,6 +58,32 @@ public sealed class WorkerApiClient : IApiClient
 	{
 		var text = await Send( "GET", $"/players/{steamId}", null, ct );
 		return Json.Deserialize<PlayerDto>( text ) ?? throw new ApiException( "réponse joueur vide" );
+	}
+
+	sealed class ErrorDto
+	{
+		[System.Text.Json.Serialization.JsonPropertyName( "error" )] public string Error { get; set; }
+	}
+
+	sealed class CreatedDto
+	{
+		[System.Text.Json.Serialization.JsonPropertyName( "id" )] public long Id { get; set; }
+	}
+
+	public async Task<long> CreateCharacterAsync( ulong steamId, NewCharacter c, CancellationToken ct = default )
+	{
+		var text = await Send( "POST", "/characters", new
+		{
+			steamId = steamId.ToString(),
+			slot = c.Slot,
+			firstName = c.FirstName,
+			lastName = c.LastName,
+			village = c.Village,
+			nature = c.Nature,
+			path = c.Path,
+			clan = string.IsNullOrWhiteSpace( c.Clan ) ? null : c.Clan,
+		}, ct );
+		return Json.Deserialize<CreatedDto>( text )?.Id ?? throw new ApiException( "réponse de création vide" );
 	}
 
 	public Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default )
