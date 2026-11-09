@@ -1,0 +1,94 @@
+Hud {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	font-family: Poppins;
+	color: white;
+	pointer-events: none;
+}
+
+.gauges {
+	position: absolute;
+	left: 32px;
+	bottom: 32px;
+	flex-direction: column;
+	gap: 6px;
+	width: 300px;
+}
+
+.gauge {
+	height: 20px;
+	background-color: rgba(0, 0, 0, 0.6);
+	border-radius: 4px;
+	overflow: hidden;
+	align-items: center;
+
+	.fill {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+	}
+
+	.value {
+		margin-left: 8px;
+		z-index: 1;
+		font-size: 13px;
+		text-shadow: 0 1px 2px black;
+	}
+
+	&.health .fill { background-color: #c0392b; }
+	&.chakra .fill { background-color: #2e86de; }
+	&.stamina .fill { background-color: #27ae60; }
+}
+
+.state {
+	position: absolute;
+	top: 40%;
+	left: 0;
+	right: 0;
+	justify-content: center;
+	font-size: 28px;
+	font-weight: bold;
+	text-shadow: 0 2px 4px black;
+
+	&.downed { color: #ff6b6b; }
+}
+
+.jutsus {
+	position: absolute;
+	bottom: 32px;
+	left: 0;
+	right: 0;
+	justify-content: center;
+	gap: 8px;
+}
+
+.slot {
+	width: 120px;
+	height: 72px;
+	padding: 4px;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(0, 0, 0, 0.6);
+	border: 2px solid rgba(255, 255, 255, 0.2);
+	border-radius: 6px;
+
+	&.casting { border-color: #f1c40f; }
+	&.cooldown { opacity: 0.5; }
+
+	.cd {
+		position: absolute;
+		top: 2px;
+		right: 6px;
+		font-size: 16px;
+		font-weight: bold;
+	}
+
+	.key { font-size: 12px; opacity: 0.7; }
+	.name { font-size: 12px; text-align: center; white-space: nowrap; }
+	.cost { font-size: 11px; color: #74b9ff; }
+}

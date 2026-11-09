@@ -1,0 +1,74 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Player;
+@using NarutoRp.Combat;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* HUD du joueur local : jauges et barre de jutsus. Lecture seule, aucune logique de jeu. *@
+<root>
+	@if ( Stats is not null )
+	{
+		<div class="gauges">
+			@foreach ( var (kind, value, max) in Gauges() )
+			{
+				<div class="gauge @kind">
+					<div class="fill" style="width: @(max > 0 ? value / max * 100f : 0)%"></div>
+					<div class="value">@MathF.Round( value ) / @max</div>
+				</div>
+			}
+		</div>
+
+		@if ( Stats.IsDowned )
+		{
+			<div class="state downed">À terre — attendez un médic-nin</div>
+		}
+		else if ( Stats.IsStunned )
+		{
+			<div class="state">Étourdi</div>
+		}
+
+		@if ( Caster is not null )
+		{
+			<div class="jutsus">
+				@for ( var i = 0; i < Caster.Slots.Count; i++ )
+				{
+					var j = Caster.Slots[i];
+					var cd = j is null ? 0f : Caster.CooldownRemaining( j );
+					<div class="slot @(Caster.Casting == j ? "casting" : "") @(cd > 0 ? "cooldown" : "")">
+						<div class="key">@(i + 1)</div>
+						@if ( cd > 0 )
+						{
+							<div class="cd">@MathF.Ceiling( cd )</div>
+						}
+						<div class="name">@(j?.DisplayName ?? "-")</div>
+						<div class="cost">@(j?.ChakraCost ?? 0)</div>
+					</div>
+				}
+			</div>
+		}
+	}
+</root>
+
+@code
+{
+	NinjaStats Stats => NinjaPlayer.Local?.GetComponent<NinjaStats>();
+	JutsuCaster Caster => NinjaPlayer.Local?.GetComponent<JutsuCaster>();
+
+	(string, float, float)[] Gauges() => new[]
+	{
+		("health", Stats.Health, Stats.MaxHealth),
+		("chakra", Stats.Chakra, Stats.MaxChakra),
+		("stamina", Stats.Stamina, Stats.MaxStamina),
+	};
+
+	protected override int BuildHash()
+	{
+		var s = Stats;
+		var c = Caster;
+		return System.HashCode.Combine(
+			MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ),
+			s?.IsDowned, s?.IsStunned, c?.Casting,
+			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ) );
+	}
+}

@@ -70,9 +70,54 @@
           "__guid": "49c48e2d-e341-48f8-ac05-03d9f74bfe67",
           "__enabled": true,
           "Flags": 0,
+          "__version": 1,
+          "AnimationCurve": [
+            {
+              "x": 0,
+              "y": 0,
+              "in": 0,
+              "out": 0,
+              "mode": "Mirrored"
+            },
+            {
+              "x": 0.5,
+              "y": 1,
+              "in": 0,
+              "out": 0,
+              "mode": "Mirrored"
+            },
+            {
+              "x": 1,
+              "y": 0,
+              "in": 0,
+              "out": 0,
+              "mode": "Mirrored"
+            }
+          ],
+          "AnimationDuration": 2,
+          "AnimationEnabled": false,
+          "AnimationGradient": {
+            "blend": "Linear",
+            "color": [
+              {
+                "t": 0.5,
+                "c": "1,1,1,1"
+              }
+            ],
+            "alpha": []
+          },
+          "AnimationPattern": "Flicker",
+          "AnimationSpeed": 1,
+          "AnimationTimeOffset": 0,
+          "BakeLightIndex": -1,
+          "ContactShadows": true,
+          "Contribution": "Diffuse, Specular, Transmissive",
           "FogMode": "Enabled",
           "FogStrength": 1,
+          "IncludeStaticShadowCasters": false,
+          "Intensity": 1,
           "LightColor": "0.91373,0.98039,1,1",
+          "MixedShadows": false,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -85,6 +130,7 @@
           "ShadowHardness": 0,
           "Shadows": true,
           "SkyColor": "0,0,0,0",
+          "Temperature": 6500,
           "Visualizer": {}
         },
         {
@@ -102,339 +148,6 @@
         }
       ],
       "Children": []
-    },
-    {
-      "__guid": "fde76e17-1db9-4ccc-a193-897fddbc6239",
-      "__version": 2,
-      "Flags": 0,
-      "Name": "Player Controller",
-      "Position": "0,0,0",
-      "Rotation": "0,0,0,1",
-      "Scale": "1,1,1",
-      "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
-      "NetworkFlags": 0,
-      "NetworkOrphaned": 0,
-      "NetworkTransmit": true,
-      "OwnerTransfer": 1,
-      "Components": [
-        {
-          "__type": "Sandbox.Rigidbody",
-          "__guid": "e93be770-3b65-4bba-8938-83acf6ee1177",
-          "__enabled": true,
-          "Flags": 1,
-          "AngularDamping": 1,
-          "EnableImpactDamage": true,
-          "EnhancedCcd": false,
-          "Gravity": true,
-          "GravityScale": 1,
-          "ImpactDamage": 0,
-          "LinearDamping": 0.1,
-          "Locking": {
-            "X": false,
-            "Y": false,
-            "Z": false,
-            "Pitch": true,
-            "Yaw": true,
-            "Roll": true
-          },
-          "MassCenterOverride": "0,0,36",
-          "MassOverride": 500,
-          "MinImpactDamageSpeed": 500,
-          "MotionEnabled": true,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "OverrideMassCenter": true,
-          "RigidbodyFlags": "DisableCollisionSounds",
-          "StartAsleep": false
-        },
-        {
-          "__type": "Sandbox.Movement.MoveModeWalk",
-          "__guid": "37e39e8c-eeb0-42a5-8cff-52d85bb0a278",
-          "__enabled": true,
-          "Flags": 0,
-          "GroundAngle": 45,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Priority": 0,
-          "StepDownHeight": 18,
-          "StepUpHeight": 18
-        },
-        {
-          "__type": "Sandbox.Movement.MoveModeSwim",
-          "__guid": "2ce2e733-19ea-4bcc-887d-e781608ea3d4",
-          "__enabled": true,
-          "Flags": 0,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Priority": 10,
-          "SwimLevel": 0.7
-        },
-        {
-          "__type": "Sandbox.Movement.MoveModeLadder",
-          "__guid": "d0d53c51-1b94-4730-b6c6-d6949360db42",
-          "__enabled": true,
-          "Flags": 0,
-          "ClimbableTags": "ladder",
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "Priority": 5,
-          "Speed": 1
-        },
-        {
-          "__type": "Sandbox.Dresser",
-          "__guid": "25b98780-f994-4d29-a86a-bde9aa94145c",
-          "__enabled": true,
-          "Flags": 0,
-          "ApplyHeightScale": true,
-          "BodyTarget": {
-            "_type": "component",
-            "component_id": "d58e083f-d7cd-4588-b6cd-954ce7ad9a3e",
-            "go": "dcaf9d0e-71e3-4238-a1fd-a9a66448403b",
-            "component_type": "SkinnedModelRenderer"
-          },
-          "Clothing": [],
-          "ManualAge": 0.5,
-          "ManualHeight": 0.5,
-          "ManualTint": 0.5,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "RemoveUnownedItems": true,
-          "Source": "OwnerConnection",
-          "WorkshopItems": []
-        },
-        {
-          "__type": "Sandbox.PlayerController",
-          "__guid": "8ad26e10-da5f-4d82-8858-e070cf438ca7",
-          "__enabled": true,
-          "Flags": 0,
-          "AccelerationTime": 0,
-          "AimStrengthBody": 1,
-          "AimStrengthEyes": 1,
-          "AimStrengthHead": 1,
-          "AirFriction": 0.1,
-          "AltMoveButton": "run",
-          "Body": {
-            "_type": "component",
-            "component_id": "e93be770-3b65-4bba-8938-83acf6ee1177",
-            "go": "fde76e17-1db9-4ccc-a193-897fddbc6239",
-            "component_type": "Rigidbody"
-          },
-          "BodyCollisionTags": null,
-          "BodyHeight": 72,
-          "BodyMass": 500,
-          "BodyRadius": 16,
-          "BrakePower": 1,
-          "CameraOffset": "256,0,12",
-          "ColliderObject": {
-            "_type": "gameobject",
-            "go": "071a47d4-6532-43d5-bfe5-d8dfb531c2cc"
-          },
-          "DeaccelerationTime": 0,
-          "DuckedHeight": 36,
-          "DuckedSpeed": 70,
-          "EnableFootstepSounds": true,
-          "EnablePressing": true,
-          "EyeDistanceFromTop": 8,
-          "FootstepMixer": {
-            "Name": "unknown",
-            "Id": "00000000-0000-0000-0000-000000000000"
-          },
-          "FootstepVolume": 1,
-          "HideBodyInFirstPerson": true,
-          "JumpSpeed": 300,
-          "LookSensitivity": 1,
-          "OnComponentDestroy": null,
-          "OnComponentDisabled": null,
-          "OnComponentEnabled": null,
-          "OnComponentFixedUpdate": null,
-          "OnComponentStart": null,
-          "OnComponentUpdate": null,
-          "PitchClamp": 90,
-          "ReachLength": 130,
-          "Renderer": {
-            "_type": "component",
-            "component_id": "d58e083f-d7cd-4588-b6cd-954ce7ad9a3e",
-            "go": "dcaf9d0e-71e3-4238-a1fd-a9a66448403b",
-            "component_type": "SkinnedModelRenderer"
-          },
-          "RotateWithGround": true,
-          "RotationAngleLimit": 45,
-          "RotationSpeed": 1,
-          "RunByDefault": false,
-          "RunSpeed": 320,
-          "ShowColliderComponents": false,
-          "ShowRigidbodyComponent": false,
-          "ThirdPerson": true,
-          "ToggleCameraModeButton": "view",
-          "UseAnimatorControls": true,
-          "UseButton": "use",
-          "UseCameraControls": true,
-          "UseFovFromPreferences": true,
-          "UseInputControls": true,
-          "UseLookControls": true,
-          "WalkSpeed": 110
-        }
-      ],
-      "Children": [
-        {
-          "__guid": "dcaf9d0e-71e3-4238-a1fd-a9a66448403b",
-          "__version": 2,
-          "Flags": 0,
-          "Name": "Body",
-          "Position": "0,0,0",
-          "Rotation": "0,0,0,1",
-          "Scale": "1,1,1",
-          "Tags": "",
-          "Enabled": true,
-          "NetworkMode": 2,
-          "NetworkFlags": 0,
-          "NetworkOrphaned": 0,
-          "NetworkTransmit": true,
-          "OwnerTransfer": 1,
-          "Components": [
-            {
-              "__type": "Sandbox.SkinnedModelRenderer",
-              "__guid": "d58e083f-d7cd-4588-b6cd-954ce7ad9a3e",
-              "__enabled": true,
-              "Flags": 0,
-              "AnimationGraph": null,
-              "BodyGroups": 149761,
-              "BoneMergeTarget": null,
-              "CreateAttachments": false,
-              "CreateBoneObjects": false,
-              "LodOverride": null,
-              "MaterialGroup": "default",
-              "MaterialOverride": null,
-              "Materials": null,
-              "Model": "models/citizen_human/human.vmdl",
-              "Morphs": {},
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null,
-              "Parameters": {
-                "bools": {},
-                "ints": {},
-                "floats": {},
-                "vectors": {},
-                "rotations": {}
-              },
-              "PlaybackRate": 1,
-              "RenderOptions": {
-                "GameLayer": true,
-                "OverlayLayer": false,
-                "BloomLayer": false,
-                "AfterUILayer": false
-              },
-              "RenderType": "On",
-              "Sequence": {
-                "Name": null,
-                "Looping": true,
-                "Blending": false
-              },
-              "Tint": "1,1,1,1",
-              "UseAnimGraph": true
-            }
-          ],
-          "Children": []
-        },
-        {
-          "__guid": "071a47d4-6532-43d5-bfe5-d8dfb531c2cc",
-          "__version": 2,
-          "Flags": 1,
-          "Name": "Colliders",
-          "Position": "0,0,0",
-          "Rotation": "0,0,0,1",
-          "Scale": "1,1,1",
-          "Tags": "",
-          "Enabled": true,
-          "NetworkMode": 2,
-          "NetworkFlags": 0,
-          "NetworkOrphaned": 0,
-          "NetworkTransmit": true,
-          "OwnerTransfer": 1,
-          "Components": [
-            {
-              "__type": "Sandbox.CapsuleCollider",
-              "__guid": "8bf301a5-36eb-411f-a1ee-4b4b921ae65c",
-              "__enabled": true,
-              "Flags": 1,
-              "ColliderFlags": 0,
-              "Elasticity": null,
-              "End": "0,0,36",
-              "Friction": 0,
-              "IsTrigger": false,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null,
-              "OnObjectTriggerEnter": null,
-              "OnObjectTriggerExit": null,
-              "OnTriggerEnter": null,
-              "OnTriggerExit": null,
-              "Radius": 11.313708,
-              "RollingResistance": null,
-              "Start": "0,0,60.6862907",
-              "Static": false,
-              "Surface": null,
-              "SurfaceVelocity": "0,0,0"
-            },
-            {
-              "__type": "Sandbox.BoxCollider",
-              "__guid": "60fa9dda-27b2-42e5-9294-4943bf9d0d89",
-              "__enabled": true,
-              "Flags": 1,
-              "Center": "0,0,18",
-              "ColliderFlags": 0,
-              "Elasticity": null,
-              "Friction": 0,
-              "IsTrigger": false,
-              "OnComponentDestroy": null,
-              "OnComponentDisabled": null,
-              "OnComponentEnabled": null,
-              "OnComponentFixedUpdate": null,
-              "OnComponentStart": null,
-              "OnComponentUpdate": null,
-              "OnObjectTriggerEnter": null,
-              "OnObjectTriggerExit": null,
-              "OnTriggerEnter": null,
-              "OnTriggerExit": null,
-              "RollingResistance": null,
-              "Scale": "16,16,36",
-              "Static": false,
-              "Surface": null,
-              "SurfaceVelocity": "0,0,0"
-            }
-          ],
-          "Children": []
-        }
-      ]
     },
     {
       "__guid": "386a3ab3-8297-4d60-809b-5282411ef444",
@@ -461,9 +174,15 @@
           "CreateAttachments": false,
           "LodOverride": null,
           "MaterialGroup": null,
-          "MaterialOverride": "materials/dev/reflectivity_50b.vmat",
+          "MaterialOverride": {
+            "Id": "880c8d01-0b85-480a-a319-aeb10ac01fb0",
+            "Path": "materials/dev/reflectivity_50b.vmat"
+          },
           "Materials": null,
-          "Model": "models/dev/plane.vmdl",
+          "Model": {
+            "Id": "00000000-0000-0000-306d-2b8df8010000",
+            "Path": "models/dev/plane.vmdl"
+          },
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -548,6 +267,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -627,6 +347,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -706,6 +427,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -788,6 +510,8 @@
               "Additive": false,
               "AlphaCutoff": 0.41293532,
               "Billboard": "None",
+              "CameraFadeFar": 0,
+              "CameraFadeNear": 0,
               "Color": "1,1,1,1",
               "DepthFeather": 0,
               "FlipHorizontal": false,
@@ -795,6 +519,7 @@
               "FogStrength": 1,
               "IsSorted": false,
               "Lighting": false,
+              "NormalTexture": null,
               "OnAnimationEnd": null,
               "OnAnimationStart": null,
               "OnBroadcastMessage": null,
@@ -807,6 +532,8 @@
               "Opaque": false,
               "OverlayColor": "1,1,1,0",
               "PlaybackSpeed": 1,
+              "Refraction": false,
+              "RefractionStrength": 8,
               "RenderOptions": {
                 "GameLayer": true,
                 "OverlayLayer": false,
@@ -825,6 +552,8 @@
                       "FrameRate": 15,
                       "Origin": "0.5,0.5",
                       "LoopMode": "Loop",
+                      "LoopStart": -1,
+                      "LoopEnd": -1,
                       "Frames": [
                         {
                           "Texture": {
@@ -839,7 +568,8 @@
                               "Offset": "0,0",
                               "Rotate": 0,
                               "FlipVertical": false,
-                              "FlipHorizontal": false
+                              "FlipHorizontal": false,
+                              "FormatOverride": null
                             },
                             "compiled": null
                           },
@@ -880,6 +610,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -962,6 +693,8 @@
               "Additive": false,
               "AlphaCutoff": 0.41293532,
               "Billboard": "None",
+              "CameraFadeFar": 0,
+              "CameraFadeNear": 0,
               "Color": "1,1,1,1",
               "DepthFeather": 0,
               "FlipHorizontal": false,
@@ -969,6 +702,7 @@
               "FogStrength": 1,
               "IsSorted": false,
               "Lighting": false,
+              "NormalTexture": null,
               "OnAnimationEnd": null,
               "OnAnimationStart": null,
               "OnBroadcastMessage": null,
@@ -981,6 +715,8 @@
               "Opaque": false,
               "OverlayColor": "1,1,1,0",
               "PlaybackSpeed": 1,
+              "Refraction": false,
+              "RefractionStrength": 8,
               "RenderOptions": {
                 "GameLayer": true,
                 "OverlayLayer": false,
@@ -999,6 +735,8 @@
                       "FrameRate": 15,
                       "Origin": "0.5,0.5",
                       "LoopMode": "Loop",
+                      "LoopStart": -1,
+                      "LoopEnd": -1,
                       "Frames": [
                         {
                           "Texture": {
@@ -1013,7 +751,8 @@
                               "Offset": "0,0",
                               "Rotate": 0,
                               "FlipVertical": false,
-                              "FlipHorizontal": false
+                              "FlipHorizontal": false,
+                              "FormatOverride": null
                             },
                             "compiled": null
                           },
@@ -1054,6 +793,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -1136,6 +876,8 @@
               "Additive": false,
               "AlphaCutoff": 0.41293532,
               "Billboard": "None",
+              "CameraFadeFar": 0,
+              "CameraFadeNear": 0,
               "Color": "1,1,1,1",
               "DepthFeather": 0,
               "FlipHorizontal": false,
@@ -1143,6 +885,7 @@
               "FogStrength": 1,
               "IsSorted": false,
               "Lighting": false,
+              "NormalTexture": null,
               "OnAnimationEnd": null,
               "OnAnimationStart": null,
               "OnBroadcastMessage": null,
@@ -1155,6 +898,8 @@
               "Opaque": false,
               "OverlayColor": "1,1,1,0",
               "PlaybackSpeed": 1,
+              "Refraction": false,
+              "RefractionStrength": 8,
               "RenderOptions": {
                 "GameLayer": true,
                 "OverlayLayer": false,
@@ -1173,6 +918,8 @@
                       "FrameRate": 15,
                       "Origin": "0.5,0.5",
                       "LoopMode": "Loop",
+                      "LoopStart": -1,
+                      "LoopEnd": -1,
                       "Frames": [
                         {
                           "Texture": {
@@ -1187,7 +934,8 @@
                               "Offset": "0,0",
                               "Rotate": 0,
                               "FlipVertical": false,
-                              "FlipHorizontal": false
+                              "FlipHorizontal": false,
+                              "FormatOverride": null
                             },
                             "compiled": null
                           },
@@ -1228,6 +976,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -1307,6 +1056,7 @@
               "__enabled": true,
               "Flags": 0,
               "__version": 2,
+              "Billboard": "None",
               "BlendMode": "Normal",
               "FogStrength": 1,
               "HorizontalAlignment": "Center",
@@ -1389,6 +1139,8 @@
               "Additive": false,
               "AlphaCutoff": 0.41293532,
               "Billboard": "None",
+              "CameraFadeFar": 0,
+              "CameraFadeNear": 0,
               "Color": "1,1,1,1",
               "DepthFeather": 0,
               "FlipHorizontal": false,
@@ -1396,6 +1148,7 @@
               "FogStrength": 1,
               "IsSorted": false,
               "Lighting": false,
+              "NormalTexture": null,
               "OnAnimationEnd": null,
               "OnAnimationStart": null,
               "OnBroadcastMessage": null,
@@ -1408,6 +1161,8 @@
               "Opaque": false,
               "OverlayColor": "1,1,1,0",
               "PlaybackSpeed": 1,
+              "Refraction": false,
+              "RefractionStrength": 8,
               "RenderOptions": {
                 "GameLayer": true,
                 "OverlayLayer": false,
@@ -1426,6 +1181,8 @@
                       "FrameRate": 15,
                       "Origin": "0.5,0.5",
                       "LoopMode": "Loop",
+                      "LoopStart": -1,
+                      "LoopEnd": -1,
                       "Frames": [
                         {
                           "Texture": {
@@ -1440,7 +1197,8 @@
                               "Offset": "0,0",
                               "Rotate": 0,
                               "FlipVertical": false,
-                              "FlipHorizontal": false
+                              "FlipHorizontal": false,
+                              "FormatOverride": null
                             },
                             "compiled": null
                           },
@@ -1460,10 +1218,129 @@
           "Children": []
         }
       ]
+    },
+    {
+      "__guid": "4715757f-ace4-4f89-94bc-2da4260b9c20",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Spawn",
+      "Position": "0,0,10",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.SpawnPoint",
+          "__guid": "f5f32275-6b90-4398-91d5-cf19d04bf5cb",
+          "__enabled": true,
+          "Flags": 0,
+          "Color": "0.8902,0.31765,0.05098,1",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "2ced8c8d-f362-4100-a067-a8d25db52028",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Game Manager",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "NarutoRp.Core.GameManager",
+          "__guid": "d1dee742-1736-4329-99f9-b21920bd29a8",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "PlayerPrefab": {
+            "_type": "gameobject",
+            "prefab": "prefabs/player.prefab"
+          },
+          "StartServer": true
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "ddaa24c1-ae91-4949-815b-84c07943cfa7",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "HUD",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.ScreenPanel",
+          "__guid": "3d4ce841-91a9-4b03-a172-848836fc55e3",
+          "__enabled": true,
+          "Flags": 0,
+          "AutoScreenScale": true,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Opacity": 1,
+          "Scale": 1,
+          "ScaleStrategy": "ConsistentHeight",
+          "TargetCamera": null,
+          "Timing": "AfterPostProcess",
+          "ZIndex": 100
+        },
+        {
+          "__type": "NarutoRp.UI.Hud",
+          "__guid": "26f4351b-2d32-42bf-bd5b-73075fc3fc55",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null
+        }
+      ],
+      "Children": []
     }
   ],
   "SceneProperties": {
     "NetworkInterpolation": true,
+    "PhysicsMode": "Physics3D",
     "TimeScale": 1,
     "WantsSystemScene": true,
     "Metadata": {},
@@ -1482,12 +1359,15 @@
       "CustomBounds": false
     },
     "GameObjectSystems": {
-      "Sandbox.MovieMaker.MovieRecorderSystem": {
-        "DisableClientRecording": false
-      },
       "Sandbox.Clutter.ClutterGridSystem": {
         "Storage": {
-          "$blob": "bab54360-3186-4d3a-9f92-e9544090f36d"
+          "$blob": "64db792e-5935-8fbc-8cfa-050cd49fa7fd",
+          "$refs": []
+        }
+      },
+      "Sandbox.SelectionSetsSystem": {
+        "Data": {
+          "SelectionSets": []
         }
       }
     }

@@ -1,0 +1,1 @@
+{"Id": "test_zone", "DisplayName": "Onde de test", "Nature": "Raiton", "Path": "Ninjutsu", "Rank": "C", "ChakraCost": 25, "CooldownSeconds": 8, "CastSeconds": 1, "Delivery": "Area", "Range": 200, "Effects": [{"Type": "Damage", "Amount": 15, "DurationSeconds": 0}, {"Type": "Stun", "Amount": 0, "DurationSeconds": 1}]}

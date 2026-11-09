@@ -637,10 +637,28 @@ public class BaseAmmoResource : GameResource
 ## 10. Points NON VÉRIFIÉS (récapitulatif)
 
 1. Lecture d'une clé secrète au démarrage du serveur : pas de variables d'environnement. Pistes : fichier dans `FileSystem.Data` du serveur lu par du code `*.Server.cs` (API vérifiée, chemin disque non vérifié) ; ou ConVar non répliquée passée en ligne de commande `+nom valeur` (passage `+convar` en ligne de commande **non vérifié** pour les ConVars du jeu). À tester tôt.
-2. Création automatique des `GameObjectSystem` et leur comportement en réseau.
+2. ~~Création automatique des `GameObjectSystem`~~ VÉRIFIÉ (doc XML : « always exists in every scene »). Comportement réseau toujours non vérifié.
 3. Champ `LaunchMode = dedicatedserveronly` : où le régler.
 4. Emplacement disque de `FileSystem.Data` sur le serveur dédié.
 5. Sous-ensemble CSS supporté par l'UI.
 6. Processus de publication détaillé.
 7. Pages doc non lues : connection-permissions, network-visibility, host-migration, ownership.
 8. Insensibilité à la casse des noms d'actions d'input.
+
+## 11. Vérifié dans l'éditeur (moteur 26.11.03a, 9 nov. 2026)
+
+Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
+
+- **GameResource avec `List<classe>` imbriquée** : se sauvegarde et se recharge correctement (fiches `.jutsu` avec `List<JutsuEffect>`). Les enums sont sérialisés par leur nom (`"Delivery": "Projectile"`).
+- **`NetList<JutsuDefinition>` en `[Property]`** dans un prefab : sérialisé comme une liste de chemins (`"data/jutsus/test/test_contact.jutsu"`), rechargé correctement.
+- **Référence de prefab dans un component** : propriété `GameObject`, sérialisée `{ "_type": "gameobject", "prefab": "prefabs/player.prefab" }`.
+- **Position possédée par le client** : l'hôte **ne peut pas** réécrire `WorldPosition` d'un objet dont l'owner est un client (la valeur du client écrase celle de l'hôte). Tout blocage de déplacement (à terre, étourdi) est donc appliqué côté client ; l'hôte ne peut que refuser les actions.
+- `Vector3.IsValid()` **n'existe pas** : tester `float.IsFinite` sur x, y, z.
+- `System` n'est pas dans les `global using` du template : `MathF`/`Math` demandent `global using System;` (ajouté dans `Code/Assembly.cs`).
+- `PlayerController.EyePosition`, `EyeAngles`, `Velocity`, `WalkSpeed`, `RunSpeed`, `UseInputControls` : existent.
+- `GameObject.Clone( Transform, name: ... )` et `NetworkSpawn( NetworkSpawnOptions )` avec `OwnerTransfer.Fixed` + `NetworkOrphaned.Destroy` : fonctionnent (2 clients testés).
+- **Piège éditeur** : modifier un `.prefab` sur le disque pendant que l'éditeur l'a en cache peut casser le cache (« Assert: AreEqual N components weren't deleted »). Les objets clonés perdent alors des components. Correctif : modifier à nouveau le fichier (le moteur le recharge proprement).
+
+### Piloter l'éditeur (`sbox-cli`)
+
+`<engine>/bin/managed/sbox-cli.exe`, lancé depuis le dossier du projet : `--call editor_status`, `compile_status`, `play_start/stop`, `network_spawn_instance` (2e client local), `run_csharp` (code C# exécuté dans l'éditeur), `create_asset`, `scene_tree`, `add_component`, `save_scene`. Instructions complètes : `sbox-cli --skill sbox-cli`.

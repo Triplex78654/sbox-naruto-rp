@@ -146,7 +146,7 @@ public sealed class JutsuEffect      // sous-objet sérialisé dans la fiche
 }
 ```
 
-**NON VÉRIFIÉ** : sérialisation d'une `List<classe>` imbriquée dans un GameResource (très probable, c'est du JSON System.Text.Json) ; à valider en créant une première fiche dans l'éditeur.
+**VÉRIFIÉ (9 nov.)** : une `List<classe>` imbriquée se sérialise bien dans un GameResource. Code réel : `Code/Jutsus/JutsuDefinition.cs` (les champs visuels/son viendront avec le contenu, tâche 12).
 
 Chargement :
 
