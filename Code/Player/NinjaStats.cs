@@ -136,8 +136,13 @@ public sealed class NinjaStats : Component
 		if ( !Networking.IsHost || IsDowned ) return;
 		if ( !float.IsFinite( amount ) || amount <= 0f ) return;
 
+		var defense = GetComponent<NinjaDefense>();
+		if ( defense is not null ) amount = defense.ApplyGuard( amount );
+		if ( amount <= 0f ) return;
+
 		Health = MathF.Max( 0f, Health - amount );
 		GetComponent<JutsuCaster>()?.Interrupt();
+		GetComponent<ReviveAction>()?.Cancel();
 
 		if ( Health <= 0f )
 		{
@@ -153,6 +158,17 @@ public sealed class NinjaStats : Component
 		if ( !float.IsFinite( amount ) || amount <= 0f ) return;
 
 		Health = MathF.Min( MaxHealth, Health + amount );
+	}
+
+	/// <summary>Dépense de l'endurance si possible. Hôte seulement.</summary>
+	public bool TrySpendStamina( float amount )
+	{
+		if ( !Networking.IsHost || IsDowned ) return false;
+		if ( !float.IsFinite( amount ) || amount < 0f || Stamina < amount ) return false;
+
+		Stamina -= amount;
+		_lastStaminaUse = 0;
+		return true;
 	}
 
 	/// <summary>Dépense du chakra si possible. Hôte seulement.</summary>

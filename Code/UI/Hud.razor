@@ -19,6 +19,23 @@
 			}
 		</div>
 
+		@if ( Defense is not null )
+		{
+			<div class="defense">
+				@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
+				@if ( Defense.IsSubstitutionReady ) { <div class="tag sub">Substitution prête</div> }
+				<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@Input.GetButtonOrigin( "Substitution" ) Substitution @(Defense.SubstitutionCooldownRemaining > 0 ? $"({MathF.Ceiling( Defense.SubstitutionCooldownRemaining )})" : "")</div>
+			</div>
+		}
+
+		@if ( ActiveRevive is not null )
+		{
+			<div class="revive">
+				<div class="text">@(ActiveRevive == Revive ? "Soins en cours…" : "Un médic-nin vous soigne…")</div>
+				<div class="bar"><div class="fill" style="width: @(ActiveRevive.ReviveProgress * 100f)%"></div></div>
+			</div>
+		}
+
 		@if ( Stats.IsDowned )
 		{
 			<div class="state downed">À terre — attendez un médic-nin</div>
@@ -54,6 +71,12 @@
 {
 	NinjaStats Stats => NinjaPlayer.Local?.GetComponent<NinjaStats>();
 	JutsuCaster Caster => NinjaPlayer.Local?.GetComponent<JutsuCaster>();
+	NinjaDefense Defense => NinjaPlayer.Local?.GetComponent<NinjaDefense>();
+	ReviveAction Revive => NinjaPlayer.Local?.GetComponent<ReviveAction>();
+
+	/// <summary>Relève en cours où le joueur local est soigneur ou blessé.</summary>
+	ReviveAction ActiveRevive => Revive?.ReviveTarget is not null ? Revive
+		: Scene.GetAllComponents<ReviveAction>().FirstOrDefault( r => r.ReviveTarget is not null && r.ReviveTarget == Stats );
 
 	(string, float, float)[] Gauges() => new[]
 	{
@@ -69,6 +92,8 @@
 		return System.HashCode.Combine(
 			MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ),
 			s?.IsDowned, s?.IsStunned, c?.Casting,
+			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
+				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
 			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ) );
 	}
 }

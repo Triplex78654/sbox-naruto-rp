@@ -70,6 +70,7 @@ public sealed class JutsuCaster : Component
 	{
 		if ( Casting is not null ) return false;
 		if ( Stats.IsDowned || Stats.IsStunned ) return false;
+		if ( GetComponent<NinjaDefense>()?.IsGuarding == true ) return false;
 		if ( Stats.Chakra < jutsu.ChakraCost ) return false;
 		if ( _cooldowns.TryGetValue( jutsu, out var cd ) && !cd ) return false;
 		return true;
@@ -113,6 +114,7 @@ public sealed class JutsuCaster : Component
 
 		// Les conditions ont pu changer pendant les signes.
 		if ( Stats.IsDowned || Stats.IsStunned ) return;
+		if ( GetComponent<NinjaDefense>()?.IsGuarding == true ) return;
 		if ( !Stats.TrySpendChakra( jutsu.ChakraCost ) ) return;
 
 		var cooldown = MathF.Max( 0f, jutsu.CooldownSeconds );
@@ -197,14 +199,22 @@ public sealed class JutsuCaster : Component
 
 	void Apply( JutsuDefinition jutsu, NinjaStats target )
 	{
+		// Esquive ou substitution : tout le coup hostile est évité (dégâts et états). Jamais pour un soin ou sur soi.
+		var defense = target.GetComponent<NinjaDefense>();
+		var hostile = target != Stats && jutsu.Effects.Any( e => e.Type != JutsuEffectType.Heal );
+		if ( hostile && defense?.TryAvoidHit( GameObject ) == true ) return;
+
+		// Choix de design : la garde encaisse les dégâts (réduits) mais ignore étourdissement et ralenti.
+		var guarding = hostile && defense?.IsGuarding == true;
+
 		foreach ( var e in jutsu.Effects )
 		{
 			switch ( e.Type )
 			{
 				case JutsuEffectType.Damage: target.TakeDamage( e.Amount, GameObject ); break;
 				case JutsuEffectType.Heal: target.Heal( e.Amount ); break;
-				case JutsuEffectType.Stun: target.ApplyStun( e.DurationSeconds ); break;
-				case JutsuEffectType.Slow: target.ApplySlow( e.Amount, e.DurationSeconds ); break;
+				case JutsuEffectType.Stun: if ( !guarding ) target.ApplyStun( e.DurationSeconds ); break;
+				case JutsuEffectType.Slow: if ( !guarding ) target.ApplySlow( e.Amount, e.DurationSeconds ); break;
 			}
 		}
 	}

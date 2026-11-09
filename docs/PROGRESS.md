@@ -32,11 +32,11 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 3. [x] **Joueur de base** : `GameManager` (lobby + spawn par connexion, `OwnerTransfer.Fixed`), prefab `prefabs/player.prefab`, `SpawnPoint` dans la scène. Testé à 2 joueurs.
 4. [x] **Jauges** : `NinjaStats` (vie, chakra avec régén concentration à l'arrêt, endurance qui baisse en courant), à terre à 0 PV, étourdi, ralenti. Tout en `[Sync(FromHost)]`.
 5. [x] **Système de jutsus** : `JutsuCaster` (touches 1-9 → `RequestCast` validé par l'hôte), cooldowns, incantation interruptible par un coup, livraisons contact / projectile / zone / soi. 3 fiches de test dans `data/jutsus/test/`. Écart avec l'architecture : logique dans un component par joueur au lieu d'un `CombatSystem` global (plus simple, état local au joueur).
-6. [ ] **Combat** : dégâts, esquive, garde, substitution, mise à terre à 0 PV, relève par médic-nin.
+6. [x] **Combat** : `NinjaDefense` (garde clic droit : -60 % dégâts contre de l'endurance ; esquive X : invulnérable 0,35 s, 25 endurance ; substitution Z : 20 chakra, cooldown 30 s, le prochain coup dans la seconde est évité + recul), `ReviveAction` (médic-nin maintient E sur un ninja à terre 4 s, annulé par un coup ou l'éloignement, relève à 25 % PV). Choix de design : **la garde ignore étourdissement et ralenti** (à confirmer par l'utilisateur). Testé à 2 joueurs, relu. `IsMedic` réglé dans le prefab en attendant les données du perso.
 7. [ ] **Backend Cloudflare** : Worker + D1 (tables persos, jutsus_appris, sanctions, logs), clé serveur, endpoints de lecture/écriture du perso.
 8. [ ] **Persistance** : le serveur charge le perso à la connexion et le sauvegarde (déconnexion + intervalle).
 9. [ ] **Création de perso** : UI Razor en 6 étapes du GDD, filtre de noms canon.
-10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance (jauges vie/chakra/endurance, barre de jutsus avec coût et cooldown, états à terre/étourdi), vérifié par capture. **Reste** : relecture par le relecteur, style définitif.
+10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance et relu (jauges, barre de jutsus avec coût et cooldown, états, garde / substitution, barre de relève visible par le médic et le blessé). **Reste** : style définitif.
 11. [ ] **Staff de base** : rangs staff, téléportation, spectateur, kick, logs envoyés au Worker.
 12. [ ] **Contenu MVP** : 3 jutsus par nature + médical, taijutsu, kenjutsu (fiches de données).
 13. [ ] **Village Konoha** : map ou blocage avec assets existants (voir avec l'utilisateur qui fait la map).
@@ -44,10 +44,13 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 ## À tester par l'utilisateur
 
 - Lancer Play dans l'éditeur, appuyer sur **1**, **2**, **3** : le HUD en bas montre les jauges et les cooldowns ; pas encore d'effet visuel des jutsus, mais la console affiche `[Combat] ... lance ...`. Courir (Shift) longtemps : la course doit s'arrêter quand l'endurance est vide.
+- Touches de défense : **clic droit** maintenu (garde), **X** (esquive dans la direction ZQSD), **Z** (substitution). Le HUD affiche Garde / Substitution prête / cooldown. Pour la relève il faut 2 joueurs : un à terre, l'autre maintient **E** en le regardant.
 - Plus tard, avec un ami : vérifier que les jutsus le touchent bien à distance réelle (ping).
 
 ## Questions en attente pour l'utilisateur
 
+- La garde doit-elle bloquer l'étourdissement et le ralenti (choix actuel) ou seulement réduire les dégâts ?
+- Pour la tâche 7 : compte Cloudflare de l'utilisateur (gratuit) à connecter, ou on prépare d'abord le Worker en local ?
 Voir « Questions ouvertes » dans `docs/GDD.md`.
 
 ## Journal
@@ -56,3 +59,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : init Git + `.gitignore` (caches `.sbox/`, `obj/`, `*.csproj`/`*.sln` générés, assets compilés `*_c`, fichiers de secrets).
 - 2026-11-09 : projet s&box `nrp` créé par l'utilisateur ; doc + dépôt Git déplacés dans ce dossier. Console : seulement des erreurs moteur sans gravité (son `denyundo.vsnd_c` manquant, renommage du cache de shaders).
 - 2026-11-09 : tâches 3, 4, 5 faites et testées en direct via `sbox-cli` (2 joueurs). Deux relectures faites (corrections : zone bloquée par les murs, cooldowns envoyés au client, ralentis qui ne se prolongent pas ; puis : vitesse mesurée sur la position, seuil d'endurance, init dans OnAwake, auteur des dégâts loggé)). Vérifié : l'hôte ne peut pas déplacer un joueur client → blocages de mouvement côté client (limite notée dans le code).
+- 2026-11-09 : tâche 6 (garde, esquive, substitution, relève médic-nin) faite et testée à 2 joueurs. Nouvelles touches X / Z dans `Input.config`.

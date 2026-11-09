@@ -12,6 +12,12 @@ public sealed class NinjaPlayer : Component
 	/// <summary>Nom RP du perso (vide tant que la création de perso n'existe pas).</summary>
 	[Sync( SyncFlags.FromHost )] public string CharacterName { get; set; }
 
+	/// <summary>
+	/// Médic-nin : peut relever les ninjas à terre.
+	/// shortcut: réglé dans le prefab pour tester ; viendra des données du perso validées par le staff (tâche 8).
+	/// </summary>
+	[Property, Sync( SyncFlags.FromHost )] public bool IsMedic { get; set; }
+
 	/// <summary>Le joueur de ce client, ou null.</summary>
 	public static NinjaPlayer Local
 	{

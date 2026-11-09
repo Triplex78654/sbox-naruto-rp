@@ -659,6 +659,10 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - `GameObject.Clone( Transform, name: ... )` et `NetworkSpawn( NetworkSpawnOptions )` avec `OwnerTransfer.Fixed` + `NetworkOrphaned.Destroy` : fonctionnent (2 clients testés).
 - **Piège éditeur** : modifier un `.prefab` sur le disque pendant que l'éditeur l'a en cache peut casser le cache (« Assert: AreEqual N components weren't deleted »). Les objets clonés perdent alors des components. Correctif : modifier à nouveau le fichier (le moteur le recharge proprement).
 
+- **Piège prefab (bis)** : à chaque modification du `.prefab` sur disque, le premier rechargement casse le cache ; une 2e modification (même un saut de ligne) le répare. Vérifier avec `ResourceLibrary.Get<PrefabFile>( path ).GetScene()`.
+- **Nouvelles actions d'input** : ajoutées dans `ProjectSettings/Input.config` (JSON, champs `Name`, `GroupName`, `Title`, `KeyboardCode`, `GamepadCode`), elles ne sont prises en compte qu'au redémarrage de l'éditeur (le runtime `Input` lit la config au chargement du projet). `Input.ReadConfig( InputSettings )` existe mais n'est pas public (appelable par réflexion depuis `run_csharp` pour éviter le redémarrage).
+- `Rigidbody.Velocity` est modifiable : utilisé pour l'élan d'esquive, appliqué par le propriétaire.
+
 ### Piloter l'éditeur (`sbox-cli`)
 
 `<engine>/bin/managed/sbox-cli.exe`, lancé depuis le dossier du projet : `--call editor_status`, `compile_status`, `play_start/stop`, `network_spawn_instance` (2e client local), `run_csharp` (code C# exécuté dans l'éditeur), `create_asset`, `scene_tree`, `add_component`, `save_scene`. Instructions complètes : `sbox-cli --skill sbox-cli`.

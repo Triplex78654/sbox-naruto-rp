@@ -216,7 +216,8 @@
         "OnComponentEnabled": null,
         "OnComponentFixedUpdate": null,
         "OnComponentStart": null,
-        "OnComponentUpdate": null
+        "OnComponentUpdate": null,
+        "IsMedic": true
       },
       {
         "__type": "NarutoRp.Player.NinjaStats",
@@ -247,6 +248,18 @@
           "data/jutsus/test/test_projectile.jutsu",
           "data/jutsus/test/test_zone.jutsu"
         ]
+      },
+      {
+        "__type": "NarutoRp.Combat.NinjaDefense",
+        "__guid": "9fcbd8d1-25aa-4867-adb6-0c895cd23d01",
+        "__enabled": true,
+        "Flags": 0
+      },
+      {
+        "__type": "NarutoRp.Combat.ReviveAction",
+        "__guid": "2978c41e-52e9-4223-931b-ca161cc956c6",
+        "__enabled": true,
+        "Flags": 0
       }
     ],
     "Children": [

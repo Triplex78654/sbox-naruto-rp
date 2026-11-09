@@ -92,3 +92,43 @@ Hud {
 	.name { font-size: 12px; text-align: center; white-space: nowrap; }
 	.cost { font-size: 11px; color: #74b9ff; }
 }
+
+.defense {
+	position: absolute;
+	left: 32px;
+	bottom: 110px;
+	gap: 6px;
+
+	.tag {
+		padding: 2px 8px;
+		font-size: 12px;
+		background-color: rgba(0, 0, 0, 0.6);
+		border-radius: 4px;
+
+		&.guard { color: #f1c40f; }
+		&.sub { color: #74b9ff; }
+		&.off { opacity: 0.5; }
+	}
+}
+
+.revive {
+	position: absolute;
+	top: 55%;
+	left: 0;
+	right: 0;
+	flex-direction: column;
+	align-items: center;
+	gap: 4px;
+
+	.text { font-size: 16px; text-shadow: 0 1px 2px black; }
+
+	.bar {
+		width: 240px;
+		height: 10px;
+		background-color: rgba(0, 0, 0, 0.6);
+		border-radius: 4px;
+		overflow: hidden;
+
+		.fill { height: 100%; background-color: #2ecc71; }
+	}
+}
