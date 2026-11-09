@@ -1,16 +1,32 @@
-# Généré par s&box / Visual Studio
-.sbox/
-.vs/
-.idea/
-obj/
-bin/
-*.csproj
-*.sln
-*.user
-*.suo
 
-# Assets compilés par l'éditeur (regénérés automatiquement)
-*_c
+# This file describes files and paths that should not be tracked by Git version control
+# https://git-scm.com/docs/gitignore
+
+# Auto-generated code editor files
+.vs/*
+.vscode/*
+*.csproj
+obj
+bin
+Properties/*
+code/obj/*
+code/Properties/*
+
+# Auto-generated asset related files
+.sbox/*
+*.generated.*
+*.*_c
+!*.shader_c
+*.los
+*.vpk
+*launchSettings.json
+*.sln
+*.slnx
+
+*idea
+
+# Exported / standalone games
+Exports/
 
 # Secrets : jamais dans Git
 Code/**/Secrets.Server.cs
@@ -21,4 +37,3 @@ server_secrets.json
 # Système
 Thumbs.db
 desktop.ini
-.DS_Store
