@@ -1,0 +1,375 @@
+// Blocage du monde : pétale de Konoha (village, zone du pays, frontière, terres neutres) + centre commun.
+// Suna et Kumo viendront sur le même modèle (directions réservées). Volumes simples, à remplacer.
+// Repère monde : centre commun en (0,0). Konoha au sud (-X), Suna et Kumo à ±120°.
+// 1 unité = 1 pouce (~2,5 cm) ; 40 000 unités ≈ 1 km.
+// Lancer avec konoha.scene ouverte : sbox-cli --call run_csharp '{"path":".../monde-blocage.cs.txt"}'
+// puis écrire la scène sur le disque (docs/sbox-reference.md §11, piège de sauvegarde).
+
+var scene = Editor.SceneEditorSession.Active.Scene;
+var box = Model.Load( "models/dev/box.vmdl" );
+var sphere = Model.Load( "models/dev/sphere.vmdl" );
+var rng = new System.Random( 42 );
+int count = 0;
+
+// ─── Dimensions ─────────────────────────────────────────────────────────────
+const float R = 9000;            // rayon de l'enceinte d'un village (~450 m de diamètre)
+const float Border = 21000;      // rayon de la frontière autour du village (zone du pays)
+const float CenterR = 15000;     // rayon du centre commun
+const float VillageDist = 60000; // distance village -> centre du monde
+var konoha = new Vector3( -VillageDist, 0, 0 );
+
+// ─── Couleurs ───────────────────────────────────────────────────────────────
+var stone = new Color( 0.62f, 0.6f, 0.55f );
+var road = new Color( 0.55f, 0.5f, 0.42f );
+var wallC = new Color( 0.78f, 0.7f, 0.55f );
+var wood = new Color( 0.45f, 0.3f, 0.18f );
+var plaster = new Color( 0.9f, 0.86f, 0.76f );
+var cliff = new Color( 0.5f, 0.45f, 0.4f );
+var water = new Color( 0.2f, 0.45f, 0.75f );
+var leaf = new Color( 0.22f, 0.45f, 0.2f );
+var orange = new Color( 0.85f, 0.5f, 0.25f );
+var neutralGround = new Color( 0.55f, 0.6f, 0.38f );
+var ore = new Color( 0.45f, 0.5f, 0.6f );
+var herb = new Color( 0.5f, 0.85f, 0.4f );
+Color[] roofs = { new Color( 0.7f, 0.2f, 0.15f ), new Color( 0.2f, 0.35f, 0.6f ), new Color( 0.25f, 0.45f, 0.25f ), new Color( 0.55f, 0.3f, 0.2f ) };
+
+using ( scene.Push() )
+{
+	foreach ( var old in scene.GetAllObjects( true ).Where( g => g.Name is "Konoha (blocage)" or "Monde (blocage)" ).ToList() )
+		old.Destroy();
+
+	// Boîte posée au sol, en coordonnées locales au parent : centre (x, y), taille, base z0, yaw.
+	GameObject Block( GameObject parent, string name, float x, float y, float sx, float sy, float sz, Color tint, float z0 = 0, float yaw = 0, bool collide = true )
+	{
+		var g = new GameObject( parent, true, name );
+		g.LocalPosition = new Vector3( x, y, z0 + sz / 2f );
+		g.LocalRotation = Rotation.FromYaw( yaw );
+		g.LocalScale = new Vector3( sx / 50f, sy / 50f, sz / 50f );
+		var r = g.Components.Create<ModelRenderer>();
+		r.Model = box;
+		r.Tint = tint;
+		if ( collide ) g.Components.Create<BoxCollider>().Scale = new Vector3( 50, 50, 50 );
+		count++;
+		return g;
+	}
+
+	void Ball( GameObject parent, string name, float x, float y, float z, float sx, float sy, float sz, Color tint )
+	{
+		var g = new GameObject( parent, true, name );
+		g.LocalPosition = new Vector3( x, y, z );
+		g.LocalScale = new Vector3( sx / 64f, sy / 64f, sz / 64f );
+		var r = g.Components.Create<ModelRenderer>();
+		r.Model = sphere;
+		r.Tint = tint;
+		count++;
+	}
+
+	void Tree( GameObject parent, float x, float y, float scale )
+	{
+		var h = 500 * scale;
+		Block( parent, "Tronc", x, y, 50 * scale, 50 * scale, h, wood );
+		Ball( parent, "Feuillage", x, y, h + 120 * scale, 420 * scale, 420 * scale, 360 * scale, leaf );
+	}
+
+	void Octagon( GameObject parent, string name, float x, float y, float size, float h, Color c, float z0 = 0 )
+	{
+		Block( parent, name, x, y, size, size, h, c, z0 );
+		Block( parent, name, x, y, size, size, h, c, z0, 45 );
+	}
+
+	// Anneau de segments (enceinte, frontière, arène). skip(angle) = ouverture.
+	void Ring( GameObject parent, string name, float cx, float cy, float radius, int segments, float thick, float h, Color c, Func<float, bool> skip = null )
+	{
+		var len = 2 * MathF.PI * radius / segments * 1.04f;
+		for ( int i = 0; i < segments; i++ )
+		{
+			var a = i * 360f / segments;
+			if ( skip is not null && skip( a ) ) continue;
+			var rad = a * MathF.PI / 180f;
+			Block( parent, $"{name} {i}", cx + MathF.Cos( rad ) * radius, cy + MathF.Sin( rad ) * radius, thick, len, h, c, 0, a );
+		}
+	}
+
+	// ═══ VILLAGE DE KONOHA (coordonnées locales : porte vers -Y, falaise vers +X) ═══
+	// Tourné de 90° : la grande porte fait face au centre du monde, la falaise des Kage est sur le côté.
+	var village = new GameObject( true, "Konoha (blocage)" );
+	village.WorldPosition = konoha;
+	village.WorldRotation = Rotation.FromYaw( 90 );
+	GameObject Group( string name, GameObject parent = null ) => new GameObject( parent ?? village, true, name );
+
+	var tower = new Vector2( 5200, 0 );
+	const float RiverX = -3500;
+	var reserved = new System.Collections.Generic.List<(float x, float y, float hx, float hy)>
+	{
+		(0, 0, 1500, 1500), (5200, 0, 1700, 1700), (5000, 3400, 1200, 1000), (4600, -3500, 1100, 1000),
+		(0, -5200, 1600, 3900), (2600, 0, 3000, 500), (RiverX, 0, 450, R), (-6000, 3800, 1600, 1600),
+		(-5800, -3800, 1800, 1800), (2400, 6400, 1500, 1400), (-1800, 5600, 1300, 1100), (1500, -7900, 900, 700),
+	};
+	bool Free( float x, float y, float margin = 0 )
+	{
+		if ( new Vector2( x, y ).Length > R - 600 ) return false;
+		foreach ( var z in reserved )
+			if ( MathF.Abs( x - z.x ) < z.hx + margin && MathF.Abs( y - z.y ) < z.hy + margin ) return false;
+		return true;
+	}
+
+	// Enceinte + grande porte (côté -Y local = vers le centre du monde)
+	var walls = Group( "Enceinte" );
+	Ring( walls, "Mur", 0, 0, R, 72, 120, 650, wallC, a => a > 260 && a < 280 );
+	var gate = Group( "Grande porte" );
+	Block( gate, "Pilier nord", 750, -R, 220, 220, 1100, wood );
+	Block( gate, "Pilier sud", -750, -R, 220, 220, 1100, wood );
+	Block( gate, "Linteau", 0, -R, 1900, 260, 160, roofs[0], 1100 );
+	Block( gate, "Battant nord (ouvert)", 600, -R + 350, 40, 600, 900, wood );
+	Block( gate, "Battant sud (ouvert)", -600, -R + 350, 40, 600, 900, wood );
+	var guard = Group( "Poste de garde" );
+	Block( guard, "Guérite", 1500, -7900, 900, 500, 280, plaster );
+	Block( guard, "Auvent", 1500, -7650, 1000, 300, 30, roofs[0], 280 );
+	Block( guard, "Comptoir", 1500, -7600, 800, 80, 110, wood );
+
+	// Falaise des Kage
+	var rock = Group( "Falaise des Kage" );
+	Block( rock, "Falaise", R + 1700, 0, 3400, 14000, 3200, cliff, -10 );
+	Block( rock, "Contrefort ouest", R + 900, 6200, 2200, 3000, 2200, cliff, -10, 20 );
+	Block( rock, "Contrefort est", R + 900, -6200, 2200, 3000, 2200, cliff, -10, -20 );
+	for ( int i = 0; i < 5; i++ )
+		Block( rock, $"Emplacement visage {i + 1} (Kage élu par les joueurs)", R + 2, -4000 + i * 2000, 30, 1500, 1500, new Color( 0.62f, 0.57f, 0.5f ), 1300 );
+
+	// Routes, place, rivière
+	var roads = Group( "Routes" );
+	Block( roads, "Place centrale", 0, 0, 3000, 3000, 6, stone, 0, 0, false );
+	Block( roads, "Rue commerçante", 0, -5200, 900, 7800, 5, road, 0, 0, false );
+	Block( roads, "Avenue de la tour", 2600, 0, 6000, 900, 5, road, 0, 0, false );
+	Block( roads, "Rue ouest", 0, 4500, 700, 6000, 5, road, 0, 0, false );
+	Block( roads, "Rue sud", -4500, 0, 6000, 700, 5, road, 0, 0, false );
+	Block( roads, "Socle", 0, 0, 500, 500, 60, stone, 6 );
+	Tree( roads, 0, 0, 1.3f );
+	var river = Group( "Rivière" );
+	Block( river, "Eau", RiverX, 0, 700, 2 * R, 3, water, 0, 0, false );
+	foreach ( var y in new[] { 0f, -4500f, 4500f } )
+	{
+		Block( river, "Pont", RiverX, y, 1000, 600, 30, wood, 3 );
+		Block( river, "Rambarde", RiverX, y + 290, 1000, 20, 100, wood, 33 );
+		Block( river, "Rambarde", RiverX, y - 290, 1000, 20, 100, wood, 33 );
+	}
+
+	// Tour du Hokage
+	var hokage = Group( "Tour du Hokage" );
+	Octagon( hokage, "Base", tower.x, tower.y, 1500, 900, orange );
+	Octagon( hokage, "Étage", tower.x, tower.y, 1100, 500, orange, 900 );
+	Octagon( hokage, "Toit", tower.x, tower.y, 1400, 60, roofs[0], 1400 );
+	Block( hokage, "Escalier", tower.x - 900, tower.y, 400, 600, 120, stone );
+	Block( hokage, "Bâtiment administratif (missions)", tower.x, tower.y + 1300, 900, 600, 500, plaster );
+	Block( hokage, "Toit administratif", tower.x, tower.y + 1300, 1000, 700, 40, roofs[0], 500 );
+
+	// Académie, hôpital
+	var academy = Group( "Académie" );
+	Block( academy, "Bâtiment", 5200, 3600, 1600, 900, 600, plaster );
+	Block( academy, "Toit", 5200, 3600, 1700, 1000, 50, roofs[1], 600 );
+	Block( academy, "Cour", 4100, 3500, 1200, 1500, 5, road, 0, 0, false );
+	Tree( academy, 3800, 2900, 1.1f );
+	Block( academy, "Balançoire", 3800, 3050, 60, 160, 20, wood, 300 );
+	var hospital = Group( "Hôpital" );
+	Block( hospital, "Bâtiment", 4600, -3500, 1600, 1100, 800, Color.White );
+	Block( hospital, "Toit", 4600, -3500, 1700, 1200, 50, roofs[2], 800 );
+	Block( hospital, "Aile", 3700, -3200, 600, 600, 500, Color.White );
+
+	// Rue commerçante
+	var market = Group( "Rue commerçante" );
+	int shop = 0;
+	for ( float y = -1900; y > -8000; y -= 750 )
+	{
+		foreach ( var side in new[] { -1, 1 } )
+		{
+			var x = side * 1150;
+			var c = roofs[shop % roofs.Length];
+			Block( market, $"Boutique {shop + 1}", x, y, 650, 600, 330, plaster );
+			Block( market, $"Auvent {shop + 1}", x - side * 380, y, 160, 600, 20, c, 250 );
+			Block( market, $"Toit boutique {shop + 1}", x, y, 720, 660, 30, c, 330 );
+			shop++;
+		}
+	}
+	Block( market, "Échoppe de ramen", -800, -3000, 400, 500, 260, new Color( 0.95f, 0.85f, 0.6f ) );
+	Block( market, "Comptoir ramen", -560, -3000, 80, 500, 100, wood );
+	Block( market, "Rideaux ramen", -620, -3000, 20, 500, 80, roofs[0], 180 );
+
+	// Terrains d'entraînement, arène des examens
+	var training = Group( "Terrains d'entraînement" );
+	for ( int t = 0; t < 3; t++ )
+	{
+		var cx = -6600 + t * 700; var cy = 3200 + t * 600;
+		Block( training, $"Terrain {t + 1}", cx, cy, 1000, 1000, 4, new Color( 0.5f, 0.4f, 0.28f ), 0, 0, false );
+		for ( int p = 0; p < 3; p++ )
+			Block( training, "Poteau", cx + (p - 1) * 250, cy, 45, 45, 200, wood, 4 );
+	}
+	var arena = Group( "Arène des examens chûnin" );
+	Ring( arena, "Gradins", -5800, -3800, 1600, 24, 260, 700, stone, a => a > 260 && a < 280 );
+	Block( arena, "Terrain", -5800, -3800, 2600, 2600, 4, new Color( 0.6f, 0.52f, 0.38f ), 0, 0, false );
+
+	// Quartier des clans (clans originaux)
+	var clans = Group( "Quartier des clans" );
+	Block( clans, "Mur nord", 3800, 6400, 80, 2800, 300, wallC );
+	Block( clans, "Mur sud", 1000, 6400, 80, 2800, 300, wallC );
+	Block( clans, "Mur ouest", 2400, 7800, 2800, 80, 300, wallC );
+	for ( int i = 0; i < 4; i++ )
+	{
+		var x = 1700 + (i % 2) * 1400; var y = 5800 + (i / 2) * 1100;
+		Block( clans, $"Demeure {i + 1}", x, y, 800, 700, 350, plaster );
+		Block( clans, $"Toit demeure {i + 1}", x, y, 900, 800, 40, roofs[3], 350 );
+	}
+
+	// Parc
+	var park = Group( "Parc" );
+	Block( park, "Pelouse", -1800, 5600, 2400, 2000, 3, new Color( 0.3f, 0.55f, 0.28f ), 0, 0, false );
+	for ( int i = 0; i < 10; i++ )
+		Tree( park, -1800 + rng.Next( -1000, 1000 ), 5600 + rng.Next( -850, 850 ), 0.8f + (float)rng.NextDouble() * 0.5f );
+
+	// Quartiers résidentiels
+	var houses = Group( "Quartiers résidentiels" );
+	int n = 0;
+	for ( float x = -8400; x <= 8400; x += 700 )
+	for ( float y = -8400; y <= 8400; y += 700 )
+	{
+		var jx = x + rng.Next( -80, 80 ); var jy = y + rng.Next( -80, 80 );
+		if ( !Free( jx, jy, 250 ) || rng.NextDouble() < 0.12 ) continue;
+		var sx = 380f + rng.Next( 0, 140 ); var sy = 380f + rng.Next( 0, 140 );
+		var h = 260f + rng.Next( 0, 3 ) * 120f;
+		Block( houses, $"Maison {n + 1}", jx, jy, sx, sy, h, plaster );
+		Block( houses, $"Toit {n + 1}", jx, jy, sx + 50, sy + 50, 30, roofs[rng.Next( roofs.Length )], h );
+		if ( rng.NextDouble() < 0.25 ) Ball( houses, "Réservoir", jx, jy, h + 90, 140, 140, 160, new Color( 0.6f, 0.65f, 0.7f ) );
+		n++;
+	}
+
+	// Points d'apparition (place centrale)
+	var spawns = Group( "Points d'apparition" );
+	foreach ( var (x, y) in new[] { (-700f, 700f), (-700f, -700f), (700f, 700f), (700f, -700f) } )
+	{
+		var s = new GameObject( spawns, true, "Spawn" );
+		s.LocalPosition = new Vector3( x, y, 20 );
+		s.LocalRotation = Rotation.FromYaw( -90 ); // face à la grande porte
+		s.Components.Create<SpawnPoint>();
+	}
+
+	// ═══ PAYS DU FEU : zone devant le village + frontière ═══
+	// Coordonnées monde à partir d'ici (le parent "Monde" est à l'origine).
+	var world = new GameObject( true, "Monde (blocage)" );
+	GameObject WGroup( string name ) => new GameObject( world, true, name );
+
+	// Direction village -> centre (+X) : la route et la porte de la frontière sont de ce côté.
+	var fire = WGroup( "Pays du Feu - zone de Konoha" );
+	Block( fire, "Route de la grande porte au poste-frontière", konoha.x + (R + Border) / 2f, 0, Border - R, 900, 5, road, 0, 0, false );
+	int trees = 0;
+	while ( trees < 650 )
+	{
+		var a = rng.NextDouble() * Math.PI * 2; var d = R + 900 + rng.NextDouble() * (Border - R - 1800);
+		var x = (float)(Math.Cos( a ) * d); var y = (float)(Math.Sin( a ) * d);
+		if ( MathF.Abs( y ) < 900 && x > 0 ) continue;                // route vers la frontière
+		if ( y > R - 500 && MathF.Abs( x ) < 8000 ) continue;          // falaise (côté +Y monde)
+		Tree( fire, konoha.x + x, konoha.y + y, 1f + (float)rng.NextDouble() * 0.8f );
+		trees++;
+	}
+	// Clairières de missions D / C (récolte, livraison, chasse...)
+	foreach ( var (cx, cy, nom) in new[] { (konoha.x + 14000, -9000f, "Ferme"), (konoha.x - 6000, -15000f, "Clairière de chasse"), (konoha.x + 4000, 15000f, "Bord de rivière") } )
+	{
+		var g = new GameObject( fire, true, $"Clairière : {nom}" );
+		Block( g, "Sol", cx, cy, 2400, 2400, 3, new Color( 0.45f, 0.6f, 0.3f ), 0, 0, false );
+		Block( g, "Cabane", cx + 500, cy, 500, 400, 250, plaster );
+		Block( g, "Toit cabane", cx + 500, cy, 560, 460, 30, roofs[3], 250 );
+	}
+
+	// Frontière : palissade en cercle, poste-frontière sur la route (côté centre)
+	var border = WGroup( "Frontière du Pays du Feu" );
+	Ring( border, "Palissade", konoha.x, 0, Border, 140, 60, 220, wood, a => a < 3 || a > 357 );
+	for ( int i = 0; i < 36; i++ )
+	{
+		var a = i * 10f * MathF.PI / 180f;
+		if ( i == 0 ) continue;
+		Block( border, "Borne", konoha.x + MathF.Cos( a ) * (Border - 150), MathF.Sin( a ) * (Border - 150), 80, 80, 320, stone );
+	}
+	var post = new GameObject( border, true, "Poste-frontière de Konoha" );
+	var px = konoha.x + Border;
+	Block( post, "Pilier", px, 650, 160, 160, 700, wood );
+	Block( post, "Pilier", px, -650, 160, 160, 700, wood );
+	Block( post, "Linteau", px, 0, 200, 1500, 100, roofs[0], 700 );
+	Block( post, "Barrière", px, 300, 30, 500, 60, roofs[0], 90 );
+	Block( post, "Corps de garde", px - 900, 1500, 900, 700, 320, plaster );
+	Block( post, "Toit corps de garde", px - 900, 1500, 1000, 800, 40, roofs[0], 320 );
+
+	// ═══ TERRES NEUTRES DE KONOHA (entre la frontière et le centre) ═══
+	var neutralK = WGroup( "Terres neutres de Konoha" );
+	var nStart = konoha.x + Border; var nEnd = -CenterR;
+	Block( neutralK, "Sol neutre", (nStart + nEnd) / 2f, 0, nEnd - nStart, 42000, 3, neutralGround, 0, 0, false );
+	Block( neutralK, "Route", (nStart + nEnd) / 2f, 0, nEnd - nStart, 800, 5, road, 0, 0, false );
+	for ( int i = 0; i < 70; i++ )
+	{
+		var x = nStart + 1500 + (float)rng.NextDouble() * (nEnd - nStart - 3000);
+		var y = (float)(rng.NextDouble() * 2 - 1) * 19000;
+		if ( MathF.Abs( y ) < 1200 ) continue;
+		if ( rng.NextDouble() < 0.6 ) Tree( neutralK, x, y, 0.9f + (float)rng.NextDouble() * 0.6f );
+		else Block( neutralK, "Rocher", x, y, 300 + rng.Next( 400 ), 300 + rng.Next( 400 ), 150 + rng.Next( 350 ), cliff, 0, rng.Next( 90 ) );
+	}
+	// Ruines et ressources (GDD : minerai, plantes médicinales, bois ; points qui réapparaîtront)
+	var ruins = new GameObject( neutralK, true, "Ruines" );
+	foreach ( var (rx, ry) in new[] { (nStart + 6000, 8000f), (nStart + 13000, -9000f) } )
+	{
+		Block( ruins, "Mur effondré", rx, ry, 1200, 120, 400, stone );
+		Block( ruins, "Mur effondré", rx + 500, ry + 600, 120, 1000, 250, stone );
+		Block( ruins, "Colonne", rx - 400, ry + 800, 150, 150, 600, stone );
+	}
+	var res = new GameObject( neutralK, true, "Points de ressources" );
+	for ( int i = 0; i < 12; i++ )
+	{
+		var x = nStart + 2000 + (float)rng.NextDouble() * (nEnd - nStart - 4000);
+		var y = (float)(rng.NextDouble() * 2 - 1) * 16000;
+		if ( MathF.Abs( y ) < 1500 ) continue;
+		switch ( i % 3 )
+		{
+			case 0: Block( res, "Minerai", x, y, 220, 220, 160, ore, 0, rng.Next( 90 ) ); break;
+			case 1: Ball( res, "Plante médicinale", x, y, 40, 120, 120, 80, herb ); break;
+			default: Block( res, "Bois coupé", x, y, 400, 80, 80, wood ); break;
+		}
+	}
+
+	// ═══ CENTRE COMMUN (point de rencontre des trois pays) ═══
+	var center = WGroup( "Centre commun" );
+	Block( center, "Sol", 0, 0, 2 * CenterR, 2 * CenterR, 3, new Color( 0.6f, 0.58f, 0.42f ), 0, 0, false );
+	Ring( center, "Pierre levée", 0, 0, CenterR - 600, 24, 200, 900, stone, a => (a > 170 && a < 190) || (a > 50 && a < 70) || (a > 290 && a < 310) );
+	Octagon( center, "Temple en ruine", 0, 0, 2400, 120, stone );
+	for ( int i = 0; i < 8; i++ )
+	{
+		var a = i * 45f * MathF.PI / 180f;
+		Block( center, "Colonne du temple", MathF.Cos( a ) * 1000, MathF.Sin( a ) * 1000, 160, 160, i % 3 == 0 ? 500 : 1000, stone, 120 );
+	}
+	// Marché neutre
+	for ( int i = 0; i < 6; i++ )
+	{
+		var a = (i * 30f - 75f) * MathF.PI / 180f;
+		var x = MathF.Cos( a ) * 5500; var y = MathF.Sin( a ) * 5500;
+		Block( center, $"Étal {i + 1}", x, y, 500, 400, 220, plaster );
+		Block( center, $"Toile {i + 1}", x, y, 600, 500, 20, roofs[i % roofs.Length], 220 );
+	}
+	// Arène neutre (duels entre villages)
+	Ring( center, "Arène neutre", -4500, 7500, 1800, 20, 200, 300, stone, a => a > 260 && a < 280 );
+	// Ressources rares
+	for ( int i = 0; i < 4; i++ )
+	{
+		var a = (i * 90f + 20f) * MathF.PI / 180f;
+		Block( center, "Minerai rare", MathF.Cos( a ) * 9000, MathF.Sin( a ) * 9000, 300, 300, 260, new Color( 0.55f, 0.35f, 0.7f ), 0, 30 );
+	}
+	// Routes vers les trois pays (Konoha au sud ; Suna et Kumo réservés)
+	foreach ( var (deg, nom) in new[] { (180f, "Konoha"), (60f, "Suna (à venir)"), (-60f, "Kumo (à venir)") } )
+	{
+		var a = deg * MathF.PI / 180f;
+		var mid = CenterR * 0.55f;
+		Block( center, $"Route vers {nom}", MathF.Cos( a ) * mid, MathF.Sin( a ) * mid, CenterR * 0.9f, 800, 5, road, 0, deg, false );
+		Block( center, $"Panneau {nom}", MathF.Cos( a ) * (CenterR - 1500), MathF.Sin( a ) * (CenterR - 1500) + 600, 40, 300, 400, wood, 0, deg );
+	}
+}
+
+// Sol de 4 km, caméra qui voit à 1,5 km
+var ground = scene.GetAllObjects( true ).FirstOrDefault( g => g.Name == "Sol" );
+if ( ground is not null ) { ground.WorldPosition = Vector3.Zero; ground.WorldScale = new Vector3( 1700, 1700, 1 ); }
+var cam = scene.GetAllComponents<CameraComponent>().FirstOrDefault();
+if ( cam is not null ) cam.ZFar = 60000;
+
+return $"{count} volumes";
