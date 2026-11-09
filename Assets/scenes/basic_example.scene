@@ -54,7 +54,7 @@
       "__version": 2,
       "Flags": 0,
       "Name": "Directional Light",
-      "Position": "0,0,200",
+      "Position": "-5.40637016,-5.40638876,209.111893",
       "Rotation": "-0.161728993,0.390448302,0.346828997,0.837319016",
       "Scale": "1,1,1",
       "Tags": "light_directional,light",

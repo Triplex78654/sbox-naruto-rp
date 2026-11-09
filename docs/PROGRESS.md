@@ -72,3 +72,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : tâche 9 (choix + création de perso) faite.
 - 2026-11-09 : tâche 11 (staff de base) faite. Nouvelle route Worker `POST /characters/:id/clan`. Touche F1 ajoutée à `Input.config`.
 - 2026-11-09 : tâches 10, 12, 13 faites. Toute la roadmap MVP est cochée. Prochaines pistes (V1 du GDD) : zones protégées du village, Suna et Kumo, 2e nature au chûnin, missions, ryô, apparence du perso, vrais modèles et effets.
+- 2026-11-09 : **clic gauche = attaque de base** (fiche `data/jutsus/base/base_coup_de_poing.jutsu` : 5 dégâts, 0 chakra, pas de cooldown ; limite serveur anti-autoclic de 4 coups/s). Plus tard : l'arme équipée fournira sa fiche (petit coup d'épée) à la place (`JutsuCaster.BasicAttack`). Pas encore testé en jeu ni relu.

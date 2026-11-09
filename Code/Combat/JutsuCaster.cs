@@ -46,6 +46,32 @@ public sealed class JutsuCaster : Component
 			if ( Input.Pressed( SlotActions[i] ) )
 				RequestCast( i, Controller.EyeAngles.Forward );
 		}
+
+		if ( Input.Pressed( "Attack1" ) )
+			RequestBasicAttack( Controller.EyeAngles.Forward );
+	}
+
+	/// <summary>Id de la fiche d'attaque de base (clic gauche), connue de tous sans déblocage.</summary>
+	public const string BasicAttackId = "base_coup_de_poing";
+
+	/// <summary>
+	/// Attaque du clic gauche : coup de poing pour l'instant.
+	/// Plus tard : l'arme équipée fournira sa propre fiche (ex. petit coup d'épée) et la remplacera ici.
+	/// </summary>
+	public JutsuDefinition BasicAttack => _basicAttack ??= ResourceLibrary.GetAll<JutsuDefinition>().FirstOrDefault( j => j.Id == BasicAttackId );
+	JutsuDefinition _basicAttack;
+	TimeSince _lastBasicAttack = 10f;
+
+	/// <summary>Intention du client : attaque de base (clic gauche).</summary>
+	[Rpc.Host( NetFlags.OwnerOnly )]
+	public void RequestBasicAttack( Vector3 aim )
+	{
+		var jutsu = BasicAttack;
+		if ( jutsu is null ) return;
+		// Pas de cooldown voulu, mais une limite serveur contre les autoclics / scripts (4 coups par seconde max).
+		if ( _lastBasicAttack < 0.25f ) return;
+		_lastBasicAttack = 0;
+		StartCast( jutsu, aim );
 	}
 
 	/// <summary>Intention du client : lancer le jutsu de la case <paramref name="slot"/>.</summary>
@@ -56,8 +82,14 @@ public sealed class JutsuCaster : Component
 		if ( slot < 0 || slot >= Slots.Count ) return;
 		if ( !float.IsFinite( aim.x ) || !float.IsFinite( aim.y ) || !float.IsFinite( aim.z ) || aim.Length < 0.01f ) return;
 
-		var jutsu = Slots[slot];
+		StartCast( Slots[slot], aim );
+	}
+
+	/// <summary>Vérifie puis démarre l'incantation (hôte). Commun aux cases 1-9 et au clic gauche.</summary>
+	void StartCast( JutsuDefinition jutsu, Vector3 aim )
+	{
 		if ( jutsu is null ) return;
+		if ( !float.IsFinite( aim.x ) || !float.IsFinite( aim.y ) || !float.IsFinite( aim.z ) || aim.Length < 0.01f ) return;
 		if ( !CanCast( jutsu ) ) return;
 
 		Casting = jutsu;

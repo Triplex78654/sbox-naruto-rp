@@ -32,6 +32,7 @@
 					@if ( Defense.IsSubstitutionReady ) { <div class="tag ready">Substitution prête</div> }
 					<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@($"[{Input.GetButtonOrigin( "Substitution" )}] Substitution{(Defense.SubstitutionCooldownRemaining > 0 ? $" {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s" : "")}")</div>
 					<div class="tag">@($"[{Input.GetButtonOrigin( "Dodge" )}] Esquive")</div>
+					<div class="tag">@($"[{Input.GetButtonOrigin( "Attack1" )}] Coup")</div>
 				</div>
 			}
 		</div>
