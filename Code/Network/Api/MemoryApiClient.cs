@@ -93,7 +93,7 @@ public sealed class MemoryApiClient : IApiClient
 				Village = c.Village, Nature = c.Nature, Path = c.Path, Clan = string.IsNullOrWhiteSpace( c.Clan ) ? null : c.Clan.Trim(),
 				Grade = "eleve", IsMedic = true, Ryo = 100,
 				// Volontairement au-dessus du grade (élève) : pour tester tous les types de jutsus en éditeur.
-				Jutsus = { "katon_boule_de_feu", "raiton_champ_electrique", "medical_soin_mineur", "taijutsu_coup_de_poing", "suiton_requin" },
+				Jutsus = { "katon_boule_de_feu", "raiton_champ_electrique", "medical_soin_mineur", "taijutsu_coup_de_poing", "suiton_requin", "shunshin" },
 			};
 			p.Characters.Add( created );
 			return Task.FromResult( created.Id );

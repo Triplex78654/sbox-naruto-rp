@@ -27,6 +27,9 @@ public sealed class NinjaStats : Component
 	[Property, Group( "Endurance" )] public float StaminaRegen { get; set; } = 15f;
 	[Property, Group( "Endurance" )] public float StaminaRunCost { get; set; } = 10f;
 
+	/// <summary>Endurance par seconde en course ninja (mesurée par l'hôte à la vitesse).</summary>
+	[Property, Group( "Endurance" )] public float StaminaNinjaRunCost { get; set; } = 22f;
+
 	/// <summary>Part d'endurance à retrouver avant de pouvoir recourir (évite les saccades).</summary>
 	[Property, Group( "Endurance" )] public float StaminaRecoverFraction { get; set; } = 0.2f;
 
@@ -93,9 +96,10 @@ public sealed class NinjaStats : Component
 		var speed = _speed;
 
 		var running = speed > _walkSpeed * 1.2f;
+		var ninjaRunning = speed > _runSpeed * 1.25f;
 		if ( running )
 		{
-			Stamina = MathF.Max( 0f, Stamina - StaminaRunCost * dt );
+			Stamina = MathF.Max( 0f, Stamina - (ninjaRunning ? StaminaNinjaRunCost : StaminaRunCost) * dt );
 			_lastStaminaUse = 0;
 		}
 		else if ( _lastStaminaUse > 1f )
@@ -122,7 +126,8 @@ public sealed class NinjaStats : Component
 		// la position à l'owner (vérifié : l'hôte ne peut pas la réécrire). Un tricheur peut bouger à terre,
 		// mais ne peut ni lancer de jutsu ni éviter les dégâts (validés par l'hôte). Upgrade : détection côté hôte + log staff.
 		Controller.WalkSpeed = _walkSpeed * SpeedMultiplier;
-		Controller.RunSpeed = (IsExhausted ? _walkSpeed : _runSpeed) * SpeedMultiplier;
+		var ninja = GetComponent<NinjaMovement>()?.IsNinjaRunning == true ? GetComponent<NinjaMovement>().NinjaRunMultiplier : 1f;
+		Controller.RunSpeed = (IsExhausted ? _walkSpeed : _runSpeed * ninja) * SpeedMultiplier;
 
 		// N'écrit UseInputControls qu'au changement, pour ne pas écraser d'autres systèmes (menus...).
 		var locked = IsDowned || IsStunned;

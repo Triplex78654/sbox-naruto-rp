@@ -192,6 +192,21 @@ public sealed class JutsuCaster : Component
 				_projectiles.Add( new Projectile { Jutsu = jutsu, Position = eye, Direction = _castAim } );
 				BroadcastProjectileFx( jutsu, eye, _castAim );
 				break;
+
+			case JutsuDeliveryType.Movement:
+			{
+				// Bond éclair à l'horizontale, arrêté avant un mur.
+				var flat = _castAim.WithZ( 0 );
+				if ( flat.Length < 0.01f ) break;
+				var up = Vector3.Up * 40f;
+				var aimPoint = WorldPosition + flat.Normal * jutsu.Range;
+				var wall = Scene.Trace.Ray( WorldPosition + up, aimPoint + up ).Radius( 16f ).IgnoreGameObjectHierarchy( GameObject ).Run();
+				var dest = wall.Hit ? wall.EndPosition - up : aimPoint;
+				BroadcastImpactFx( jutsu, WorldPosition + up, 40f * jutsu.FxSize );
+				BroadcastImpactFx( jutsu, dest + up, 40f * jutsu.FxSize );
+				GetComponent<NinjaMovement>()?.ApplyTeleport( dest );
+				break;
+			}
 		}
 	}
 

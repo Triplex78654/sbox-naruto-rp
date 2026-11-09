@@ -17,6 +17,8 @@ public enum JutsuDeliveryType
 	Area,
 	/// <summary>Le lanceur lui-même (soin, buff).</summary>
 	Self,
+	/// <summary>Déplacement du lanceur vers l'avant sur Range (Shunshin).</summary>
+	Movement,
 }
 
 public enum JutsuEffectType { Damage, Heal, Stun, Slow }

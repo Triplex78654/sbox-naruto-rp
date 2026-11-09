@@ -264,6 +264,12 @@
         "__guid": "f93a4a2a-63bf-4fcb-beb9-51288b70c06a",
         "__enabled": true,
         "Flags": 0
+      },
+      {
+        "__type": "NarutoRp.Player.NinjaMovement",
+        "__guid": "57163365-e5ef-4cbe-b2b5-8144424fb45f",
+        "__enabled": true,
+        "Flags": 0
       }
     ],
     "Children": [
@@ -477,4 +483,3 @@
     ]
   }
 }
-

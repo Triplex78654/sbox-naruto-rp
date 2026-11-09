@@ -28,6 +28,7 @@
 			@if ( Defense is not null )
 			{
 				<div class="defense">
+					@if ( Me.GetComponent<NinjaMovement>()?.IsNinjaRunning == true ) { <div class="tag ready">Course ninja</div> }
 					@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
 					@if ( Defense.IsSubstitutionReady ) { <div class="tag ready">Substitution prête</div> }
 					<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@($"[{Input.GetButtonOrigin( "Substitution" )}] Substitution{(Defense.SubstitutionCooldownRemaining > 0 ? $" {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s" : "")}")</div>
@@ -147,7 +148,7 @@
 		var c = Caster;
 		return System.HashCode.Combine(
 			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ) ),
-			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice, Me?.Grade, Me?.IsMedic ),
+			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice, Me?.Grade, Me?.IsMedic, Me?.GetComponent<NinjaMovement>()?.IsNinjaRunning ),
 			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
 				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
 			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ),
