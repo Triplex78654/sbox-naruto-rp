@@ -1,4 +1,4 @@
-# Génère le script de blocage s&box (run_csharp) des villages Suna et Kumo à partir des plans 2D.
+# Génère le script de blocage s&box (run_csharp) des trois villages (Konoha, Suna, Kumo) à partir des plans 2D.
 # Entrée : dossier d'export des plans (ArtifactData list ... out_dir), un JSON par élément (mètres, repère local du village).
 # Sortie : docs/monde-suna-kumo.cs.txt, à lancer avec konoha.scene ouverte :
 #   sbox-cli --call run_csharp '{"path":".../docs/monde-suna-kumo.cs.txt"}'
@@ -19,13 +19,17 @@ for f in glob.glob(os.path.join(src, "*.json")):
 
 # Style de chaque village : couleurs (r, g, b) et hauteurs (unités).
 STYLES = {
+    "konoha": dict(angle=180, ground=None, rock=(0.5, 0.45, 0.4), built=(0.9, 0.86, 0.76), roof=(0.7, 0.2, 0.15),
+                 roofs=[(0.7, 0.2, 0.15), (0.2, 0.35, 0.6), (0.25, 0.45, 0.25), (0.55, 0.3, 0.2)],
+                 tower=(0.85, 0.5, 0.25), rampart_h=(650, 650), house_h=(260, 500), spawn=True, pays=False),
     "suna": dict(angle=60, ground=(0.86, 0.74, 0.5), rock=(0.74, 0.56, 0.36), built=(0.9, 0.8, 0.62), roof=(0.78, 0.62, 0.42),
-                 tower=(0.86, 0.68, 0.42), rampart_h=(900, 1200), house_h=(220, 340)),
+                 tower=(0.86, 0.68, 0.42), rampart_h=(900, 1200), house_h=(220, 340), spawn=False, pays=True),
     "kumo": dict(angle=-60, ground=(0.56, 0.55, 0.52), rock=(0.48, 0.48, 0.5), built=(0.82, 0.82, 0.8), roof=(0.3, 0.45, 0.62),
-                 tower=(0.35, 0.5, 0.72), rampart_h=(1600, 2800), house_h=(260, 420)),
+                 tower=(0.35, 0.5, 0.72), rampart_h=(1600, 2800), house_h=(260, 420), spawn=False, pays=True),
 }
 COMMON = dict(road=(0.55, 0.5, 0.42), water=(0.2, 0.45, 0.75), zone=(0.68, 0.58, 0.42), mark=(0.25, 0.55, 0.6),
-              rock2=(0.62, 0.6, 0.55), park=(0.3, 0.55, 0.28), mountain=(0.5, 0.45, 0.4), wall=(0.78, 0.7, 0.55))
+              rock2=(0.62, 0.6, 0.55), park=(0.3, 0.55, 0.28), mountain=(0.5, 0.45, 0.4), wall=(0.78, 0.7, 0.55),
+              domain=(0.82, 0.76, 0.66), leaf=(0.22, 0.45, 0.2), wood=(0.45, 0.3, 0.18))
 
 def col(style, key):
     if key in ("rock", "built", "tower"): return style[key]
@@ -38,7 +42,7 @@ def S(group, name, x, y, z, d, c):
     lines.append(f'S({group},"{name}",{x:.0f}f,{y:.0f}f,{z:.0f}f,{d:.0f}f,new Color({c[0]}f,{c[1]}f,{c[2]}f));')
 def disk(group, name, x, y, r, h, c, z0=0.0, collide=True, n=None):
     # Disque = bandes parallèles de longueur égale à la corde (des carrés tournés donnent une étoile).
-    n = n or (48 if r > 5000 else 14)
+    n = n or (160 if r > 5000 else 14)
     w = 2 * r / n
     for i in range(n):
         yy = -r + (i + 0.5) * w
@@ -55,6 +59,7 @@ def ring(group, name, x, y, r, w, a0, a1, h, c, step_m=12, jag=None):
         B(group, f"{name} {i}", (x + math.cos(rad) * r) * M, (y + math.sin(rad) * r) * M, w * M, seg * M, hh, c, 0, a)
 
 # Même placement que la page des plans (graine fixe), pour retrouver les mêmes maisons.
+HOUSES_CACHE = {}
 def houses(lst, it):
     s = it["shape"]; n = max(0, min(400, int(s["n"])))
     wall = next((e for e in lst if e["shape"]["t"] == "ring" and e["code"] == "A1"), None)
@@ -62,10 +67,17 @@ def houses(lst, it):
     busy = []
     for e in lst:
         q = e["shape"]
-        if e is it or q["t"] == "houses": continue
+        if e is it: continue
+        if q["t"] == "houses":
+            if e.get("order", 0) < it.get("order", 0):
+                for h in HOUSES_CACHE.get(id(e), []): busy.append(("c", h[0], h[1], h[2] + 3))
+            continue
         if q["t"] == "circle": busy.append(("c", q["x"], q["y"], q["r"] + 5))
-        elif q["t"] == "ring" and (q.get("fill") or q["a1"] - q["a0"] >= 360): busy.append(("c", q["x"], q["y"], q["r"] + q["w"] / 2 + 5))
-        elif q["t"] == "rect": busy.append(("b", q["x"], q["y"], math.hypot(q["w"], q["h"]) / 2 + 5))
+        elif q["t"] == "ring" and q.get("fill"): busy.append(("c", q["x"], q["y"], q["r"] + q["w"] / 2 + 5))
+        elif q["t"] == "ring" and q["a1"] - q["a0"] >= 360: busy.append(("r", q["x"], q["y"], q["r"], q["w"] / 2 + 5))
+        elif q["t"] == "rect":
+            if q.get("rot"): busy.append(("c", q["x"], q["y"], math.hypot(q["w"], q["h"]) / 2 + 5))
+            else: busy.append(("b", q["x"], q["y"], q["w"] / 2 + 5, q["h"] / 2 + 5))
         elif q["t"] == "line":
             p = q["pts"]
             for i in range(len(p) - 1):
@@ -77,18 +89,22 @@ def houses(lst, it):
         seed = (seed * 16807) % 2147483647
         return seed / 2147483647
     out = []
+    zr = s.get("zr") or inner
+    zx, zy = (s["zx"], s["zy"]) if s.get("zr") else (0, 0)
     k = 0
     while k < 8000 and len(out) < n:
         k += 1
-        x = (rnd() * 2 - 1) * inner; y = (rnd() * 2 - 1) * inner
+        x = zx + (rnd() * 2 - 1) * zr; y = zy + (rnd() * 2 - 1) * zr
         r = 5 + rnd() * 3 if s.get("style") == "dome" else 5 + rnd() * 2.5
-        if math.hypot(x, y) > inner - r: continue
+        if math.hypot(x, y) > inner - r or math.hypot(x - zx, y - zy) > zr: continue
         def hit(b):
             if b[0] == "c": return math.hypot(x - b[1], y - b[2]) < b[3] + r
-            return abs(x - b[1]) < b[3] + r and abs(y - b[2]) < b[3] + r and math.hypot(x - b[1], y - b[2]) < b[3] + r
+            if b[0] == "r": return abs(math.hypot(x - b[1], y - b[2]) - b[3]) < b[4] + r
+            return abs(x - b[1]) < b[3] + r and abs(y - b[2]) < b[4] + r
         if any(hit(b) for b in busy): continue
         if any(math.hypot(x - o[0], y - o[1]) < o[2] + r + 3 for o in out): continue
         out.append((x, y, r))
+    HOUSES_CACHE[id(it)] = out
     return out
 
 HEIGHT = dict(built=400, tower=1600, mark=900, rock2=320, wall=650, mountain=2400)
@@ -104,7 +120,7 @@ for v, style in STYLES.items():
     lines.append(f'// ═══ {name.upper()} ═══')
     lines.append(f'var {v} = new GameObject( true, "{name} (blocage)" ); {v}.WorldPosition = new Vector3({cx:.1f}f,{cy:.1f}f,0); {v}.WorldRotation = Rotation.FromYaw({yaw}f);')
     g = v
-    disk(g, "Sol du pays", 0, 0, BORDER, 1.5, style["ground"], 1, False)
+    if style["pays"]: disk(g, "Sol du pays", 0, 0, BORDER, 1.5, style["ground"], 1, False)
     rnd_h = __import__("random").Random(v)
     for e in lst:
         s, f, nm = e["shape"], e["fill"], e["name"].replace('"', "'")
@@ -115,11 +131,13 @@ for v, style in STYLES.items():
                 h = rnd_h.randint(*style["house_h"])
                 B(g, f"Maison {i + 1}", x * M, y * M, 2 * r * M * 0.9, 2 * r * M * 0.9, h, style["built"])
                 if s.get("style") == "dome": S(g, f"Dôme {i + 1}", x * M, y * M, h, 2 * r * M * 0.9, style["roof"])
-                else: B(g, f"Toit {i + 1}", x * M, y * M, 2 * r * M, 2 * r * M, 30, style["roof"], h)
+                else: B(g, f"Toit {i + 1}", x * M, y * M, 2 * r * M, 2 * r * M, 30, rnd_h.choice(style.get("roofs", [style["roof"]])), h)
         elif s["t"] == "ring":
             if e["code"] == "A1":
                 lo, hi = style["rampart_h"]; rr = __import__("random").Random(v + "A1")
                 ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], hi, c, 12, lambda i: rr.randint(lo, hi))
+            elif f in FLAT:
+                ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], FLAT[f], c, 10)
             else:
                 if s.get("fill"): disk(g, f"{tag} (sol)", s["x"] * M, s["y"] * M, s["r"] * M, 4, COMMON["zone"], 0, False)
                 ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], HEIGHT.get(f, 400), c, 8)
@@ -131,19 +149,47 @@ for v, style in STYLES.items():
                 B(g, tag, (x1 + x2) / 2 * M, (y1 + y2) / 2 * M, (L + s["w"]) * M, s["w"] * M, FLAT.get(f, 6), c, 0, math.degrees(math.atan2(y2 - y1, x2 - x1)), False)
         elif s["t"] == "circle":
             if f in FLAT: disk(g, tag, s["x"] * M, s["y"] * M, s["r"] * M, FLAT[f], c, 0, False)
+            if f == "park":
+                tr = __import__("random").Random(tag)
+                for i in range(int(s["r"] * s["r"] / 60)):
+                    ang, rad = tr.uniform(0, 2 * math.pi), s["r"] * math.sqrt(tr.random()) * 0.9
+                    tx, ty = (s["x"] + math.cos(ang) * rad) * M, (s["y"] + math.sin(ang) * rad) * M
+                    B(g, "Tronc", tx, ty, 50, 50, 450, COMMON["wood"]); S(g, "Feuillage", tx, ty, 560, 380, COMMON["leaf"])
             else:
                 h = HEIGHT.get(f, 400)
                 disk(g, tag, s["x"] * M, s["y"] * M, s["r"] * M, h, c, 0, True)
                 if f == "tower": S(g, f"{tag} (dôme)", s["x"] * M, s["y"] * M, h, s["r"] * 2 * M * 0.85, style["roof"])
+        elif s["t"] == "rect" and f == "domain":
+            x, y, w, h = s["x"] * M, s["y"] * M, s["w"] * M, s["h"] * M
+            wall_h = 520 if e.get("hidden") else 300
+            t, gap = 40, 300
+            if abs(s["y"]) >= abs(s["x"]): gate_side = "S" if s["y"] > 0 else "N"
+            else: gate_side = "W" if s["x"] > 0 else "E"
+            sides = {"N": (x, y + h / 2, w, t), "S": (x, y - h / 2, w, t), "E": (x + w / 2, y, t, h), "W": (x - w / 2, y, t, h)}
+            for side, (bx, by, bw, bh) in sides.items():
+                if side != gate_side:
+                    B(g, f"{tag} (mur)", bx, by, bw, bh, wall_h, COMMON["wall"]); continue
+                if bw > bh:
+                    half = (w - gap) / 2
+                    B(g, f"{tag} (mur)", bx - (gap + half) / 2, by, half, t, wall_h, COMMON["wall"])
+                    B(g, f"{tag} (mur)", bx + (gap + half) / 2, by, half, t, wall_h, COMMON["wall"])
+                else:
+                    half = (h - gap) / 2
+                    B(g, f"{tag} (mur)", bx, by - (gap + half) / 2, t, half, wall_h, COMMON["wall"])
+                    B(g, f"{tag} (mur)", bx, by + (gap + half) / 2, t, half, wall_h, COMMON["wall"])
+            B(g, f"{tag} (jardin)", x, y, w - 2 * t, h - 2 * t, 3, COMMON["park"], 0, 0, False)
+            B(g, f"{tag} (demeure)", x, y, w * 0.55, h * 0.5, 420, COMMON["domain"])
+            B(g, f"{tag} (toit)", x, y, w * 0.55 + 80, h * 0.5 + 80, 40, style["roof"], 420)
         elif s["t"] == "rect":
             flat = f in FLAT
             B(g, tag, s["x"] * M, s["y"] * M, s["w"] * M, s["h"] * M, FLAT[f] if flat else HEIGHT.get(f, 400), c, 0, s.get("rot", 0), not flat)
             if not flat and f == "built": B(g, f"{tag} (toit)", s["x"] * M, s["y"] * M, s["w"] * M + 60, s["h"] * M + 60, 40, style["roof"], HEIGHT.get(f, 400), s.get("rot", 0))
     # Apparition : sur la place B2, face à la porte
-    sp = next((e for e in lst if e["code"] == "B2"), None)
+    sp = next((e for e in lst if e["code"] in ("V6", "B2") and "appar" in e["name"].lower()), None)
     if sp:
         for dx, dy in ((-500, 500), (500, 500), (-500, -500), (500, -500)):
-            lines.append(f'{{ var s = new GameObject({g}, true, "Spawn"); s.LocalPosition = new Vector3({sp["shape"]["x"] * M + dx:.0f}f,{sp["shape"]["y"] * M + dy:.0f}f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = false; s.Components.Create<SpawnPoint>(); }}')
+            lines.append(f'{{ var s = new GameObject({g}, true, "Spawn"); s.LocalPosition = new Vector3({sp["shape"]["x"] * M + dx:.0f}f,{sp["shape"]["y"] * M + dy:.0f}f,20); s.LocalRotation = Rotation.FromYaw(-90); s.Enabled = {"true" if style["spawn"] else "false"}; s.Components.Create<SpawnPoint>(); }}')
+    if not style["pays"]: continue  # Konoha : frontière, poste et route déjà faits par monde-blocage
     # Frontière : bornes tous les 10°, sauf sur la route ; poste-frontière sur la route
     for i in range(36):
         ang = 270 + i * 10
@@ -162,7 +208,7 @@ for v, style in STYLES.items():
 
 body = "\n".join(lines)
 header = '''// GÉNÉRÉ par tools/plan-vers-blocage.py à partir des plans 2D (ne pas modifier à la main).
-// Blocage de Suna et Kumo + ajustements de la vue d'ensemble (sol neutre, disque vert de Konoha, centre rond).
+// Blocage des trois villages (Konoha remplace celui de monde-blocage) + ajustements de la vue d'ensemble (sol neutre, disque vert de Konoha, centre rond).
 // Lancer avec konoha.scene ouverte, puis écrire la scène (docs/sbox-reference.md §11, piège de sauvegarde).
 var scene = Editor.SceneEditorSession.Active.Scene;
 var box = Model.Load( "models/dev/box.vmdl" );
@@ -188,7 +234,7 @@ void S( GameObject parent, string name, float x, float y, float z, float d, Colo
 }
 using ( scene.Push() )
 {
-	foreach ( var old in scene.GetAllObjects( true ).Where( g => g.Name is "Suna (blocage)" or "Kumo (blocage)" or "Vue d'ensemble (blocage)" ).ToList() )
+	foreach ( var old in scene.GetAllObjects( true ).Where( g => g.Name is "Konoha (blocage)" or "Suna (blocage)" or "Kumo (blocage)" or "Vue d'ensemble (blocage)" ).ToList() )
 		old.Destroy();
 
 	// Vue d'ensemble : sol du monde neutre, terres neutres de Konoha sans rectangle, zone de Konoha en disque vert, centre rond.
