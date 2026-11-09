@@ -23,7 +23,7 @@ Phase : **MVP — fondations**. Aucune ligne de code de jeu pour l'instant.
 
 ## Prochaines tâches (dans l'ordre)
 
-1. [ ] **Setup** : initialiser le repo Git (si pas déjà fait), `.gitignore` adapté à s&box, créer le projet s&box (l'utilisateur le crée depuis l'éditeur s&box si besoin, puis on ajoute nos dossiers selon `docs/architecture-projet.md`).
+1. [~] **Setup** : repo Git + `.gitignore` faits. **Reste** : l'utilisateur crée le projet s&box dans ce dossier depuis l'éditeur (voir « À tester »), puis on ajoute nos dossiers selon `docs/architecture-projet.md`.
 2. [ ] **Architecte** : vérifier les points « NON VÉRIFIÉ » de la référence, figer le format des fiches jutsus et le schéma de données des persos.
 3. [ ] **Joueur de base** : spawn, déplacement, caméra, en multijoueur (test : 2 instances / un ami).
 4. [ ] **Jauges** : vie, chakra, endurance, synchronisées, côté serveur.
@@ -39,7 +39,8 @@ Phase : **MVP — fondations**. Aucune ligne de code de jeu pour l'instant.
 
 ## À tester par l'utilisateur
 
-(rien pour l'instant)
+- Créer le projet s&box : éditeur s&box → New Project → template **player controller**, nom `Naruto RP`, ident `narutorp`, emplacement : ce dossier (le `.sbproj` doit être à côté de `CLAUDE.md`). Si l'éditeur exige un dossier vide, créer ailleurs puis copier le contenu ici.
+- Ouvrir la scène d'exemple, appuyer sur Play, vérifier qu'on se déplace. Renvoyer : la liste des fichiers créés (`dir /s /b *.sbproj *.scene`) et les erreurs de la console s'il y en a.
 
 ## Questions en attente pour l'utilisateur
 
@@ -48,3 +49,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 ## Journal
 
 - 2026-11-09 : création du dossier projet, GDD, référence API.
+- 2026-11-09 : init Git + `.gitignore` (caches `.sbox/`, `obj/`, `*.csproj`/`*.sln` générés, assets compilés `*_c`, fichiers de secrets).
