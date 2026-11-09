@@ -1,4 +1,17 @@
+// Le composant reste présent même fermé : il ne doit pas capter la souris.
 StaffPanel {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	font-family: Poppins;
+	color: white;
+	pointer-events: none;
+}
+
+// N'existe que quand le panel est ouvert.
+.overlay {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -6,8 +19,6 @@ StaffPanel {
 	bottom: 0;
 	justify-content: center;
 	align-items: center;
-	font-family: Poppins;
-	color: white;
 	pointer-events: all;
 }
 

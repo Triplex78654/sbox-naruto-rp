@@ -7,7 +7,7 @@ namespace NarutoRp.Network.Api;
 /// <summary>
 /// Fausse API en mémoire pour l'éditeur (pas de fichier de config API).
 /// Les joueurs commencent sans perso et passent par la création, comme sur le vrai serveur.
-/// Un perso créé reçoit les jutsus de test et le statut médic, pour pouvoir tester le combat.
+/// Un perso créé reçoit quelques jutsus et le statut médic, pour pouvoir tester le combat.
 /// Les données vivent tant que l'éditeur est ouvert.
 /// </summary>
 public sealed class MemoryApiClient : IApiClient
@@ -92,7 +92,8 @@ public sealed class MemoryApiClient : IApiClient
 				Id = _nextId++, Slot = c.Slot, FirstName = c.FirstName.Trim(), LastName = c.LastName.Trim(),
 				Village = c.Village, Nature = c.Nature, Path = c.Path, Clan = string.IsNullOrWhiteSpace( c.Clan ) ? null : c.Clan.Trim(),
 				Grade = "eleve", IsMedic = true, Ryo = 100,
-				Jutsus = { "test_contact", "test_projectile", "test_zone" },
+				// Volontairement au-dessus du grade (élève) : pour tester tous les types de jutsus en éditeur.
+				Jutsus = { "katon_boule_de_feu", "raiton_champ_electrique", "medical_soin_mineur", "taijutsu_coup_de_poing", "suiton_requin" },
 			};
 			p.Characters.Add( created );
 			return Task.FromResult( created.Id );

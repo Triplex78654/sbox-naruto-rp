@@ -1,4 +1,17 @@
+// Le composant reste présent même fermé : il ne doit ni assombrir ni capter la souris.
 CharacterMenu {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	font-family: Poppins;
+	color: white;
+	pointer-events: none;
+}
+
+// N'existe que quand le menu est ouvert : fond + souris visible et cliquable.
+.overlay {
 	position: absolute;
 	left: 0;
 	top: 0;
@@ -7,9 +20,6 @@ CharacterMenu {
 	justify-content: center;
 	align-items: center;
 	background-color: rgba(5, 8, 15, 0.85);
-	font-family: Poppins;
-	color: white;
-	// Rend la souris visible et cliquable sur ce panel.
 	pointer-events: all;
 }
 

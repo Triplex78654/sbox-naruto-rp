@@ -5,7 +5,7 @@
   "Ident": "nrp",
   "Schema": 1,
   "IncludeSourceFiles": false,
-  "Resources": null,
+  "Resources": "data/jutsus/*",
   "PublishUsedAssetsOnly": true,
   "PackageReferences": [],
   "EditorReferences": null,
@@ -27,6 +27,6 @@
     "PerMapRanking": false,
     "LeaderboardType": "None",
     "CsProjName": "",
-    "StartupScene": "scenes/basic_example.scene"
+    "StartupScene": "scenes/konoha.scene"
   }
 }

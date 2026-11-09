@@ -2,29 +2,45 @@
 @using Sandbox.UI;
 @using NarutoRp.Player;
 @using NarutoRp.Combat;
+@using NarutoRp.Characters;
 @inherits PanelComponent
 @namespace NarutoRp.UI
 
-@* HUD du joueur local : jauges et barre de jutsus. Lecture seule, aucune logique de jeu. *@
+@* HUD du joueur local : identité, jauges, défenses, barre de jutsus, incantation. Lecture seule. *@
 <root>
 	@if ( Stats is not null )
 	{
-		<div class="gauges">
-			@foreach ( var (kind, value, max) in Gauges() )
+		<div class="status">
+			<div class="identity">
+				<div class="name">@Me.CharacterName</div>
+				<div class="sub">@($"{CharacterRules.Label( Me.Village )} · {CharacterRules.Label( Me.Grade )}{(Me.IsMedic ? " · médic-nin" : "")}")</div>
+			</div>
+
+			@foreach ( var (kind, label, value, max) in Gauges() )
 			{
 				<div class="gauge @kind">
-					<div class="fill" style="width: @(max > 0 ? value / max * 100f : 0)%"></div>
-					<div class="value">@MathF.Round( value ) / @max</div>
+					<div class="fill" style="width: @(max > 0 ? Math.Clamp( value / max, 0f, 1f ) * 100f : 0)%"></div>
+					<div class="label">@label</div>
+					<div class="value">@($"{MathF.Round( value )} / {max}")</div>
+				</div>
+			}
+
+			@if ( Defense is not null )
+			{
+				<div class="defense">
+					@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
+					@if ( Defense.IsSubstitutionReady ) { <div class="tag ready">Substitution prête</div> }
+					<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@($"[{Input.GetButtonOrigin( "Substitution" )}] Substitution{(Defense.SubstitutionCooldownRemaining > 0 ? $" {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s" : "")}")</div>
+					<div class="tag">@($"[{Input.GetButtonOrigin( "Dodge" )}] Esquive")</div>
 				</div>
 			}
 		</div>
 
-		@if ( Defense is not null )
+		@if ( Caster?.Casting is not null )
 		{
-			<div class="defense">
-				@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
-				@if ( Defense.IsSubstitutionReady ) { <div class="tag sub">Substitution prête</div> }
-				<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@Input.GetButtonOrigin( "Substitution" ) Substitution @(Defense.SubstitutionCooldownRemaining > 0 ? $"({MathF.Ceiling( Defense.SubstitutionCooldownRemaining )})" : "")</div>
+			<div class="cast">
+				<div class="text">@Caster.Casting.DisplayName</div>
+				<div class="bar"><div class="fill" style="width: @(CastProgress * 100f)%; background-color: @Css( Caster.Casting.FxColor )"></div></div>
 			</div>
 		}
 
@@ -43,28 +59,34 @@
 
 		@if ( Stats.IsDowned )
 		{
-			<div class="state downed">À terre — attendez un médic-nin</div>
+			<div class="state downed">À terre — attends un médic-nin</div>
 		}
 		else if ( Stats.IsStunned )
 		{
 			<div class="state">Étourdi</div>
 		}
 
-		@if ( Caster is not null )
+		@if ( Caster is not null && Caster.Slots.Count > 0 )
 		{
 			<div class="jutsus">
 				@for ( var i = 0; i < Caster.Slots.Count; i++ )
 				{
 					var j = Caster.Slots[i];
-					var cd = j is null ? 0f : Caster.CooldownRemaining( j );
-					<div class="slot @(Caster.Casting == j ? "casting" : "") @(cd > 0 ? "cooldown" : "")">
-						<div class="key">@(i + 1)</div>
+					if ( j is null ) continue;
+					var cd = Caster.CooldownRemaining( j );
+					var noChakra = Stats.Chakra < j.ChakraCost;
+					<div class="slot @(Caster.Casting == j ? "casting" : "") @(cd > 0 || noChakra ? "unavailable" : "")">
+						<div class="strip" style="background-color: @Css( j.FxColor )"></div>
+						<div class="top">
+							<div class="key">@(i + 1)</div>
+							<div class="rank">@j.Rank</div>
+						</div>
+						<div class="name">@j.DisplayName</div>
+						<div class="cost @(noChakra ? "low" : "")">@($"{j.ChakraCost} chakra")</div>
 						@if ( cd > 0 )
 						{
 							<div class="cd">@MathF.Ceiling( cd )</div>
 						}
-						<div class="name">@(j?.DisplayName ?? "-")</div>
-						<div class="cost">@(j?.ChakraCost ?? 0)</div>
 					</div>
 				}
 			</div>
@@ -74,41 +96,62 @@
 
 @code
 {
-	NinjaStats Stats => NinjaPlayer.Local?.GetComponent<NinjaStats>();
-	JutsuCaster Caster => NinjaPlayer.Local?.GetComponent<JutsuCaster>();
-	NinjaDefense Defense => NinjaPlayer.Local?.GetComponent<NinjaDefense>();
+	NinjaPlayer Me => NinjaPlayer.Local;
+	NinjaStats Stats => Me?.GetComponent<NinjaStats>();
+	JutsuCaster Caster => Me?.GetComponent<JutsuCaster>();
+	NinjaDefense Defense => Me?.GetComponent<NinjaDefense>();
+	ReviveAction Revive => Me?.GetComponent<ReviveAction>();
 
 	/// <summary>Message du staff ou retour d'action, affiché 6 s.</summary>
 	string Notice
 	{
 		get
 		{
-			var c = NinjaPlayer.Local?.GetComponent<NarutoRp.Staff.StaffCommands>();
+			var c = Me?.GetComponent<NarutoRp.Staff.StaffCommands>();
 			return c?.Notice is not null && c.NoticeAge < 6f ? c.Notice : null;
 		}
 	}
-	ReviveAction Revive => NinjaPlayer.Local?.GetComponent<ReviveAction>();
 
 	/// <summary>Relève en cours où le joueur local est soigneur ou blessé.</summary>
 	ReviveAction ActiveRevive => Revive?.ReviveTarget is not null ? Revive
 		: Scene.GetAllComponents<ReviveAction>().FirstOrDefault( r => r.ReviveTarget is not null && r.ReviveTarget == Stats );
 
-	(string, float, float)[] Gauges() => new[]
+	(string, string, float, float)[] Gauges() => new[]
 	{
-		("health", Stats.Health, Stats.MaxHealth),
-		("chakra", Stats.Chakra, Stats.MaxChakra),
-		("stamina", Stats.Stamina, Stats.MaxStamina),
+		("health", "Vie", Stats.Health, Stats.MaxHealth),
+		("chakra", "Chakra", Stats.Chakra, Stats.MaxChakra),
+		("stamina", "Endurance", Stats.Stamina, Stats.MaxStamina),
 	};
+
+	static string Css( Color c ) => $"rgba({(int)(c.r * 255)}, {(int)(c.g * 255)}, {(int)(c.b * 255)}, 1)";
+
+	// Progression de l'incantation, mesurée chez le client à partir du changement de Casting.
+	Jutsus.JutsuDefinition _castSeen;
+	TimeSince _castStart;
+	float CastProgress => Caster?.Casting is { CastSeconds: > 0 } j ? Math.Clamp( _castStart / j.CastSeconds, 0f, 1f ) : 1f;
+
+	protected override void OnUpdate()
+	{
+		var casting = Caster?.Casting;
+		if ( casting != _castSeen )
+		{
+			_castSeen = casting;
+			_castStart = 0;
+		}
+	}
 
 	protected override int BuildHash()
 	{
 		var s = Stats;
 		var c = Caster;
 		return System.HashCode.Combine(
-			MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ),
-			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice ),
+			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ) ),
+			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice, Me?.Grade, Me?.IsMedic ),
 			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
 				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
-			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ) );
+			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ),
+			c is null ? 0 : c.Slots.Aggregate( 17, ( h, j ) => System.HashCode.Combine( h, j?.Id ) ),
+			System.HashCode.Combine( s?.MaxHealth, Me?.CharacterName ),
+			MathF.Round( CastProgress * 40 ) );
 	}
 }

@@ -11,6 +11,7 @@
 @if ( Visible )
 {
 	<root>
+		<div class="overlay">
 		<div class="window">
 			<div class="header">
 				<div class="title">Staff · @Me.StaffRank</div>
@@ -102,6 +103,7 @@
 				</div>
 			</div>
 		</div>
+		</div>
 	</root>
 }
 
@@ -127,7 +129,10 @@
 	{
 		if ( Input.Pressed( "StaffMenu" ) && Me.IsValid() && StaffPermissions.IsStaff( Me.StaffRank ) )
 			_open = !_open;
+		NinjaPlayer.InputBlocked = Visible;
 	}
+
+	protected override void OnDisabled() => NinjaPlayer.InputBlocked = false;
 
 	protected override int BuildHash()
 	{

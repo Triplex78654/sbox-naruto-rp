@@ -46,6 +46,7 @@ public sealed class NinjaDefense : Component
 	protected override void OnUpdate()
 	{
 		if ( IsProxy ) return;
+		if ( NinjaPlayer.InputBlocked ) { if ( _sentGuard ) { _sentGuard = false; RequestGuard( false ); } return; }
 
 		// Renvoie la demande si l'hôte a refusé ou cassé la garde alors que le bouton est toujours enfoncé.
 		var wantGuard = Input.Down( "Attack2" );

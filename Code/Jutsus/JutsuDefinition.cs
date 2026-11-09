@@ -35,6 +35,17 @@ public sealed class JutsuDefinition : GameResource
 	public float HitRadius { get; set; } = 16f;
 
 	public List<JutsuEffect> Effects { get; set; } = new();
+
+	// ─── Visuel et son (effets construits en code, voir Combat/JutsuFx.cs) ───
+
+	/// <summary>Couleur de l'effet (lumière, sphère).</summary>
+	public Color FxColor { get; set; } = Color.White;
+
+	/// <summary>Taille de l'effet d'impact (1 = normal).</summary>
+	public float FxSize { get; set; } = 1f;
+
+	public SoundEvent CastSound { get; set; }
+	public SoundEvent ImpactSound { get; set; }
 }
 
 /// <summary>Un effet appliqué à chaque cible touchée.</summary>

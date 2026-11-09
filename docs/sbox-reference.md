@@ -675,6 +675,12 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - UI Razor : `<TextEntry Value:bind=@champ MaxLength=@(20) Placeholder="..." Numeric=@true />`, `<Button Active=@bool disabled=@bool onclick=@(() => ...)>`, `pointer-events: all` sur la racine affiche la souris. Texte avec séparateurs : utiliser `@($"{a} · {b}")` (sinon les espaces autour des `·` sont mangés).
 - `System.Text.RegularExpressions.Regex` est autorisé dans le code de jeu.
 
+- **Piège sauvegarde de scène** : une scène modifiée par `run_csharp` n'est pas marquée « modifiée », et pour une scène dont le fichier a été créé hors de l'éditeur, `save_scene` / `SceneEditorSession.Save` répondent « sauvegardé » **sans écrire le fichier**. Contournement : `scene.Serialize()["GameObjects"]` puis réécrire ce tableau dans le `.scene` (en gardant l'en-tête du fichier). Vérifier la date du fichier après une sauvegarde.
+- **Piège fiches modifiées hors éditeur** : modifier un `.jutsu` sur le disque recompile bien le `_c`, mais l'instance chargée (`ResourceLibrary`) garde les anciennes valeurs jusqu'au redémarrage de l'éditeur ; une fiche supprimée reste chargée aussi. Créer avec `create_asset` marche à chaud.
+- **Projet** : `Project.Current.Config.SetMeta( "StartupScene", ... )`, propriété `Resources` (texte de règles, ex. `data/jutsus/*`), puis la méthode `Save` de `Project.Current` (par réflexion) écrit le `.sbproj`. `publishing_preview { "resources": "..." }` permet de tester une règle avant.
+- Effets : `new GameObject( true, nom ) { NetworkMode = NetworkMode.Never }` + `ModelRenderer` (`models/dev/sphere.vmdl`, `models/dev/box.vmdl` = cube de 50 unités, `models/dev/plane.vmdl` = 100 × 100) + `PointLight` (`LightColor`, `Radius`, `Shadows`). `Sound.Play( SoundEvent, Vector3 position, float fadeIn = 0 )`. Sons utilisables du moteur : `sounds/impacts/melee/*`, `sounds/effects/explosion/explosion_small.sound`, `sounds/water/water_splash_medium.sound`.
+- **Clavier** : les actions sont liées à la position physique de la touche (disposition QWERTY). Sur AZERTY, `"z"` = touche W, `"w","a"` = Z, Q. `Input.GetButtonOrigin( action )` renvoie le nom réel à afficher.
+
 ### Piloter l'éditeur (`sbox-cli`)
 
 `<engine>/bin/managed/sbox-cli.exe`, lancé depuis le dossier du projet : `--call editor_status`, `compile_status`, `play_start/stop`, `network_spawn_instance` (2e client local), `run_csharp` (code C# exécuté dans l'éditeur), `create_asset`, `scene_tree`, `add_component`, `save_scene`. Instructions complètes : `sbox-cli --skill sbox-cli`.

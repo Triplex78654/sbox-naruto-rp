@@ -1,1 +1,0 @@
-{"Id": "test_projectile", "DisplayName": "Projectile de test", "Nature": "Katon", "Path": "Ninjutsu", "Rank": "D", "ChakraCost": 15, "CooldownSeconds": 3, "CastSeconds": 0.6, "Delivery": "Projectile", "Range": 1500, "ProjectileSpeed": 1500, "HitRadius": 16, "Effects": [{"Type": "Damage", "Amount": 25, "DurationSeconds": 0}, {"Type": "Slow", "Amount": 0.5, "DurationSeconds": 2}]}

@@ -12,6 +12,9 @@ public sealed class NinjaStats : Component
 	[RequireComponent] PlayerController Controller { get; set; }
 
 	[Property, Group( "Vie" )] public float MaxHealth { get; set; } = 100f;
+
+	/// <summary>Dégâts minimum d'un coup pour interrompre une incantation.</summary>
+	[Property, Group( "Vie" )] public float InterruptDamageThreshold { get; set; } = 10f;
 	[Property, Group( "Chakra" )] public float MaxChakra { get; set; } = 100f;
 	[Property, Group( "Endurance" )] public float MaxStamina { get; set; } = 100f;
 
@@ -141,7 +144,8 @@ public sealed class NinjaStats : Component
 		if ( amount <= 0f ) return;
 
 		Health = MathF.Max( 0f, Health - amount );
-		GetComponent<JutsuCaster>()?.Interrupt();
+		// Seul un vrai coup (10 dégâts ou plus) coupe les signes : pas d'interruption en boucle avec des coups légers.
+		if ( amount >= InterruptDamageThreshold ) GetComponent<JutsuCaster>()?.Interrupt();
 		GetComponent<ReviveAction>()?.Cancel();
 
 		if ( Health <= 0f )

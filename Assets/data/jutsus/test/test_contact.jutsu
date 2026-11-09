@@ -1,1 +1,0 @@
-{"Id": "test_contact", "DisplayName": "Frappe de test", "Nature": "None", "Path": "Taijutsu", "Rank": "E", "ChakraCost": 5, "CooldownSeconds": 1, "CastSeconds": 0, "Delivery": "Contact", "Range": 90, "HitRadius": 20, "Effects": [{"Type": "Damage", "Amount": 10, "DurationSeconds": 0}]}

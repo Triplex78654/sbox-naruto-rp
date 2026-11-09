@@ -1,0 +1,107 @@
+// Blocage de Konoha : volumes simples (boîte de 50 unités) avec collisions.
+// +X = nord, +Y = ouest, +Z = haut. 1 unité = 1 pouce (~2,5 cm).
+var scene = Editor.SceneEditorSession.Active.Scene;
+var box = Model.Load( "models/dev/box.vmdl" );
+int count = 0;
+
+using ( scene.Push() )
+{
+	var old = scene.GetAllObjects( true ).FirstOrDefault( g => g.Name == "Konoha (blocage)" );
+	old?.Destroy();
+
+	var root = new GameObject( true, "Konoha (blocage)" );
+
+	GameObject Group( string name ) { var g = new GameObject( root, true, name ); return g; }
+
+	// Pose une boîte : centre au sol (x, y), taille (sx, sy, sz), posée sur z0.
+	void Block( GameObject parent, string name, float x, float y, float sx, float sy, float sz, Color tint, float z0 = 0 )
+	{
+		var g = new GameObject( parent, true, name );
+		g.WorldPosition = new Vector3( x, y, z0 + sz / 2f );
+		g.WorldScale = new Vector3( sx / 50f, sy / 50f, sz / 50f );
+		var r = g.Components.Create<ModelRenderer>();
+		r.Model = box;
+		r.Tint = tint;
+		var c = g.Components.Create<BoxCollider>();
+		c.Scale = new Vector3( 50, 50, 50 );
+		count++;
+	}
+
+	var stone = new Color( 0.62f, 0.6f, 0.55f );
+	var wall = new Color( 0.78f, 0.7f, 0.55f );
+	var wood = new Color( 0.45f, 0.3f, 0.18f );
+	var plaster = new Color( 0.9f, 0.86f, 0.76f );
+	Color[] roofs = { new Color( 0.7f, 0.2f, 0.15f ), new Color( 0.2f, 0.35f, 0.6f ), new Color( 0.25f, 0.45f, 0.25f ) };
+
+	// Place centrale (dalle fine)
+	var plaza = Group( "Place centrale" );
+	Block( plaza, "Dalle", 0, 0, 1600, 1600, 4, stone );
+
+	// Enceinte : carré de 6400, porte de 700 au sud (-X)
+	var walls = Group( "Enceinte" );
+	const float R = 3200, H = 500, T = 100, Gate = 700;
+	Block( walls, "Mur nord", R, 0, T, 2 * R + T, H, wall );
+	Block( walls, "Mur ouest", 0, R, 2 * R, T, H, wall );
+	Block( walls, "Mur est", 0, -R, 2 * R, T, H, wall );
+	var half = (2 * R - Gate) / 2f;
+	Block( walls, "Mur sud ouest", -R, Gate / 2f + half / 2f, T, half, H, wall );
+	Block( walls, "Mur sud est", -R, -(Gate / 2f + half / 2f), T, half, H, wall );
+
+	// Grande porte
+	var gate = Group( "Grande porte" );
+	Block( gate, "Pilier ouest", -R, Gate / 2f + 60, 180, 120, 700, wood );
+	Block( gate, "Pilier est", -R, -(Gate / 2f + 60), 180, 120, 700, wood );
+	Block( gate, "Linteau", -R, 0, 200, Gate + 240, 90, roofs[0], 700 );
+
+	// Tour du Hokage (nord)
+	var tower = Group( "Tour du Hokage" );
+	Block( tower, "Base", 1900, 0, 800, 800, 500, new Color( 0.85f, 0.5f, 0.25f ) );
+	Block( tower, "Étage", 1900, 0, 560, 560, 320, new Color( 0.85f, 0.5f, 0.25f ), 500 );
+	Block( tower, "Toit", 1900, 0, 760, 760, 50, roofs[0], 820 );
+
+	// Académie (ouest) et hôpital (est)
+	var academy = Group( "Académie" );
+	Block( academy, "Bâtiment", 0, 2100, 1000, 600, 380, plaster );
+	Block( academy, "Toit", 0, 2100, 1080, 680, 40, roofs[1], 380 );
+	var hospital = Group( "Hôpital" );
+	Block( hospital, "Bâtiment", 0, -2100, 1000, 600, 420, Color.White );
+	Block( hospital, "Toit", 0, -2100, 1080, 680, 40, roofs[2], 420 );
+
+	// Terrain d'entraînement (sud-ouest) avec poteaux
+	var training = Group( "Terrain d'entraînement" );
+	Block( training, "Sol", -1900, 1900, 1200, 1200, 4, new Color( 0.5f, 0.4f, 0.28f ) );
+	for ( int i = 0; i < 3; i++ )
+		Block( training, $"Poteau {i + 1}", -1900 + (i - 1) * 300, 1900, 40, 40, 180, wood, 4 );
+
+	// Maisons le long des rues (évite place, tour, académie, hôpital, terrain, axe de la porte)
+	var houses = Group( "Maisons" );
+	int n = 0;
+	for ( float x = -2600; x <= 2600; x += 650 )
+	for ( float y = -2600; y <= 2600; y += 650 )
+	{
+		if ( MathF.Abs( x ) < 1100 && MathF.Abs( y ) < 1100 ) continue;              // place
+		if ( x > 1200 && MathF.Abs( y ) < 700 ) continue;                            // tour + rue vers la place
+		if ( MathF.Abs( x ) < 800 && MathF.Abs( y ) > 1650 ) continue;               // académie / hôpital
+		if ( x < -1200 && y > 1200 ) continue;                                       // terrain
+		if ( x < -1100 && MathF.Abs( y ) < 500 ) continue;                           // rue de la porte
+		var size = 380f;
+		var height = 260f + (n % 3) * 60f;
+		Block( houses, $"Maison {n + 1}", x, y, size, size, height, plaster );
+		Block( houses, $"Toit {n + 1}", x, y, size + 50, size + 50, 30, roofs[n % 3], height );
+		n++;
+	}
+
+	// Points d'apparition sur la place
+	var spawns = Group( "Points d'apparition" );
+	foreach ( var (x, y) in new[] { (300f, 0f), (0f, 300f), (0f, -300f) } )
+	{
+		var s = new GameObject( spawns, true, "Spawn" );
+		s.WorldPosition = new Vector3( x, y, 10 );
+		s.WorldRotation = Rotation.FromYaw( 180 ); // face à la porte
+		s.Components.Create<SpawnPoint>();
+	}
+}
+
+// L'ancien point d'apparition unique du modèle est retiré (remplacé par ceux de la place).
+// (ancien point d'apparition déjà retiré)
+return $"{count} volumes";

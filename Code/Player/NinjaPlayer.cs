@@ -47,6 +47,9 @@ public sealed class NinjaPlayer : Component
 
 	static NinjaPlayer _local;
 
+	/// <summary>Un menu (panel staff...) a le clavier : pas de jutsu ni de défense. Client local seulement.</summary>
+	public static bool InputBlocked { get; set; }
+
 	protected override void OnDestroy()
 	{
 		// Déconnexion (objet détruit car orphelin) ou fin de partie : dernière sauvegarde.

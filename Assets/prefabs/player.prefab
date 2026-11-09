@@ -244,9 +244,7 @@
         "__enabled": true,
         "Flags": 0,
         "Slots": [
-          "data/jutsus/test/test_contact.jutsu",
-          "data/jutsus/test/test_projectile.jutsu",
-          "data/jutsus/test/test_zone.jutsu"
+          "data/jutsus/taijutsu/taijutsu_coup_de_poing.jutsu"
         ]
       },
       {
@@ -479,3 +477,4 @@
     ]
   }
 }
+

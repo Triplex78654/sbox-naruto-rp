@@ -9,33 +9,57 @@ Hud {
 	pointer-events: none;
 }
 
-.gauges {
+// ─── Bloc en bas à gauche : identité, jauges, défenses ───
+
+.status {
 	position: absolute;
-	left: 32px;
-	bottom: 32px;
+	left: 28px;
+	bottom: 28px;
+	width: 320px;
 	flex-direction: column;
-	gap: 6px;
-	width: 300px;
+	gap: 5px;
+	padding: 12px;
+	background-color: rgba(10, 12, 18, 0.55);
+	border-left: 3px solid #c0392b;
+	border-radius: 6px;
+}
+
+.identity {
+	flex-direction: column;
+	margin-bottom: 4px;
+
+	.name { font-size: 17px; font-weight: bold; text-shadow: 0 1px 2px black; }
+	.sub { font-size: 12px; opacity: 0.75; }
 }
 
 .gauge {
-	height: 20px;
-	background-color: rgba(0, 0, 0, 0.6);
-	border-radius: 4px;
-	overflow: hidden;
+	height: 18px;
 	align-items: center;
+	background-color: rgba(0, 0, 0, 0.55);
+	border-radius: 3px;
+	overflow: hidden;
 
 	.fill {
 		position: absolute;
 		left: 0;
 		top: 0;
 		bottom: 0;
+		transition: width 0.2s ease-out;
+	}
+
+	.label {
+		margin-left: 8px;
+		z-index: 1;
+		font-size: 12px;
+		font-weight: bold;
+		text-shadow: 0 1px 2px black;
+		flex-grow: 1;
 	}
 
 	.value {
-		margin-left: 8px;
+		margin-right: 8px;
 		z-index: 1;
-		font-size: 13px;
+		font-size: 12px;
 		text-shadow: 0 1px 2px black;
 	}
 
@@ -44,87 +68,108 @@ Hud {
 	&.stamina .fill { background-color: #27ae60; }
 }
 
-.state {
-	position: absolute;
-	top: 40%;
-	left: 0;
-	right: 0;
-	justify-content: center;
-	font-size: 28px;
-	font-weight: bold;
-	text-shadow: 0 2px 4px black;
+.defense {
+	flex-wrap: wrap;
+	gap: 5px;
+	margin-top: 4px;
 
-	&.downed { color: #ff6b6b; }
+	.tag {
+		padding: 2px 7px;
+		font-size: 11px;
+		background-color: rgba(255, 255, 255, 0.08);
+		border-radius: 3px;
+
+		&.guard { background-color: rgba(241, 196, 15, 0.35); }
+		&.ready { background-color: rgba(46, 134, 222, 0.5); }
+		&.off { opacity: 0.45; }
+	}
 }
+
+// ─── Barre de jutsus en bas au centre ───
 
 .jutsus {
 	position: absolute;
-	bottom: 32px;
-	left: 0;
-	right: 0;
+	bottom: 28px;
+	left: 380px;
+	right: 380px;
 	justify-content: center;
-	gap: 8px;
+	gap: 6px;
 }
 
 .slot {
-	width: 120px;
-	height: 72px;
-	padding: 4px;
+	width: 104px;
+	height: 84px;
 	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	background-color: rgba(0, 0, 0, 0.6);
-	border: 2px solid rgba(255, 255, 255, 0.2);
+	padding: 6px 7px 5px 7px;
+	background-color: rgba(10, 12, 18, 0.7);
+	border: 1px solid rgba(255, 255, 255, 0.12);
 	border-radius: 6px;
+	overflow: hidden;
 
-	&.casting { border-color: #f1c40f; }
-	&.cooldown { opacity: 0.5; }
+	.strip {
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		height: 3px;
+	}
+
+	.top {
+		justify-content: space-between;
+		font-size: 11px;
+
+		.key { font-weight: bold; opacity: 0.9; }
+		.rank { opacity: 0.6; }
+	}
+
+	.name {
+		flex-grow: 1;
+		margin-top: 2px;
+		font-size: 11px;
+		line-height: 13px;
+	}
+
+	.cost {
+		font-size: 10px;
+		color: #74b9ff;
+
+		&.low { color: #ff7675; }
+	}
 
 	.cd {
 		position: absolute;
-		top: 2px;
-		right: 6px;
-		font-size: 16px;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		justify-content: center;
+		align-items: center;
+		font-size: 26px;
 		font-weight: bold;
+		background-color: rgba(0, 0, 0, 0.55);
+		text-shadow: 0 2px 4px black;
 	}
 
-	.key { font-size: 12px; opacity: 0.7; }
-	.name { font-size: 12px; text-align: center; white-space: nowrap; }
-	.cost { font-size: 11px; color: #74b9ff; }
+	&.casting { border-color: #f1c40f; }
+	&.unavailable .name, &.unavailable .top { opacity: 0.5; }
 }
 
-.defense {
+// ─── Centre de l'écran ───
+
+.cast, .revive {
 	position: absolute;
-	left: 32px;
-	bottom: 110px;
-	gap: 6px;
-
-	.tag {
-		padding: 2px 8px;
-		font-size: 12px;
-		background-color: rgba(0, 0, 0, 0.6);
-		border-radius: 4px;
-
-		&.guard { color: #f1c40f; }
-		&.sub { color: #74b9ff; }
-		&.off { opacity: 0.5; }
-	}
-}
-
-.revive {
-	position: absolute;
-	top: 55%;
+	top: 62%;
 	left: 0;
 	right: 0;
 	flex-direction: column;
 	align-items: center;
 	gap: 4px;
 
-	.text { font-size: 16px; text-shadow: 0 1px 2px black; }
+	.text { font-size: 15px; text-shadow: 0 1px 3px black; }
 
 	.bar {
-		width: 240px;
-		height: 10px;
+		width: 260px;
+		height: 8px;
 		background-color: rgba(0, 0, 0, 0.6);
 		border-radius: 4px;
 		overflow: hidden;
@@ -133,13 +178,28 @@ Hud {
 	}
 }
 
-.notice {
+.revive { top: 68%; }
+
+.state {
 	position: absolute;
-	top: 80px;
+	top: 38%;
 	left: 0;
 	right: 0;
 	justify-content: center;
-	font-size: 18px;
-	text-shadow: 0 2px 4px black;
+	font-size: 28px;
+	font-weight: bold;
+	text-shadow: 0 2px 6px black;
+
+	&.downed { color: #ff6b6b; }
+}
+
+.notice {
+	position: absolute;
+	top: 70px;
+	left: 0;
+	right: 0;
+	justify-content: center;
+	font-size: 17px;
 	color: #f1c40f;
+	text-shadow: 0 2px 4px black;
 }

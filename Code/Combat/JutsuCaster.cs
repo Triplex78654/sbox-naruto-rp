@@ -39,7 +39,7 @@ public sealed class JutsuCaster : Component
 
 	protected override void OnUpdate()
 	{
-		if ( IsProxy ) return;
+		if ( IsProxy || NinjaPlayer.InputBlocked ) return;
 
 		for ( var i = 0; i < SlotActions.Length; i++ )
 		{
@@ -61,6 +61,7 @@ public sealed class JutsuCaster : Component
 		if ( !CanCast( jutsu ) ) return;
 
 		Casting = jutsu;
+		BroadcastCastFx( jutsu, Controller.EyePosition - Vector3.Up * 20f );
 		_castAim = aim.Normal;
 		_castEnd = MathF.Max( 0f, jutsu.CastSeconds );
 	}
@@ -128,15 +129,18 @@ public sealed class JutsuCaster : Component
 		switch ( jutsu.Delivery )
 		{
 			case JutsuDeliveryType.Self:
+				BroadcastImpactFx( jutsu, WorldPosition + Vector3.Up * 40f, 48f * jutsu.FxSize );
 				Apply( jutsu, Stats );
 				break;
 
 			case JutsuDeliveryType.Contact:
 				var target = TraceTarget( eye, eye + _castAim * jutsu.Range, jutsu.HitRadius );
+				BroadcastImpactFx( jutsu, target is not null ? target.WorldPosition + Vector3.Up * 40f : eye + _castAim * jutsu.Range, 32f * jutsu.FxSize );
 				if ( target is not null ) Apply( jutsu, target );
 				break;
 
 			case JutsuDeliveryType.Area:
+				BroadcastImpactFx( jutsu, WorldPosition + Vector3.Up * 20f, jutsu.Range * jutsu.FxSize );
 				foreach ( var other in Scene.GetAllComponents<NinjaStats>() )
 				{
 					if ( other == Stats ) continue;
@@ -154,6 +158,7 @@ public sealed class JutsuCaster : Component
 
 			case JutsuDeliveryType.Projectile:
 				_projectiles.Add( new Projectile { Jutsu = jutsu, Position = eye, Direction = _castAim } );
+				BroadcastProjectileFx( jutsu, eye, _castAim );
 				break;
 		}
 	}
@@ -179,6 +184,7 @@ public sealed class JutsuCaster : Component
 
 			if ( tr.Hit )
 			{
+				BroadcastImpactFx( p.Jutsu, tr.HitPosition, 40f * p.Jutsu.FxSize );
 				var target = tr.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>();
 				if ( target is not null ) Apply( p.Jutsu, target );
 				_projectiles.RemoveAt( i );
@@ -189,6 +195,17 @@ public sealed class JutsuCaster : Component
 			}
 		}
 	}
+
+	// ─── Effets visuels (hôte -> tout le monde, purement décoratif) ──────────
+
+	[Rpc.Broadcast( NetFlags.HostOnly | NetFlags.Unreliable )]
+	void BroadcastCastFx( JutsuDefinition jutsu, Vector3 position ) => JutsuFx.Cast( jutsu, position );
+
+	[Rpc.Broadcast( NetFlags.HostOnly | NetFlags.Unreliable )]
+	void BroadcastImpactFx( JutsuDefinition jutsu, Vector3 position, float radius ) => JutsuFx.Burst( jutsu, position, radius );
+
+	[Rpc.Broadcast( NetFlags.HostOnly )]
+	void BroadcastProjectileFx( JutsuDefinition jutsu, Vector3 start, Vector3 direction ) => JutsuFx.Projectile( jutsu, start, direction, GameObject );
 
 	NinjaStats TraceTarget( Vector3 from, Vector3 to, float radius )
 	{

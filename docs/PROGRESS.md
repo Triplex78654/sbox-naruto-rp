@@ -4,7 +4,9 @@ Fichier tenu à jour par Claude après chaque tâche. À lire en premier à chaq
 
 ## Statut actuel
 
-Phase : **MVP — fondations**. Joueur multijoueur, jauges et système de jutsus en place et testés dans l'éditeur (2 joueurs).
+Phase : **MVP terminé (version de test)**. Reste à faire tester à plusieurs, mettre le backend en ligne, et remplacer les volumes / effets provisoires par de vrais assets.
+
+Ancienne phase : MVP — fondations. Joueur multijoueur, jauges et système de jutsus en place et testés dans l'éditeur (2 joueurs).
 
 **Claude pilote l'éditeur** via `sbox-cli` (voir `docs/sbox-reference.md` §11) : compilation, mode Play, 2e client local, tests C# en direct. Garder l'éditeur ouvert sur le projet pendant les sessions.
 
@@ -36,14 +38,15 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 7. [~] **Backend Cloudflare** : fait **en local** dans `backend/` (Worker TypeScript + D1 : persos, jutsus appris, historique des grades, sanctions, logs, staff). Clé serveur en Bearer, droits staff revérifiés, 15 tests de routes OK (`npm test`), relu. **Reste** : mise en ligne quand l'utilisateur aura un compte Cloudflare (étapes dans `backend/README.md`).
 8. [x] **Persistance** : `IApiClient` (+ `WorkerApiClient`, `MemoryApiClient`, `ApiConfig`). À la connexion : chargement du perso (nom, village, grade, médic, ryô, jutsus appris → barre de jutsus), joueur banni refusé, API indisponible → refusé (jamais de partie sans données). Sauvegarde toutes les 2 min et à la déconnexion. Logs `downed` / `revived`. Testé de bout en bout dans l'éditeur contre le Worker local (port 8080), relu (corrections : sauvegardes dans l'ordre, sauvegarde de tous à l'arrêt, pas de double objet pour un même joueur, serveur dédié sans config refuse les connexions).
 9. [x] **Création de perso** : à la connexion, écran de choix (2 emplacements) puis assistant en 6 étapes (nom, village, apparence, nature, voie, clan). Filtre canon côté UI, hôte et Worker. Choix et création par RPC statiques validés par l'hôte (`GameManager.Characters.cs`). Testé dans l'éditeur et contre le Worker local. **Apparence** : avatar s&box pour l'instant (étape affichée comme « plus tard »). Relu ; corrigé : contournement du filtre (lettres cyrilliques, « N'aruto »), joueur bloqué si le rechargement échoue après création. Clan original : colonne `clan_validated` (migration 0002), **validation par le staff à faire avec la tâche 11**.
-10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance et relu (jauges, barre de jutsus avec coût et cooldown, états, garde / substitution, barre de relève visible par le médic et le blessé). **Reste** : style définitif.
+10. [x] **HUD** : bloc identité + jauges libellées + touches de défense (nom réel de la touche selon le clavier), barre de jutsus (bande de couleur de la nature, rang, coût en rouge si chakra insuffisant, cooldown), barre d'incantation, relève, messages staff. Les menus (perso, staff) ne capturent plus la souris ni n'assombrissent l'écran une fois fermés.
 11. [x] **Staff de base** : panel **F1** (`StaffPanel.razor`) réservé aux rangs modérateur / staff / admin (chargés depuis la base). Aller vers / ramener, suivre en spectateur, invisibilité (intouchable, ne peut pas combattre), avertir / kick / ban temporaire (motif obligatoire), grade, déblocage de jutsu (contrôle grade + nature + voie), médic-nin, validation ou refus de clan. Tout passe par des RPC validées par l'hôte (`StaffCommands.cs`), les actions en base sont revérifiées par le Worker et loggées. Testé à 2 joueurs. Relu ; corrigé : hiérarchie des sanctions (pas sur soi ni sur un rang égal ou supérieur, aussi côté Worker), staff invisible traversé par les attaques et sans relève, anti double clic. Limite : un rang retiré en base reste actif jusqu'à la reconnexion du staff.
-12. [ ] **Contenu MVP** : 3 jutsus par nature + médical, taijutsu, kenjutsu (fiches de données).
-13. [ ] **Village Konoha** : map ou blocage avec assets existants (voir avec l'utilisateur qui fait la map).
+12. [x] **Contenu MVP** : 24 fiches dans `Assets/data/jutsus/<voie>/` (3 par nature + médical, taijutsu, kenjutsu, rangs E à B). Effets visuels construits en code (`Combat/JutsuFx.cs` : lueur d'incantation, boule de projectile, éclat d'impact / de zone à la couleur de la nature) + sons du moteur. Fiches de test supprimées. Règle de publication `data/jutsus/*`. Relu et rééquilibré (coups E : cooldown 2,5 s ; un coup de moins de 10 dégâts n'interrompt plus les signes).
+13. [x] **Village Konoha** (blocage) : `scenes/konoha.scene`, scène de démarrage. Enceinte avec grande porte au sud, place centrale (3 points d'apparition), tour du Hokage au nord, académie, hôpital, terrain d'entraînement, ~40 maisons. Volumes simples avec collisions, à remplacer par de vrais modèles. Script de génération : `docs/konoha-blocage.cs.txt` (à lancer avec `sbox-cli --call run_csharp`, puis écrire la scène, voir référence §11).
 
 ## À tester par l'utilisateur
 
-- Lancer Play : l'écran **Choisis ton personnage** s'affiche. Créer un perso (essayer un nom canon pour voir le refus), puis jouer. Avec l'API en mémoire, un perso créé reçoit les 3 jutsus de test et le statut médic (les vrais persos commencent élèves, sans jutsu).
+- **Redémarre l'éditeur avant de tester** : il garde en mémoire d'anciennes valeurs de fiches et les fiches de test supprimées (limite de l'éditeur, voir référence §11).
+- Lancer Play (scène Konoha) : l'écran **Choisis ton personnage** s'affiche. Créer un perso (essayer un nom canon pour voir le refus), puis jouer. Avec l'API en mémoire, un perso créé reçoit les 3 jutsus de test et le statut médic (les vrais persos commencent élèves, sans jutsu).
 - En jeu, appuyer sur **1**, **2**, **3** : le HUD en bas montre les jauges et les cooldowns ; pas encore d'effet visuel des jutsus, mais la console affiche `[Combat] ... lance ...`. Courir (Shift) longtemps : la course doit s'arrêter quand l'endurance est vide.
 - Touches de défense : **clic droit** maintenu (garde), **X** (esquive dans la direction ZQSD), **Z** (substitution). Le HUD affiche Garde / Substitution prête / cooldown. Pour la relève il faut 2 joueurs : un à terre, l'autre maintient **E** en le regardant.
 - Plus tard, avec un ami : vérifier que les jutsus le touchent bien à distance réelle (ping).
@@ -68,3 +71,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : tâche 8 faite. Vérifié : dans l'éditeur, HTTP vers localhost seulement sur 80/443/8080/8443.
 - 2026-11-09 : tâche 9 (choix + création de perso) faite.
 - 2026-11-09 : tâche 11 (staff de base) faite. Nouvelle route Worker `POST /characters/:id/clan`. Touche F1 ajoutée à `Input.config`.
+- 2026-11-09 : tâches 10, 12, 13 faites. Toute la roadmap MVP est cochée. Prochaines pistes (V1 du GDD) : zones protégées du village, Suna et Kumo, 2e nature au chûnin, missions, ryô, apparence du perso, vrais modèles et effets.
