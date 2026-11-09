@@ -101,6 +101,9 @@ public sealed class ReviveAction : Component
 
 		Log.Info( $"[Combat] {GameObject.Name} relève {ReviveTarget.GameObject.Name}" );
 		ReviveTarget.Revive( ReviveHealthFraction );
+		var patient = ReviveTarget.GetComponent<NinjaPlayer>();
+		Core.GameManager.Current?.LogEvent( "revived", Ninja.SteamId, patient?.SteamId,
+			new { medic = Ninja.CharacterName, patient = patient?.CharacterName } );
 		Cancel();
 	}
 }

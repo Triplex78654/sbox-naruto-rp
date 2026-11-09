@@ -217,6 +217,9 @@ public static class ApiClientFactory
 
 ## 6. La clé secrète (point à trancher tôt)
 
+**Décision (9 nov.)** : le code du client API (`Code/Network/Api/WorkerApiClient.cs`) est un fichier normal, il ne contient aucun secret. L'URL et la clé sont dans `api_config.json` dans `FileSystem.Data` de la machine hôte (option 1 ci-dessous), lu par `ApiConfig.CreateClient()` sur l'hôte uniquement. Sans ce fichier : `MemoryApiClient` (éditeur). Avantage : on teste le vrai client dans l'éditeur contre `wrangler dev`. Reste à vérifier : chemin de `FileSystem.Data` sur le serveur dédié.
+
+
 Contraintes vérifiées : pas d'`Environment.GetEnvironmentVariable` ni de `System.IO.File` dans le code du jeu ; le code non-serveur est envoyé aux clients ; `*.Server.cs` ne l'est pas.
 
 Options, de la plus simple à la plus propre :

@@ -14,7 +14,7 @@ public sealed class JutsuCaster : Component
 
 	/// <summary>
 	/// Jutsus équipés, un par touche (1 à 9).
-	/// shortcut: réglés dans le prefab pour tester ; viendront des jutsus appris en base (tâche 8).
+	/// Remplis par GameManager à partir des jutsus appris en base (ceux du prefab servent seulement de valeur par défaut).
 	/// </summary>
 	[Property, Sync( SyncFlags.FromHost )] public NetList<JutsuDefinition> Slots { get; set; } = new();
 

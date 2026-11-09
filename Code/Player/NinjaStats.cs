@@ -148,6 +148,9 @@ public sealed class NinjaStats : Component
 		{
 			SetDowned( true );
 			Log.Info( $"[Player] {GameObject.Name} mis à terre par {attacker?.Name ?? "inconnu"}" );
+			var by = attacker?.Components.GetInAncestorsOrSelf<NinjaPlayer>();
+			GameManager.Current?.LogEvent( "downed", by?.SteamId, GetComponent<NinjaPlayer>()?.SteamId,
+				new { victim = GetComponent<NinjaPlayer>()?.CharacterName, attacker = by?.CharacterName } );
 		}
 	}
 

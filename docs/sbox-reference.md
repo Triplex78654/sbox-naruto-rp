@@ -535,7 +535,7 @@ Sérialisation : `Json.Serialize( obj )`, `Json.Deserialize<T>( string )` (`Util
 ### 6.2 Restrictions (vérifiées dans `Http.cs`)
 
 - Schémas : `http`, `https`, `ws`, `wss`.
-- **Pas d'adresse IP directe** dans l'URL, et le domaine **ne doit pas résoudre vers une IP privée/loopback**. Exception : `localhost` sur ports 80/443/8080/8443, et tout est permis si éditeur ou serveur dédié lancé avec `-allowlocalhttp`, ou jeu standalone.
+- **Pas d'adresse IP directe** dans l'URL, et le domaine **ne doit pas résoudre vers une IP privée/loopback**. Exception : `localhost` sur ports 80/443/8080/8443, ou serveur dédié lancé avec `-allowlocalhttp`, ou jeu standalone. **Vérifié (9 nov.) : dans l'éditeur, `http://localhost:8788` est refusé (« Access ... is not allowed »), `http://localhost:8080` marche.** → pour tester contre `wrangler dev`, utiliser le port 8080.
 - **Pas de liste blanche de domaines** : n'importe quel domaine public (ex. `*.workers.dev`) est accepté.
 - En-têtes interdits : `User-Agent` (forcé à `facepunch-sbox`), `Referer` (forcé), `Host`, `Origin`, `Content-Length`, `Connection`, tout `Proxy-*` et `Sec-*`, etc. **`Authorization` et les en-têtes personnalisés (`X-Api-Key`) sont autorisés.**
 - Pas de requêtes synchrones. Redirections suivies manuellement : `Authorization` **supprimé** à chaque redirection, pas de passage https → http. → Appeler directement l'URL finale du Worker.
@@ -662,6 +662,10 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - **Piège prefab (bis)** : à chaque modification du `.prefab` sur disque, le premier rechargement casse le cache ; une 2e modification (même un saut de ligne) le répare. Vérifier avec `ResourceLibrary.Get<PrefabFile>( path ).GetScene()`.
 - **Nouvelles actions d'input** : ajoutées dans `ProjectSettings/Input.config` (JSON, champs `Name`, `GroupName`, `Title`, `KeyboardCode`, `GamepadCode`), elles ne sont prises en compte qu'au redémarrage de l'éditeur (le runtime `Input` lit la config au chargement du projet). `Input.ReadConfig( InputSettings )` existe mais n'est pas public (appelable par réflexion depuis `run_csharp` pour éviter le redémarrage).
 - `Rigidbody.Velocity` est modifiable : utilisé pour l'élan d'esquive, appliqué par le propriétaire.
+
+- **`FileSystem.Data` dans l'éditeur** : `D:\SteamLibrary\steamapps\common\sbox\data\local\nrp#local` (projet local `nrp`). `FileSystem.Data.WriteJson / ReadJson / DeleteFile / FileExists / GetFullPath` vérifiés.
+- **`Http.RequestAsync`** + `Http.CreateJsonContent( objetAnonyme )` + `[JsonPropertyName]` (System.Text.Json) + `Json.Deserialize<T>` : vérifiés de bout en bout contre le Worker local (chargement, sauvegarde, logs).
+- `Connection.Kick( raison )` et `Connection.IsActive` : vérifiés (joueur banni refusé).
 
 ### Piloter l'éditeur (`sbox-cli`)
 
