@@ -59,6 +59,10 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 - **Déplacements** : maintenir Shift (course), puis double appui sur Shift maintenu (course ninja, tag « Course ninja » dans le HUD, endurance qui fond plus vite), Espace pendant la course ninja (bond). Touche 6 = Shunshin. À 2 instances : vérifier que l'autre joueur voit le bond et le Shunshin sans effet élastique.
 - **Panel staff** : dans l'éditeur (API en mémoire), tu es admin. Appuie sur **F1** en jeu. Pour un vrai serveur, ajouter les staffs en base (`backend/README.md`).
 
+## Plans des villages (validation 2D)
+
+Plans modifiables de Konoha, Suna et Kumo : https://claude.ai/artifact/7pKR4Tj3yL5A21MUd7kkeG (privé, à l'utilisateur). Les éléments sont dans la base de la page, collection `elements`, un document par élément (`<village>-<code>`) : nom, groupe, statut, description et forme en **mètres** (`circle` x,y,r · `rect` x,y,w,h,rot · `ring` x,y,r,w,a0,a1 · `line` pts,w · `houses` n). Repère = repère local du groupe « <Village> (blocage) » (×40 pour les unités), -Y vers le centre du monde. Konoha reprend le blocage actuel ; Suna et Kumo sont des propositions. **Avant de bloquer Suna / Kumo : relire ces plans** (outil `ArtifactData`, action `list`).
+
 ## Questions en attente pour l'utilisateur
 
 - Mise en ligne du backend : quand l'utilisateur veut, avec son compte Cloudflare gratuit (`backend/README.md`).
@@ -80,3 +84,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : monde v1 (pétale de Konoha + centre commun). Décision avec l'utilisateur : une seule carte (serveur unique tant que < 64 joueurs), terres neutres qui se rejoignent au centre. Connexion auto au serveur (QueryLobbies + Connect) prévue après le test du serveur dédié.
 - 2026-11-09 : **déplacements ninja** codés (compile, PAS encore testés en jeu ni relus) : marche par défaut, Shift = course, double Shift maintenu = course ninja (×1,7, 22 endurance/s mesurés par l'hôte), Espace en course ninja = bond (5 chakra, recharge 1 s, validé par l'hôte), jutsu `shunshin` (type Movement, 15 m, s'arrête avant les murs, à débloquer par le staff). Composant `Player/NinjaMovement.cs` ajouté au prefab. **Prochaine session : tester ces déplacements, faire relire, puis pétales de Suna et Kumo.**
 - 2026-11-09 : déplacements ninja testés en jeu et relus (bond réparé, Shunshin posé sur le sol, contrôles hôte, signalement de vitesse suspecte). **Prochaine tâche : pétale de Suna (désert), puis Kumo (montagnes).**
+- 2026-11-09 : plans 2D modifiables des 3 villages publiés (lien ci-dessus). En attente de validation par l'utilisateur avant le blocage de Suna.
