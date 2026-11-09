@@ -18,6 +18,14 @@ public interface IApiClient
 	/// <summary>Sauvegarde de l'état de jeu modifiable (ryô).</summary>
 	Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default );
 
+	// Actions staff : staffSteamId = staff connecté, revérifié par le Worker. Lèvent ApiException (UserMessage) si refusé.
+	Task SetGradeAsync( long characterId, string grade, string reason, ulong staffSteamId, CancellationToken ct = default );
+	Task UnlockJutsuAsync( long characterId, string jutsuId, ulong staffSteamId, CancellationToken ct = default );
+	Task SetMedicAsync( long characterId, bool isMedic, ulong staffSteamId, CancellationToken ct = default );
+	Task ValidateClanAsync( long characterId, bool approved, ulong staffSteamId, CancellationToken ct = default );
+	/// <summary>type : warn, kick, ban. durationMinutes null = permanent (ban, admin seulement).</summary>
+	Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staffSteamId, CancellationToken ct = default );
+
 	/// <summary>Log libre (mise à terre, combat...). Les erreurs sont seulement journalisées.</summary>
 	Task LogAsync( string type, ulong? actorSteamId, ulong? targetSteamId, object data, CancellationToken ct = default );
 }

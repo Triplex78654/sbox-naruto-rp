@@ -113,6 +113,18 @@ test('jutsus et médic débloqués par le staff', async () => {
 	assert.deepEqual(c.jutsus, ['raiton_decharge']);
 });
 
+test('validation de clan par le staff', async () => {
+	const r = await call('POST', '/characters', { ...perso, slot: 2, clan: 'Kurogane' });
+	assert.equal(r.status, 201);
+	assert.equal((await call('POST', `/characters/${r.body.id}/clan`, { approved: true, staffSteamId: MODO })).status, 403);
+	assert.equal((await call('POST', `/characters/${r.body.id}/clan`, { approved: true, staffSteamId: STAFF })).status, 200);
+	const c = (await call('GET', `/players/${PLAYER}`)).body.characters.find(x => x.id === r.body.id);
+	assert.equal(c.clan_validated, true);
+	assert.equal((await call('POST', `/characters/${r.body.id}/clan`, { approved: false, staffSteamId: STAFF })).status, 200);
+	assert.equal((await call('POST', `/characters/${r.body.id}/clan`, { approved: true, staffSteamId: STAFF })).status, 409, 'clan retiré');
+	assert.equal((await call('POST', `/characters/${r.body.id}/death`, { staffSteamId: STAFF, reason: 'nettoyage du test' })).status, 200);
+});
+
 test('retrait de jutsu', async () => {
 	assert.equal((await call('DELETE', `/characters/${id}/jutsus/raiton_decharge?staffSteamId=${STAFF}`)).status, 200);
 	assert.deepEqual((await call('GET', `/players/${PLAYER}`)).body.characters[0].jutsus, []);
@@ -121,6 +133,8 @@ test('retrait de jutsu', async () => {
 test('sanctions : modérateur peut avertir mais pas bannir ; ban actif renvoyé', async () => {
 	assert.equal((await call('POST', '/sanctions', { type: 'warn', steamId: PLAYER, reason: 'HRP en zone RP', staffSteamId: MODO })).status, 201);
 	assert.equal((await call('POST', '/sanctions', { type: 'ban', steamId: PLAYER, reason: 'triche', staffSteamId: MODO })).status, 403);
+	assert.equal((await call('POST', '/sanctions', { type: 'kick', steamId: STAFF, reason: 'modo contre staff', staffSteamId: MODO })).status, 403, 'hiérarchie');
+	assert.equal((await call('POST', '/sanctions', { type: 'warn', steamId: MODO, reason: 'soi-même', staffSteamId: MODO })).status, 403, 'soi-même');
 	assert.equal((await call('POST', '/sanctions', { type: 'ban', steamId: PLAYER, reason: 'triche', staffSteamId: STAFF, durationMinutes: 60 })).status, 201);
 	const r = await call('GET', `/players/${PLAYER}`);
 	assert.equal(r.body.activeBan.reason, 'triche');

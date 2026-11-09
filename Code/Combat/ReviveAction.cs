@@ -75,6 +75,7 @@ public sealed class ReviveAction : Component
 		if ( !Ninja.IsMedic ) return false;
 		if ( Stats.IsDowned || Stats.IsStunned ) return false;
 		if ( GetComponent<NinjaDefense>()?.IsGuarding == true || GetComponent<JutsuCaster>()?.Casting is not null ) return false;
+		if ( GetComponent<Staff.StaffCommands>()?.IsInvisible == true ) return false;
 		return target.WorldPosition.Distance( WorldPosition ) <= ReviveRange;
 	}
 

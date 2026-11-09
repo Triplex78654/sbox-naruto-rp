@@ -71,6 +71,7 @@ public sealed class JutsuCaster : Component
 		if ( Casting is not null ) return false;
 		if ( Stats.IsDowned || Stats.IsStunned ) return false;
 		if ( GetComponent<NinjaDefense>()?.IsGuarding == true ) return false;
+		if ( GetComponent<Staff.StaffCommands>()?.IsInvisible == true ) return false; // staff en surveillance
 		if ( Stats.Chakra < jutsu.ChakraCost ) return false;
 		if ( _cooldowns.TryGetValue( jutsu, out var cd ) && !cd ) return false;
 		return true;
@@ -144,6 +145,7 @@ public sealed class JutsuCaster : Component
 					// Pas à travers les murs : le rayon vers le torse doit toucher la cible elle-même.
 					var los = Scene.Trace.Ray( eye, other.WorldPosition + Vector3.Up * 40f )
 						.IgnoreGameObjectHierarchy( GameObject )
+						.WithoutTags( Core.NetConstants.TagInvisible )
 						.Run();
 					if ( los.Hit && los.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>() == other )
 						Apply( jutsu, other );
@@ -169,6 +171,7 @@ public sealed class JutsuCaster : Component
 			var tr = Scene.Trace.Ray( p.Position, next )
 				.Radius( p.Jutsu.HitRadius )
 				.IgnoreGameObjectHierarchy( GameObject )
+				.WithoutTags( Core.NetConstants.TagInvisible )
 				.Run();
 
 			p.Position = next;
@@ -192,6 +195,7 @@ public sealed class JutsuCaster : Component
 		var tr = Scene.Trace.Ray( from, to )
 			.Radius( radius )
 			.IgnoreGameObjectHierarchy( GameObject )
+			.WithoutTags( Core.NetConstants.TagInvisible )
 			.Run();
 
 		return tr.Hit ? tr.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>() : null;
@@ -199,6 +203,9 @@ public sealed class JutsuCaster : Component
 
 	void Apply( JutsuDefinition jutsu, NinjaStats target )
 	{
+		// Un staff invisible n'est jamais touché.
+		if ( target.GetComponent<Staff.StaffCommands>()?.IsInvisible == true ) return;
+
 		// Esquive ou substitution : tout le coup hostile est évité (dégâts et états). Jamais pour un soin ou sur soi.
 		var defense = target.GetComponent<NinjaDefense>();
 		var hostile = target != Stats && jutsu.Effects.Any( e => e.Type != JutsuEffectType.Heal );

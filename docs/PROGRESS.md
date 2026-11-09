@@ -37,7 +37,7 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 8. [x] **Persistance** : `IApiClient` (+ `WorkerApiClient`, `MemoryApiClient`, `ApiConfig`). À la connexion : chargement du perso (nom, village, grade, médic, ryô, jutsus appris → barre de jutsus), joueur banni refusé, API indisponible → refusé (jamais de partie sans données). Sauvegarde toutes les 2 min et à la déconnexion. Logs `downed` / `revived`. Testé de bout en bout dans l'éditeur contre le Worker local (port 8080), relu (corrections : sauvegardes dans l'ordre, sauvegarde de tous à l'arrêt, pas de double objet pour un même joueur, serveur dédié sans config refuse les connexions).
 9. [x] **Création de perso** : à la connexion, écran de choix (2 emplacements) puis assistant en 6 étapes (nom, village, apparence, nature, voie, clan). Filtre canon côté UI, hôte et Worker. Choix et création par RPC statiques validés par l'hôte (`GameManager.Characters.cs`). Testé dans l'éditeur et contre le Worker local. **Apparence** : avatar s&box pour l'instant (étape affichée comme « plus tard »). Relu ; corrigé : contournement du filtre (lettres cyrilliques, « N'aruto »), joueur bloqué si le rechargement échoue après création. Clan original : colonne `clan_validated` (migration 0002), **validation par le staff à faire avec la tâche 11**.
 10. [~] **HUD** : `Code/UI/Hud.razor` fait en avance et relu (jauges, barre de jutsus avec coût et cooldown, états, garde / substitution, barre de relève visible par le médic et le blessé). **Reste** : style définitif.
-11. [ ] **Staff de base** : rangs staff, téléportation, spectateur, kick, logs envoyés au Worker.
+11. [x] **Staff de base** : panel **F1** (`StaffPanel.razor`) réservé aux rangs modérateur / staff / admin (chargés depuis la base). Aller vers / ramener, suivre en spectateur, invisibilité (intouchable, ne peut pas combattre), avertir / kick / ban temporaire (motif obligatoire), grade, déblocage de jutsu (contrôle grade + nature + voie), médic-nin, validation ou refus de clan. Tout passe par des RPC validées par l'hôte (`StaffCommands.cs`), les actions en base sont revérifiées par le Worker et loggées. Testé à 2 joueurs. Relu ; corrigé : hiérarchie des sanctions (pas sur soi ni sur un rang égal ou supérieur, aussi côté Worker), staff invisible traversé par les attaques et sans relève, anti double clic. Limite : un rang retiré en base reste actif jusqu'à la reconnexion du staff.
 12. [ ] **Contenu MVP** : 3 jutsus par nature + médical, taijutsu, kenjutsu (fiches de données).
 13. [ ] **Village Konoha** : map ou blocage avec assets existants (voir avec l'utilisateur qui fait la map).
 
@@ -49,6 +49,8 @@ Dossier du projet : `C:\Users\Estam\Documents\sbox-naruto-rp\nrp` (le `.sbproj` 
 - Plus tard, avec un ami : vérifier que les jutsus le touchent bien à distance réelle (ping).
 
 - **Tester avec la vraie base en local** (optionnel) : dans `backend/`, `npx wrangler dev --port 8080 --persist-to .wrangler/editor-state --var SERVER_KEY:cle-editeur-locale`, puis créer `api_config.json` dans `D:\SteamLibrary\steamapps\common\sbox\data\local\nrp#local` avec `{"BaseUrl":"http://localhost:8080","ServerKey":"cle-editeur-locale"}`. **Le supprimer après**, sinon le jeu refuse de te faire apparaître quand le Worker est arrêté. Sans ce fichier, le jeu utilise un perso de test en mémoire.
+
+- **Panel staff** : dans l'éditeur (API en mémoire), tu es admin. Appuie sur **F1** en jeu. Pour un vrai serveur, ajouter les staffs en base (`backend/README.md`).
 
 ## Questions en attente pour l'utilisateur
 
@@ -65,3 +67,4 @@ Voir « Questions ouvertes » dans `docs/GDD.md`.
 - 2026-11-09 : tâche 7 en local (Worker + D1 + tests). Le dossier `backend/` n'est pas publié avec le jeu (vérifié). Prochaine : tâche 8, brancher le serveur de jeu sur l'API (`IApiClient` + client mémoire pour l'éditeur).
 - 2026-11-09 : tâche 8 faite. Vérifié : dans l'éditeur, HTTP vers localhost seulement sur 80/443/8080/8443.
 - 2026-11-09 : tâche 9 (choix + création de perso) faite.
+- 2026-11-09 : tâche 11 (staff de base) faite. Nouvelle route Worker `POST /characters/:id/clan`. Touche F1 ajoutée à `Input.config`.

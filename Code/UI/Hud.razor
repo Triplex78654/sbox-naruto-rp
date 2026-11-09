@@ -36,6 +36,11 @@
 			</div>
 		}
 
+		@if ( Notice is not null )
+		{
+			<div class="notice">@Notice</div>
+		}
+
 		@if ( Stats.IsDowned )
 		{
 			<div class="state downed">À terre — attendez un médic-nin</div>
@@ -72,6 +77,16 @@
 	NinjaStats Stats => NinjaPlayer.Local?.GetComponent<NinjaStats>();
 	JutsuCaster Caster => NinjaPlayer.Local?.GetComponent<JutsuCaster>();
 	NinjaDefense Defense => NinjaPlayer.Local?.GetComponent<NinjaDefense>();
+
+	/// <summary>Message du staff ou retour d'action, affiché 6 s.</summary>
+	string Notice
+	{
+		get
+		{
+			var c = NinjaPlayer.Local?.GetComponent<NarutoRp.Staff.StaffCommands>();
+			return c?.Notice is not null && c.NoticeAge < 6f ? c.Notice : null;
+		}
+	}
 	ReviveAction Revive => NinjaPlayer.Local?.GetComponent<ReviveAction>();
 
 	/// <summary>Relève en cours où le joueur local est soigneur ou blessé.</summary>
@@ -91,7 +106,7 @@
 		var c = Caster;
 		return System.HashCode.Combine(
 			MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ),
-			s?.IsDowned, s?.IsStunned, c?.Casting,
+			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice ),
 			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
 				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
 			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ) );

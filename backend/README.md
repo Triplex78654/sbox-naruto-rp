@@ -31,6 +31,7 @@ npx wrangler d1 execute narutorp --local --command "INSERT INTO staff_members VA
 | POST | `/characters/:id/jutsus` | débloquer un jutsu | staff |
 | DELETE | `/characters/:id/jutsus/:jutsuId?staffSteamId=…` | retirer un jutsu (sans corps) | staff |
 | POST | `/characters/:id/medic` | statut médic-nin | staff |
+| POST | `/characters/:id/clan` | valider (`approved: true`) ou refuser (retire le clan) un clan original | staff |
 | POST | `/characters/:id/death` | mort RP (jamais automatique, loggée) | staff |
 | POST | `/sanctions` | avertissement / kick (modérateur), ban temporaire (staff), ban permanent (admin) | selon type |
 | POST | `/sanctions/:id/revoke` | lever une sanction (motif obligatoire) | staff |

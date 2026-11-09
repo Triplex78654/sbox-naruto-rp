@@ -19,6 +19,12 @@ public sealed class NinjaPlayer : Component
 
 	[Sync( SyncFlags.FromHost )] public string Village { get; set; }
 	[Sync( SyncFlags.FromHost )] public string Grade { get; set; }
+	[Sync( SyncFlags.FromHost )] public string Nature { get; set; }
+	[Sync( SyncFlags.FromHost )] public string Path { get; set; }
+
+	/// <summary>Clan (null = sans clan) et sa validation par le staff.</summary>
+	[Sync( SyncFlags.FromHost )] public string Clan { get; set; }
+	[Sync( SyncFlags.FromHost )] public bool ClanValidated { get; set; }
 
 	/// <summary>null, "moderator", "staff" ou "admin".</summary>
 	[Sync( SyncFlags.FromHost )] public string StaffRank { get; set; }

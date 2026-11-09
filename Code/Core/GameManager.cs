@@ -155,6 +155,10 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		ninja.CharacterName = c.FullName;
 		ninja.Village = c.Village;
 		ninja.Grade = c.Grade;
+		ninja.Nature = c.Nature;
+		ninja.Path = c.Path;
+		ninja.Clan = c.Clan;
+		ninja.ClanValidated = c.ClanValidated;
 		ninja.IsMedic = c.IsMedic;
 		ninja.Ryo = c.Ryo;
 

@@ -260,6 +260,12 @@
         "__guid": "2978c41e-52e9-4223-931b-ca161cc956c6",
         "__enabled": true,
         "Flags": 0
+      },
+      {
+        "__type": "NarutoRp.Staff.StaffCommands",
+        "__guid": "f93a4a2a-63bf-4fcb-beb9-51288b70c06a",
+        "__enabled": true,
+        "Flags": 0
       }
     ],
     "Children": [

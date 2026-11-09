@@ -3,7 +3,7 @@
 
 import {
 	GRADES, NATURES, PATHS, PERMISSIONS, SANCTION_TYPES, VILLAGES,
-	checkName, hasRank, isJutsuId, isReservedLogType, isSteamId, isText, oneOf, type StaffRank,
+	checkName, hasRank, outranks, isJutsuId, isReservedLogType, isSteamId, isText, oneOf, type StaffRank,
 } from './rules';
 
 export interface Env {
@@ -215,6 +215,22 @@ async function setMedic(env: Env, id: number, b: Json) {
 	return json({ ok: true });
 }
 
+/** Validation (ou refus) d'un clan original par le staff. Refuser retire le clan. */
+async function validateClan(env: Env, id: number, b: Json) {
+	const s = await requireStaff(env, b.staffSteamId, 'clan');
+	if (typeof b.approved !== 'boolean') bad('approved doit être true ou false');
+	const c = await getAliveCharacter(env, id);
+	notSelf(s, c);
+	if (c.clan == null) throw new HttpError(409, "ce perso n'a pas de clan");
+	await env.DB.batch([
+		b.approved
+			? env.DB.prepare('UPDATE characters SET clan_validated = 1, updated_at = ? WHERE id = ? AND dead_at IS NULL').bind(Date.now(), id)
+			: env.DB.prepare('UPDATE characters SET clan = NULL, clan_validated = 0, updated_at = ? WHERE id = ? AND dead_at IS NULL').bind(Date.now(), id),
+		logStmt(env, 'clan_validated', s.staff, String(c.steam_id), { characterId: id, clan: c.clan, approved: b.approved }),
+	]);
+	return json({ ok: true });
+}
+
 /** Mort RP : jamais automatique, toujours décidée par le staff et loggée. */
 async function killCharacter(env: Env, id: number, b: Json) {
 	const { staff } = await requireStaff(env, b.staffSteamId, 'death');
@@ -233,9 +249,13 @@ async function addSanction(env: Env, b: Json) {
 	if (!oneOf(SANCTION_TYPES, b.type)) bad('type de sanction invalide');
 	// Ban sans durée = permanent, réservé à l'admin (le GDD prévoit des bans temporaires).
 	const permanent = b.type === 'ban' && b.durationMinutes == null;
-	const { staff } = await requireStaff(env, b.staffSteamId, permanent ? 'permanentBan' : b.type);
+	const { staff, rank } = await requireStaff(env, b.staffSteamId, permanent ? 'permanentBan' : b.type);
 	if (!isSteamId(b.steamId)) bad('steamId invalide');
 	if (!isText(b.reason)) bad('motif obligatoire (3 à 500 caractères)');
+	// Hiérarchie : pas de sanction sur soi ni sur un staff de rang égal ou supérieur.
+	if (b.steamId === staff) throw new HttpError(403, 'impossible de se sanctionner soi-même');
+	const targetRank = await staffRank(env, b.steamId);
+	if (targetRank && !outranks(rank, targetRank)) throw new HttpError(403, 'impossible de sanctionner un staff de rang égal ou supérieur');
 	let expires: number | null = null;
 	if (b.type === 'ban' && !permanent) {
 		if (!Number.isSafeInteger(b.durationMinutes) || (b.durationMinutes as number) <= 0) bad('durationMinutes invalide');
@@ -302,6 +322,7 @@ async function route(req: Request, env: Env): Promise<Response> {
 		if (sub === 'state' && m === 'PUT') return saveState(env, id, await readBody(req));
 		if (sub === 'grade' && m === 'POST') return setGrade(env, id, await readBody(req));
 		if (sub === 'medic' && m === 'POST') return setMedic(env, id, await readBody(req));
+		if (sub === 'clan' && m === 'POST') return validateClan(env, id, await readBody(req));
 		if (sub === 'death' && m === 'POST') return killCharacter(env, id, await readBody(req));
 		if (sub === 'jutsus' && !subId && m === 'POST') return unlockJutsu(env, id, await readBody(req));
 		// DELETE sans corps (pas garanti par tous les clients HTTP) : staff en paramètre d'URL.

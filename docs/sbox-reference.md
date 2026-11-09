@@ -667,6 +667,14 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - **`Http.RequestAsync`** + `Http.CreateJsonContent( objetAnonyme )` + `[JsonPropertyName]` (System.Text.Json) + `Json.Deserialize<T>` : vérifiés de bout en bout contre le Worker local (chargement, sauvegarde, logs).
 - `Connection.Kick( raison )` et `Connection.IsActive` : vérifiés (joueur banni refusé).
 
+- **RPC statiques** : `[Rpc.Host] static void X(...)` appelée par un client sans objet en jeu fonctionne, `Rpc.Caller` identifie l'appelant ; `[Rpc.Broadcast( NetFlags.HostOnly )] static` + `using ( Rpc.FilterInclude( connection ) )` n'atteint que ce client (vérifié : l'état de l'hôte n'est pas modifié quand un 2e client reçoit son menu).
+- **Composant ou GameResource en argument de RPC** (`NinjaPlayer target`, `JutsuDefinition jutsu`) : fonctionne.
+- `Connection.Kick` sur l'hôte lui-même : assertion moteur (« Object should not be null ») → ne jamais expulser `channel.IsHost`.
+- `ModelRenderer.Tint` (couleur avec alpha) et `Enabled` pour cacher un joueur ; `PlayerController.UseCameraControls = false` pour placer soi-même `Scene.Camera` (spectateur).
+- Tags posés par l'hôte + `Scene.Trace...WithoutTags( "tag" )` : la trace ignore l'objet (vérifié pour le staff invisible).
+- UI Razor : `<TextEntry Value:bind=@champ MaxLength=@(20) Placeholder="..." Numeric=@true />`, `<Button Active=@bool disabled=@bool onclick=@(() => ...)>`, `pointer-events: all` sur la racine affiche la souris. Texte avec séparateurs : utiliser `@($"{a} · {b}")` (sinon les espaces autour des `·` sont mangés).
+- `System.Text.RegularExpressions.Regex` est autorisé dans le code de jeu.
+
 ### Piloter l'éditeur (`sbox-cli`)
 
 `<engine>/bin/managed/sbox-cli.exe`, lancé depuis le dossier du projet : `--call editor_status`, `compile_status`, `play_start/stop`, `network_spawn_instance` (2e client local), `run_csharp` (code C# exécuté dans l'éditeur), `create_asset`, `scene_tree`, `add_component`, `save_scene`. Instructions complètes : `sbox-cli --skill sbox-cli`.

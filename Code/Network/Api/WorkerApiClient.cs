@@ -86,6 +86,21 @@ public sealed class WorkerApiClient : IApiClient
 		return Json.Deserialize<CreatedDto>( text )?.Id ?? throw new ApiException( "réponse de création vide" );
 	}
 
+	public Task SetGradeAsync( long characterId, string grade, string reason, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", $"/characters/{characterId}/grade", new { grade, reason, staffSteamId = staff.ToString() }, ct );
+
+	public Task UnlockJutsuAsync( long characterId, string jutsuId, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", $"/characters/{characterId}/jutsus", new { jutsuId, staffSteamId = staff.ToString() }, ct );
+
+	public Task SetMedicAsync( long characterId, bool isMedic, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", $"/characters/{characterId}/medic", new { isMedic, staffSteamId = staff.ToString() }, ct );
+
+	public Task ValidateClanAsync( long characterId, bool approved, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", $"/characters/{characterId}/clan", new { approved, staffSteamId = staff.ToString() }, ct );
+
+	public Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", "/sanctions", new { type, steamId = steamId.ToString(), reason, durationMinutes, staffSteamId = staff.ToString() }, ct );
+
 	public Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default )
 		=> Send( "PUT", $"/characters/{characterId}/state", new { ryo }, ct );
 

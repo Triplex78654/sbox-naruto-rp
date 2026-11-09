@@ -1,0 +1,139 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Player;
+@using NarutoRp.Staff;
+@using NarutoRp.Jutsus;
+@using NarutoRp.Characters;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* Panel staff (F1). N'envoie que des demandes : l'hôte vérifie le rang, le Worker revérifie. *@
+@if ( Visible )
+{
+	<root>
+		<div class="window">
+			<div class="header">
+				<div class="title">Staff · @Me.StaffRank</div>
+				<Button class="@(Cmd.IsInvisible ? "on" : "")" onclick=@(() => Cmd.RequestSetInvisible( !Cmd.IsInvisible ))>@(Cmd.IsInvisible ? "Invisible" : "Visible")</Button>
+				@if ( Cmd.SpectateTarget.IsValid() )
+				{
+					<Button class="on" onclick=@(() => Cmd.SpectateTarget = null)>Arrêter de suivre</Button>
+				}
+				<Button onclick=@(() => _open = false)>Fermer (F1)</Button>
+			</div>
+
+			<div class="body">
+				<div class="players">
+					@foreach ( var p in Players )
+					{
+						<div class="player @(p == _selected ? "selected" : "")" onclick=@(() => _selected = p)>
+							<div class="name">@p.CharacterName @(p == Me ? "(toi)" : "")</div>
+							<div class="sub">@($"{CharacterRules.Label( p.Village )} · {CharacterRules.Label( p.Grade )}")@(p.Clan is not null && !p.ClanValidated ? " · clan à valider" : "")</div>
+						</div>
+					}
+				</div>
+
+				<div class="actions">
+					@if ( !_selected.IsValid() )
+					{
+						<div class="note">Choisis un joueur à gauche.</div>
+					}
+					else
+					{
+						var t = _selected;
+						<div class="target">@t.CharacterName</div>
+						<div class="sub">@($"{CharacterRules.Label( t.Village )} · {CharacterRules.Label( t.Grade )} · {CharacterRules.Label( t.Nature )} · {CharacterRules.Label( t.Path )}{(t.IsMedic ? " · médic-nin" : "")}")</div>
+
+						<div class="section">Déplacement</div>
+						<div class="row">
+							<Button onclick=@(() => Cmd.RequestTeleportTo( t ))>Aller vers</Button>
+							<Button onclick=@(() => Cmd.RequestBring( t ))>Ramener</Button>
+							<Button onclick=@(() => Cmd.SpectateTarget = t)>Suivre (spectateur)</Button>
+						</div>
+
+						<div class="section">Motif (obligatoire pour sanctions et grades)</div>
+						<TextEntry Value:bind=@_reason MaxLength=@(200) Placeholder="Ex. HRP en zone RP" />
+
+						<div class="section">Sanctions</div>
+						<div class="row">
+							<Button onclick=@(() => Cmd.RequestSanction( t, "warn", _reason, 0 ))>Avertir</Button>
+							<Button onclick=@(() => Cmd.RequestSanction( t, "kick", _reason, 0 ))>Kick</Button>
+							<TextEntry class="small" Value:bind=@_minutes MaxLength=@(6) Numeric=@true />
+							<Button class="danger" onclick=@(() => Cmd.RequestSanction( t, "ban", _reason, ParseMinutes() ))>Ban (min)</Button>
+						</div>
+
+						<div class="section">Grade (après examen RP)</div>
+						<div class="row">
+							@foreach ( var g in StaffPermissions.Grades )
+							{
+								<Button class="@(t.Grade == g ? "on" : "")" onclick=@(() => Cmd.RequestSetGrade( t, g, _reason ))>@CharacterRules.Label( g )</Button>
+							}
+						</div>
+
+						<div class="section">Statuts</div>
+						<div class="row">
+							<Button class="@(t.IsMedic ? "on" : "")" onclick=@(() => Cmd.RequestSetMedic( t, !t.IsMedic ))>Médic-nin : @(t.IsMedic ? "oui" : "non")</Button>
+							@if ( t.Clan is not null )
+							{
+								@if ( t.ClanValidated )
+								{
+									<div class="note">Clan @t.Clan validé</div>
+								}
+								else
+								{
+									<Button onclick=@(() => Cmd.RequestValidateClan( t, true ))>Valider le clan @t.Clan</Button>
+									<Button class="danger" onclick=@(() => Cmd.RequestValidateClan( t, false ))>Refuser</Button>
+								}
+							}
+						</div>
+
+						<div class="section">Débloquer un jutsu (apprentissage RP)</div>
+						<div class="jutsus">
+							@foreach ( var j in AllJutsus )
+							{
+								var known = t.GetComponent<NarutoRp.Combat.JutsuCaster>()?.Slots.Contains( j ) == true;
+								var why = StaffCommands.CheckJutsuFor( t, j );
+								<Button class="jutsu" disabled=@(known || why is not null) title=@(why ?? "") onclick=@(() => Cmd.RequestUnlockJutsu( t, j ))>
+									@($"{j.DisplayName} ({j.Rank}){(known ? " ✓" : "")}")
+								</Button>
+							}
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	</root>
+}
+
+@code
+{
+	bool _open;
+	NinjaPlayer _selected;
+	string _reason = "";
+	string _minutes = "60";
+
+	NinjaPlayer Me => NinjaPlayer.Local;
+	StaffCommands Cmd => Me?.GetComponent<StaffCommands>();
+
+	bool Visible => _open && Cmd is not null && StaffPermissions.IsStaff( Me.StaffRank );
+
+	IEnumerable<NinjaPlayer> Players => Scene.GetAllComponents<NinjaPlayer>().Where( p => p.CharacterId > 0 ).OrderBy( p => p.CharacterName );
+
+	IEnumerable<JutsuDefinition> AllJutsus => ResourceLibrary.GetAll<JutsuDefinition>().OrderBy( j => j.Rank ).ThenBy( j => j.DisplayName );
+
+	int ParseMinutes() => int.TryParse( _minutes, out var m ) ? m : 0;
+
+	protected override void OnUpdate()
+	{
+		if ( Input.Pressed( "StaffMenu" ) && Me.IsValid() && StaffPermissions.IsStaff( Me.StaffRank ) )
+			_open = !_open;
+	}
+
+	protected override int BuildHash()
+	{
+		var t = _selected;
+		return System.HashCode.Combine(
+			Visible, t, _reason, _minutes, Players.Count(), Cmd?.IsInvisible, Cmd?.SpectateTarget,
+			System.HashCode.Combine( t?.Grade, t?.IsMedic, t?.Clan, t?.ClanValidated, t?.GetComponent<NarutoRp.Combat.JutsuCaster>()?.Slots.Count ) );
+	}
+}

@@ -19,10 +19,17 @@ export const PERMISSIONS = {
 	grade: 'staff',
 	jutsu: 'staff',
 	medic: 'staff',
+	clan: 'staff',
 	death: 'staff',
 	revoke: 'staff',
 	permanentBan: 'admin',
 } as const satisfies Record<string, StaffRank>;
+
+/** Rang strictement supérieur (null = joueur sans rang). */
+export function outranks(mine: StaffRank | null, theirs: StaffRank | null): boolean {
+	const i = (r: StaffRank | null) => (r === null ? -1 : STAFF_RANKS.indexOf(r));
+	return i(mine) > i(theirs);
+}
 
 export function hasRank(rank: StaffRank | null, needed: StaffRank): boolean {
 	return rank !== null && STAFF_RANKS.indexOf(rank) >= STAFF_RANKS.indexOf(needed);
@@ -45,7 +52,7 @@ export function oneOf<T extends string>(list: readonly T[], v: unknown): v is T 
 /** Types de logs écrits par le Worker lui-même : interdits via POST /logs (pas de faux logs staff). */
 export function isReservedLogType(type: string): boolean {
 	return type.startsWith('sanction_') ||
-		['character_created', 'grade_changed', 'jutsu_unlocked', 'jutsu_removed', 'medic_changed', 'rp_death'].includes(type);
+		['character_created', 'grade_changed', 'jutsu_unlocked', 'jutsu_removed', 'medic_changed', 'clan_validated', 'rp_death'].includes(type);
 }
 
 /** Texte libre borné (motif, raison). */
