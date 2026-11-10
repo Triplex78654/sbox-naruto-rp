@@ -41,6 +41,7 @@ void D( GameObject parent, string name, float x, float y, float z, float yaw, fl
 	var d = new GameObject( parent, true, name );
 	d.LocalPosition = new Vector3( x, y, z );
 	d.LocalRotation = Rotation.FromYaw( yaw );
+	d.NetworkMode = NetworkMode.Object; // objet réseau : IsOpen synchronisé et RequestOpen appelable par les clients
 	var lk = d.Components.Create<NarutoRp.World.LockedDoor>();
 	lk.Rule = rule; lk.Village = village; lk.DomainId = domain; lk.OneWay = oneWay;
 	var b = new GameObject( d, true, "Battant" );

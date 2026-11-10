@@ -695,3 +695,8 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 - `Terrain` : `Storage = storage; Create();` construit rendu + collision. Hauteur relue par trace : exacte au centimètre près.
 - Couleur : `TerrainMaterial` est une ressource avec `AlbedoImage` / `NormalImage` / ... (chemins de textures) : pas de couleur unie sans texture. `Storage.Materials` est vide, le terrain se rend avec le matériau par défaut. À décider avec Task 6.
 - Autres API vérifiées (compilation à blanc d'un script `run_csharp`, 2026-11-10) : `Rotation.LookAt( Vector3 forward, Vector3 up )` (boîte orientée selon une direction, x = avant), `GameObject.Tags.Has( "x" )` / `Tags.Add( "x" )` (marque posée par un script pour le rendre relançable), `scene.GetAllObjects( true )`, `GameObject.Children` (liste) et `Components.Get<T>()`. `List<>` n'est pas importé par défaut dans `run_csharp` : écrire `System.Collections.Generic.List<>`.
+
+### Portes (LockedDoor, vérifié 2026-11-10)
+
+- `[Rpc.Host]` d'instance : `Rpc.Caller` identifie l'appelant ; sur l'hôte local `Rpc.Caller` est bien renseigné (testé avec `tools/tests/door-check.cs`). Un objet de scène en mode `Snapshot` (défaut) n'est pas un objet réseau : pour que `[Sync( FromHost )]` et les RPC d'instance marchent, mettre `NetworkMode = NetworkMode.Object` (le générateur le fait pour les portes ; `NetworkSpawn()` sur un objet créé à l'exécution donne `Network.Active == true`). **Non testé avec un vrai 2e client** (appel de `RequestOpen` depuis un client distant, synchro de `IsOpen`) : à vérifier en jeu à deux.
+- `GameObject.IsDescendant( GameObject )` utilisé (compile). Le Shunshin ignore seulement le tag `invisible` : le battant (sans tag) l'arrête, vérifié par trace réelle.
