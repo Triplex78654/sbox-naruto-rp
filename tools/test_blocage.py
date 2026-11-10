@@ -190,9 +190,151 @@ def eau():
             assert dist_poly(x, y, e["pts"]) <= 20 and abs(z - zo) <= 20, (e["nom"], round(z), round(zo))
 
 
+# ── Décor (tâche 5) : végétation, arches de Suna, cascades, budget d'objets
+HA_PAYS = math.pi / 4 * (carte.PAYS_R ** 2 - R_V ** 2) / 1e4   # surface (ha) d'un pays hors village
+
+
+def dist_boite(x, y, b):
+    # distance au sol (u) de (x, y) a l'emprise de la boite b (0 dedans)
+    (cx, cy, _), (sx, sy, _), (dx, dy, _) = b["c"], b["s"], b["dir"]
+    n = math.hypot(dx, dy)
+    lx, ly = ((x - cx) * dx + (y - cy) * dy) / n, (-(x - cx) * dy + (y - cy) * dx) / n
+    return math.hypot(max(abs(lx) - sx / 2, 0), max(abs(ly) - sy / 2, 0))
+
+
+def local_to_world_u(v, x_u, y_u):
+    return carte.local_to_world(v, x_u / M, y_u / M)
+
+
+def troncs(t=None):
+    return boites(lambda b: b["name"] == "Tronc" and (t is None or b["terr"] == t))
+
+
+def _degage(nom, pts, batiments):
+    # pts : points de l'emprise au sol (monde) d'un arbre ou d'un rocher
+    g = gen()
+    trous = [(h["x"], h["y"]) for h in g.HOLES_OUT if h["code"][0] == "X"]
+    for x, y in pts:
+        for c in chaussees().values():
+            assert dist_poly(x, y, c) >= relief.ROUTE_LARG_U / 2 + 8 * M, (nom, "route", round(x), round(y))
+        for e in relief.EAUX:
+            assert dist_poly(x, y, e["pts"]) >= e["larg_u"] / 2 + 8 * M, (nom, "eau")
+        for p in relief.PONTS:
+            assert not g.sur_pont(x, y, p, 8 * M), (nom, "pont")
+        for sx, sy in g.SPAWNS + trous:
+            assert math.hypot(x - sx, y - sy) >= 8 * M, (nom, "apparition / sortie")
+        for b in batiments:
+            assert dist_boite(x, y, b) >= 8 * M, (nom, "batiment", b["name"])
+
+
+def vegetation_degagee():
+    g = gen()
+    bat = boites(lambda b: b["grp"].startswith("Poste-frontière") or "(cabane)" in b["name"])
+    pieces = troncs() + boites(lambda b: b["grp"] == "Arches (Suna)" and "pilier" in b["name"])
+    for b in pieces:
+        _degage(b["name"], coins(b), bat)
+    # village : arbres a 8 m des batiments, des rampes, des apparitions, et poses sur le relief final (avec bosses)
+    for a in g.VILLAGE_ARBRES:
+        v = a["v"]
+        pts = [local_to_world_u(v, a["x"] + i * a["demi"], a["y"] + j * a["demi"]) for i in (-1, 1) for j in (-1, 1)]
+        _degage("arbre du village", pts, [])
+        xm, ym = a["x"] / M, a["y"] / M
+        lst = [e for e in g.els[v] if e["layer"] == "surface"]
+        assert g.dist_batiments(lst, xm, ym) - a["demi"] * 1.5 / M >= 8, ("arbre du village", "batiment", round(xm), round(ym))
+        assert g.ramp_dist(v, xm, ym) >= 6 + 8, ("arbre du village", "rampe")
+        z = height_at(*local_to_world_u(v, a["x"], a["y"]))
+        assert abs(z - a["z0"]) <= 5, ("arbre du village", "pas au sol", round(z), round(a["z0"]))
+    print("  ", len(pieces), "arbres / piliers du pays,", len(g.VILLAGE_ARBRES), "arbres de village degages")
+
+
+def densite_vegetation():
+    g = gen()
+    d = {t: len(troncs(t)) / HA_PAYS for t in ("konoha", "suna", "kumo")}
+    print("   arbres / ha :", {t: round(k, 1) for t, k in d.items()})
+    assert d["suna"] == 0 and d["kumo"] > 0 and d["konoha"] >= 4 * d["kumo"], d
+    assert d["konoha"] >= 15, d   # foret dense (l'ancienne foret seule : 4,7 / ha)
+    assert all(b["grp"] in ("Végétation (Konoha)", "Végétation (Kumo)", "Pays du Feu - zone de Konoha") for b in troncs())
+    # village de Konoha : des arbres dans les parcs et le long des rues
+    lst = [e for e in g.els["konoha"] if e["layer"] == "surface"]
+    parcs = [e["shape"] for e in lst if e["fill"] == "park" and e["shape"]["t"] == "circle"]
+    rues = [e["shape"] for e in lst if e["fill"] == "road" and e["shape"]["t"] == "line"]
+    ak = [a for a in g.VILLAGE_ARBRES if a["v"] == "konoha"]
+    dans_parc = [a for a in ak if any(math.hypot(a["x"] / M - p["x"], a["y"] / M - p["y"]) < p["r"] for p in parcs)]
+    bord_rue = [a for a in ak if any(dist_poly(a["x"] / M, a["y"] / M, r["pts"]) <= r["w"] / 2 + 6 for r in rues)]
+    print("   village de Konoha :", len(dans_parc), "arbres dans les parcs,", len(bord_rue), "le long des rues")
+    assert len(dans_parc) >= 5 and len(bord_rue) >= 10, (len(dans_parc), len(bord_rue))
+    s = script()
+    for nom in ("Konoha", "Kumo"):
+        assert f'new GameObject( terr_{nom.lower()}, true, "Végétation ({nom})" )' in s, nom
+    assert '"Végétation (Suna)"' not in s
+
+
+def arches_suna():
+    arch = boites(lambda b: b["grp"] == "Arches (Suna)")
+    assert arch and all(b["terr"] == "suna" for b in arch)
+    assert 'new GameObject( terr_suna, true, "Arches (Suna)" )' in script()
+    noms = sorted({b["name"].split(" (")[0] for b in arch})
+    assert 3 <= len(noms) <= 6, noms
+    vues = 0
+    for n in noms:
+        pil = [b for b in arch if b["name"] == f"{n} (pilier)"]
+        lin = [b for b in arch if b["name"] == f"{n} (linteau)"]
+        assert len(pil) == 2 and len(lin) == 1, n
+        lin = lin[0]
+        assert all(b["sol"] and b["collide"] for b in pil), n   # posees au sol des deux cotes (pose_au_sol les verifie)
+        (ax, ay, _), (bx, by, _) = pil[0]["c"], pil[1]["c"]
+        L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
+        larg = L - pil[0]["s"][0] / 2 - pil[1]["s"][0] / 2   # entre les faces interieures des piliers
+        assert larg >= 6 * M, (n, larg)
+        # dessous du linteau au-dessus du sol le plus haut du passage, sur toute la profondeur de l'arche
+        dessous = lin["c"][2] - lin["s"][2] / 2
+        prof = pil[0]["s"][1]
+        hmax = max(height_at((ax + bx) / 2 + ux * i * larg / 8 - uy * j * prof / 8, (ay + by) / 2 + uy * i * larg / 8 + ux * j * prof / 8)
+                   for i in range(-4, 5) for j in range(-4, 5))
+        assert dessous - hmax >= 4 * M, (n, round(dessous - hmax))
+        # le linteau repose sur les deux piliers
+        assert all(dist_boite(*b["c"][:2], lin) == 0 and b["c"][2] + b["s"][2] / 2 >= dessous for b in pil), n
+        if min(dist_poly((ax + bx) / 2, (ay + by) / 2, c) for c in chaussees().values()) <= 60 * M:
+            vues += 1
+        print("  ", n, ": passage", round(larg / M, 1), "m x", round((dessous - hmax) / M, 1), "m")
+    assert vues >= 1   # au moins une arche a moins de 60 m d'une route
+
+
+def cascades():
+    chutes = boites(lambda b: b["name"].startswith("Chute"))
+    bassins = boites(lambda b: b["name"].startswith("Bassin"))
+    n = len(relief.CASCADES) + len(gen().CASCADES_DECOR)
+    assert 4 <= n <= 8 and len(bassins) == n, (n, len(bassins))
+    assert all(not b["collide"] and b["alpha"] < 1 for b in chutes + bassins)
+    for c in gen().CASCADES_DECOR:
+        # vraie marche du relief ; la nappe suit la pente (ne flotte pas, ne s'enfonce pas)
+        assert abs(c["z_haut"] - height_at(c["x_haut"], c["y_haut"])) <= 1 and abs(c["z_bas"] - height_at(c["x_bas"], c["y_bas"])) <= 1
+        assert c["z_haut"] - c["z_bas"] >= 15 * M, c
+        nappe = [b for b in chutes if b["name"] == f"Chute ({c['nom']})"]
+        assert nappe, c["nom"]
+        for b in nappe:
+            for k in range(11):
+                (x0, y0, z0), (x1, y1, z1) = bouts(b)
+                x, y, z = x0 + (x1 - x0) * k / 10, y0 + (y1 - y0) * k / 10, z0 + (z1 - z0) * k / 10
+                assert 0 <= z - height_at(x, y) <= 150, (c["nom"], round(z - height_at(x, y)))
+        bas = [b for b in bassins if b["name"] == f"Bassin ({c['nom']})"]
+        assert len(bas) == 1 and dist_boite(c["x_bas"], c["y_bas"], bas[0]) == 0, c["nom"]
+    print("  ", n, "cascades dont", len(gen().CASCADES_DECOR), "hautes")
+
+
+def budget_objets():
+    import re
+    s = script()
+    n = int(re.search(r"// Objets créés : (\d+)", s).group(1))
+    vol = len(re.findall(r"^\t*(?:B|G|S|W)\(", s, re.M)) + len(re.findall(r"^\t*D\(", s, re.M))
+    assert vol < n <= 15000, (n, vol)
+    print("  ", n, "objets dont", vol, "volumes")
+
+
 if __name__ == "__main__":
     gen()
     for f in (ponts_construits, postes_frontiere, routes_suivent_relief, bornes_disparues, groupes_territoires,
-              contenu_replace, pose_au_sol, eau):
+              contenu_replace, pose_au_sol, eau, vegetation_degagee, densite_vegetation, arches_suna, cascades,
+              budget_objets):
         f()
         print("OK", f.__name__)

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from carte import (CORNERS, INNER, M, PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world, world_to_local, territoire,
                    dist_frontiere_m)
 from relief import (height_at, oublier_emprises, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits,
-                    ROUTES, ROUTE_LARG_U, EAUX, CASCADES, PONTS)
+                    ROUTES, ROUTE_LARG_U, EAUX, CASCADES, PONTS, PICS_KUMO, _dist_emprise, _sinus3)
 
 src = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "monde-blocage-v3.cs.txt")
@@ -263,6 +263,46 @@ def ramp_dist(v, x, y):
 
 def niveau(r): return "haut" if r < TIERS["milieu"][0] else "milieu" if r < TIERS["bas"][0] else "bas"
 
+BATI = ("built", "tower", "domain", "mark", "rock2", "wall", "mountain")
+def dist_batiments(lst, x, y):
+    """Distance (m) de (x, y) (mètres locaux) au plus proche bâtiment des plans (hors rempart A1 et sorties X*)."""
+    return min([_dist_emprise(e["shape"], x, y) for e in lst if e["layer"] == "surface" and e["fill"] in BATI
+                and e["code"] != "A1" and e["code"][0] != "X"] + [1e9])
+
+# Arbres des villages (parcs, bords de rues) : x, y locaux (u), z0 = pied du tronc. Ils restent sur une emprise des plans
+# ou à moins de 6 m d'elle (relief.BOSSE_MARGE_M) : le relief final (avec bosses) y est celui d'ici.
+VILLAGE_ARBRES = []
+def arbres_village(v, lst, pts):
+    """Plante un arbre (tronc + boule) à chaque point (mètres locaux) à 8 m des bâtiments, rampes, apparitions et trous."""
+    sp = next(e for e in lst if e["code"] == "V6")["shape"]
+    evite = [(sp["x"] * M + dx, sp["y"] * M + dy) for dx, dy in SPAWN_OFFS]   # unités locales
+    evite += [tuple(k * M for k in world_to_local(v, h["x"], h["y"])) for h in HOLES_OUT if h["v"] == v]
+    grp = None
+    for xm, ym in pts:
+        x, y = xm * M, ym * M
+        if dist_batiments(lst, xm, ym) < 9 or ramp_dist(v, xm, ym) < 14: continue
+        if any(math.hypot(x - ex, y - ey) < 9 * M for ex, ey in evite): continue
+        if grp is None:
+            grp = f"{v}Veg"
+            lines.append(f'var {grp} = new GameObject( {v}, true, "Végétation (village)" );')
+        hz = hl(x, y, v)
+        B(grp, "Tronc", x, y, 50, 50, 450, COMMON["wood"], hz); S(grp, "Feuillage", x, y, hz + 560, 380, COMMON["leaf"])
+        VILLAGE_ARBRES.append(dict(v=v, x=x, y=y, z0=hz, demi=25))
+
+def rangees_rues(lst, pas=12, ecart=4):
+    """Points (mètres locaux) le long des rues (lignes « road »), à ecart m du bord, des deux côtés, hors autres emprises."""
+    out = []
+    for e in lst:
+        q = e["shape"]
+        if e["layer"] != "surface" or e["fill"] != "road" or q["t"] != "line": continue
+        for (x1, y1), (x2, y2) in zip(q["pts"], q["pts"][1:]):
+            L = math.hypot(x2 - x1, y2 - y1); ux, uy = (x2 - x1) / L, (y2 - y1) / L
+            for k in range(1, int(L // pas)):
+                for sg in (-1, 1):
+                    x, y = x1 + ux * k * pas - uy * sg * (q["w"] / 2 + ecart), y1 + uy * k * pas + ux * sg * (q["w"] / 2 + ecart)
+                    if libre(lst, x, y, 2): out.append((x, y))
+    return out
+
 def libre_ext(lst, x, y, marge):
     """libre() + routes (lignes) : (x, y) en mètres locaux."""
     if not libre(lst, x, y, marge): return False
@@ -482,6 +522,7 @@ for v, style in STYLES.items():
     g = v
     rnd_h = __import__("random").Random(v)
     surf = [e for e in lst if e["layer"] == "surface"]
+    parc = []
     for e in surf:
         s, f, nm = e["shape"], e["fill"], e["name"].replace('"', "'")
         if e["code"][0] == "X": continue   # sortie cachée : un simple trou dans le relief (puits dans les souterrains)
@@ -514,13 +555,11 @@ for v, style in STYLES.items():
                        math.degrees(math.atan2(y2 - y1, x2 - x1)), False, True)
         elif s["t"] == "circle":
             if f in FLAT: disk(g, tag, s["x"] * M, s["y"] * M, s["r"] * M, FLAT[f], c, False, flat=True)
-            if f == "park":
+            if f == "park":   # arbres plantés après les souterrains (on évite leurs trous)
                 tr = __import__("random").Random(tag)
                 for i in range(int(s["r"] * s["r"] / 60)):
                     ang, rad = tr.uniform(0, 2 * math.pi), s["r"] * math.sqrt(tr.random()) * 0.9
-                    tx, ty = (s["x"] + math.cos(ang) * rad) * M, (s["y"] + math.sin(ang) * rad) * M
-                    hz = hl(tx, ty)
-                    B(g, "Tronc", tx, ty, 50, 50, 450, COMMON["wood"], hz); S(g, "Feuillage", tx, ty, hz + 560, 380, COMMON["leaf"])
+                    parc.append((s["x"] + math.cos(ang) * rad, s["y"] + math.sin(ang) * rad))
             elif f not in FLAT:
                 h = HEIGHT.get(f, 400)
                 disk(g, tag, s["x"] * M, s["y"] * M, s["r"] * M, h, c, True)
@@ -564,6 +603,8 @@ for v, style in STYLES.items():
     # Souterrains (repère local du village, z monde)
     lines.append(f'var {v}Sous = new GameObject( {v}, true, "Souterrains" );')
     souterrains(v, lst, f"{v}Sous", g)
+    # Végétation du village : parcs partout, bords de rues à Konoha (village arboré)
+    arbres_village(v, lst, parc + (rangees_rues(lst) if v == "konoha" else []))
 
 # ── Territoires (hors villages, coordonnées monde) : un groupe racine par territoire avec routes, ponts, eau, postes-frontière
 # et le contenu replacé de docs/monde-blocage.cs.txt (Pays du Feu, terres neutres, centre commun). Tout est détruit puis
@@ -714,22 +755,22 @@ for c in CASCADES:
 
 # ── Contenu replacé (docs/monde-blocage.cs.txt) : positions recalculées ici (graine fixe pour ce qui y était tiré au hasard).
 FEU, NEUTRE, CENTRE = "Pays du Feu - zone de Konoha", "Terres neutres de Konoha", "Centre commun"
-TROUS_K = [(h["x"], h["y"]) for h in HOLES_OUT if h["v"] == "konoha" and h["code"][0] == "X"]
+TROUS_X = {v: [(h["x"], h["y"]) for h in HOLES_OUT if h["v"] == v and h["code"][0] == "X"] for v in STYLES}
 CLAIRIERES = {k: local_to_world("konoha", r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))   # (angle local, rayon m)
               for k, (a, r) in {"Ferme": (282, 850), "Clairière de chasse": (250, 1150), "Bord de rivière": (300, 1230)}.items()}
 
 
-def libre_konoha(x, y, marge, bande=(VILLAGE_R + 25, PAYS_R - 15), clairieres=True):
-    """(x, y) monde : dans le pays de Konoha (rayon local dans bande, m), loin du bord, des routes, des ponts, de l'eau,
-    des sorties cachées, des postes et des clairières (marge u en plus : demi-diagonale de l'objet)."""
-    if territoire(x, y) != "konoha" or max(abs(x), abs(y)) > INNER - 1500 or dist_frontiere_m(x, y) * M < marge + 2 * M: return False
-    if not bande[0] <= math.hypot(*world_to_local("konoha", x, y)) <= bande[1]: return False
+def libre_konoha(x, y, marge, bande=(VILLAGE_R + 25, PAYS_R - 15), clairieres=True, v="konoha"):
+    """(x, y) monde : dans le pays v (Konoha par défaut ; rayon local dans bande, m), loin du bord, des routes, des ponts,
+    de l'eau, des sorties cachées, des postes et des clairières de Konoha (marge u en plus : demi-diagonale de l'objet)."""
+    if territoire(x, y) != v or max(abs(x), abs(y)) > INNER - 1500 or dist_frontiere_m(x, y) * M < marge + 2 * M: return False
+    if not bande[0] <= math.hypot(*world_to_local(v, x, y)) <= bande[1]: return False
     if any(dist_poly(x, y, pts) < ROUTE_LARG_U / 2 + 8 * M + marge for pts in CHAUSSEES.values()): return False
     if any(dist_poly(x, y, e["pts"]) < e["larg_u"] / 2 + 8 * M + marge for e in EAUX): return False
     if any(sur_pont(x, y, p, 8 * M + marge) for p in PONTS): return False
-    if any(math.hypot(x - hx, y - hy) < 35 * M + marge for hx, hy in TROUS_K): return False
+    if any(math.hypot(x - hx, y - hy) < 35 * M + marge for hx, hy in TROUS_X[v]): return False
     if any(math.hypot(x - q["x"], y - q["y"]) < 40 * M + marge for q in POSTES): return False
-    return not clairieres or all(math.hypot(x - cx, y - cy) >= 30 * M + marge for cx, cy in CLAIRIERES.values())
+    return not clairieres or v != "konoha" or all(math.hypot(x - cx, y - cy) >= 30 * M + marge for cx, cy in CLAIRIERES.values())
 
 
 def tirage(rng, n, marge, **kw):
@@ -802,6 +843,96 @@ for v, pts in CHAUSSEES.items():   # panneau à 9 000 u du centre, à côté de 
     L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
     f = 9000 / math.hypot(bx, by)
     TS("centre", CENTRE, f"Panneau {v.capitalize()}", bx * f - uy * 700, by * f + ux * 700, 40, 300, 400, COMMON["wood"], math.degrees(math.atan2(uy, ux)))
+
+# ── Décor (tâche 5) : cascades hautes de Kumo, arches de Suna, végétation par biome. Graines fixes : relancer = même résultat.
+# Cascades hautes : nappe d'eau collée au flanc le plus raide de chaque pic de Kumo (~30 deg, ~25 m de chute), sans
+# collision, bassin au pied. Elles s'ajoutent aux 4 cascades des rivières de Konoha (CASCADES) : 6 en tout.
+CASCADES_DECOR = []
+for i, (px, py, rk, _) in enumerate(PICS_KUMO):
+    qx, qy = PICS_KUMO[1 - i][:2]
+    n = math.hypot(px - qx, py - qy); ux, uy = (px - qx) / n, (py - qy) / n   # vers l'extérieur (le pont relie les sommets)
+    nom = f"Cascade du pic {i + 1}"
+    ds = [55 * M + k * 45 * M / 6 for k in range(7)]   # du haut (55 m du centre du pic) au bas (100 m), 6 morceaux
+    pts = [(px + ux * d, py + uy * d, height_at(px + ux * d, py + uy * d) + 25) for d in ds]
+    for a, b in zip(pts, pts[1:]):
+        TG("kumo", "Cascades", f"Chute ({nom})", a, b, 400, 40, EAU_C, False, 1.04)
+    bx, by = px + ux * 105 * M, py + uy * 105 * M
+    hs = [height_at(bx + i_ * 280, by + j_ * 280) for i_ in (-1, 0, 1) for j_ in (-1, 0, 1)]
+    z0 = round(min(hs)) - 10
+    TB("kumo", "Cascades", f"Bassin ({nom})", bx, by, 560, 560, max(hs) + 30 - z0, EAU_C, z0, math.degrees(math.atan2(uy, ux)), False, True)
+    CASCADES_DECOR.append(dict(nom=nom, x_haut=pts[0][0], y_haut=pts[0][1], z_haut=pts[0][2] - 25,
+                               x_bas=pts[-1][0], y_bas=pts[-1][1], z_bas=pts[-1][2] - 25, larg_u=400))
+    for x, y, _ in pts + [(bx, by, 0)]:
+        assert libre_konoha(x, y, 400, v="kumo"), nom
+
+# Arches de roche de Suna : 2 piliers posés au sol + linteau ; passage 16 m x 12 m au-dessus du sol le plus haut dessous.
+# (x, y, cap) locaux (m, deg) ; la 1re longe la route de la porte (à 40 m de son axe, ouverture face à la route).
+ARCHE_W, ARCHE_P, ARCHE_D, ARCHE_H, ARCHE_E = 640, 240, 320, 480, 200   # passage, pilier (long / profondeur), hauteur, linteau
+ROC_SUNA = STYLES["suna"]["rock"]
+for i, (xm, ym, cap) in enumerate(((40, -1000, 90), (-300, -900, 30), (350, -1250, 120), (-150, -1350, 60), (500, -700, 150))):
+    nom = f"Arche {i + 1}"
+    x, y = local_to_world("suna", xm, ym)
+    yaw = cap + yaw_of("suna"); ux, uy = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
+    assert libre_konoha(x, y, 650, v="suna"), nom   # 650 u : demi-diagonale du linteau
+    lx, ly = (ARCHE_W + 2 * ARCHE_P) / 2, ARCHE_D / 2
+    zb = max(height_at(x + ux * lx * a - uy * ly * b, y + uy * lx * a + ux * ly * b)
+             for a in (-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1) for b in (-1, -0.5, 0, 0.5, 1)) + ARCHE_H
+    for sg in (-1, 1):
+        cx, cy = x + ux * sg * (ARCHE_W + ARCHE_P) / 2, y + uy * sg * (ARCHE_W + ARCHE_P) / 2
+        hs = [height_at(cx, cy)] + [height_at(cx + ux * a * ARCHE_P / 2 - uy * b * ARCHE_D / 2, cy + uy * a * ARCHE_P / 2 + ux * b * ARCHE_D / 2)
+                                    for a in (-1, 1) for b in (-1, 1)]
+        z0 = round(min(hs)) - 10
+        TB("suna", "Arches (Suna)", f"{nom} (pilier)", cx, cy, ARCHE_P, ARCHE_D, zb + ARCHE_E / 2 - z0, ROC_SUNA, z0, yaw, True, True)
+    TB("suna", "Arches (Suna)", f"{nom} (linteau)", x, y, ARCHE_W + 2 * ARCHE_P + 80, ARCHE_D + 40, ARCHE_E, ROC_SUNA, zb, yaw)
+    TB("suna", "Arches (Suna)", f"{nom} (sommet)", x, y, ARCHE_W * 0.8, ARCHE_D * 0.7, 160, ROC_SUNA, zb + ARCHE_E, yaw + 6)
+
+
+def foret(v, n, graine, taille, feuilles, bosquet):
+    """Plante n arbres (tronc avec collision posé au sol + boule de feuillage sans collision) dans le pays v, autour de ce
+    qui y est déjà (troncs à >= 6 m les uns des autres, 4 m des autres volumes). bosquet(rng) -> liste de points candidats."""
+    rng_v = __import__("random").Random(graine)
+    pris, cell = {}, 20 * M      # grille des troncs (cases de 20 m)
+    autres = []                  # (x, y, rayon) des autres volumes du pays
+    for b in TERR:
+        if b["terr"] != v: continue
+        if b["name"] == "Tronc": pris.setdefault((int(b["c"][0] // cell), int(b["c"][1] // cell)), []).append(b["c"][:2])
+        else: autres.append((b["c"][0], b["c"][1], math.hypot(b["s"][0], b["s"][1]) / 2 + 4 * M))
+    g = f"Végétation ({TERR_NOM[v]})"
+    posés, essais = 0, 0
+    while posés < n:
+        essais += 1
+        assert essais < 400000, (v, posés)
+        for x, y in bosquet(rng_v):
+            if posés >= n: break
+            ci, cj = int(x // cell), int(y // cell)
+            if any(math.hypot(x - a, y - b) < 6 * M for i in (-1, 0, 1) for j in (-1, 0, 1) for a, b in pris.get((ci + i, cj + j), ())): continue
+            if any(math.hypot(x - a, y - b) < r for a, b, r in autres): continue
+            if not libre_konoha(x, y, 70, v=v): continue
+            s = taille[0] + rng_v.random() * (taille[1] - taille[0])
+            top = TS(v, g, "Tronc", x, y, 50 * s, 50 * s, 500 * s, COMMON["wood"])
+            S(sous_groupe(v, g), "Feuillage", x, y, top + 120 * s, 420 * s, rng_v.choice(feuilles))
+            pris.setdefault((ci, cj), []).append((x, y))
+            posés += 1
+
+
+def coin_pays(v):
+    """Tirage d'un point au hasard dans le carré qui contient le pays v : renvoie f(rng) -> (x, y)."""
+    cx, cy = CORNERS[v]
+    return lambda r: (cx - math.copysign(r.uniform(0, PAYS_R * M), cx), cy - math.copysign(r.uniform(0, PAYS_R * M), cy))
+
+
+# Konoha : forêt dense par massifs (densité modulée par un bruit lent : forêts serrées et sous-bois plus clairs) autour de
+# l'ancienne forêt du Pays du Feu (650 arbres, comptés). Kumo : petits bosquets isolés (2 à 5 arbres). Suna : rien.
+pt_k = coin_pays("konoha")
+def massif_konoha(r):
+    x, y = pt_k(r)
+    return [(x, y)] if r.random() < 0.15 + 0.85 * _sinus3(1.7 * x / M, 1.7 * y / M, 5.0) ** 2 else []
+foret("konoha", 3000, "végétation konoha", (0.9, 1.8), [COMMON["leaf"], (0.18, 0.4, 0.16), (0.28, 0.5, 0.22)], massif_konoha)
+pt_c = coin_pays("kumo")
+def bosquet_kumo(r):
+    x, y = pt_c(r)
+    return [(x + r.uniform(-12, 12) * M, y + r.uniform(-12, 12) * M) for _ in range(r.randint(2, 5))]
+foret("kumo", 330, "végétation kumo", (0.7, 1.2), [(0.2, 0.36, 0.22), (0.26, 0.4, 0.25)], bosquet_kumo)
 
 # ── Murs invisibles du monde
 E = INNER + 2400
@@ -891,6 +1022,13 @@ footer = '''
 }
 return $"{count} volumes";
 '''
+# Nombre d'objets créés (budget <= 15 000) : un par volume (B / G / S / W), deux par porte (D), plus chaque groupe / point
+# d'apparition (« new GameObject » écrit dans les lignes) et le groupe « Limites du monde » de l'en-tête.
+import re
+N_OBJETS = sum(len(re.findall(r"new GameObject\(", l)) + (2 if l.startswith("D(") else 1 if re.match(r"[BGSW]\(", l) else 0)
+               for l in lines) + 1
+assert N_OBJETS <= 15000, N_OBJETS
+header = header.replace("var scene =", f"// Objets créés : {N_OBJETS} (budget 15 000).\nvar scene =", 1)
 open(OUT, "w", encoding="utf-8").write(header + "\n".join("\t" + l for l in "\n".join(lines).split("\n")) + footer)
 json.dump(HOLES_OUT, open(os.path.join(src, "trous.holes"), "w"), indent=0)   # lu par tools/relief.py (extension != .json : pas pris pour un plan)
 # Emprise au sol des souterrains (sols des salles, couloirs, tunnels, puits et paliers, qui couvrent aussi murs et plafonds),
@@ -903,4 +1041,4 @@ for b in UNDER:
     cx, cy = b["c"][0] / M, b["c"][1] / M
     SOUS_EMPRISES.setdefault(b["v"], []).append(dict(t="line", pts=[[cx - dx * k, cy - dy * k], [cx + dx * k, cy + dy * k]], w=b["s"][1] / M))
 json.dump(SOUS_EMPRISES, open(os.path.join(src, "souterrains.emprises"), "w"))
-print(f"{len(lines)} lignes, {len(UNDER)} boîtes souterraines -> {os.path.abspath(OUT)}")
+print(f"{len(lines)} lignes, {N_OBJETS} objets, {len(UNDER)} boîtes souterraines -> {os.path.abspath(OUT)}")
