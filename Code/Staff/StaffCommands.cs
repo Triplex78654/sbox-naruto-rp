@@ -210,7 +210,8 @@ public sealed class StaffCommands : Component
 		foreach ( var r in GameObject.Components.GetAll<ModelRenderer>( FindMode.EverythingInSelfAndDescendants ) )
 		{
 			r.Enabled = !IsInvisible || !IsProxy;
-			r.Tint = IsInvisible && !IsProxy ? Color.White.WithAlpha( 0.3f ) : Color.White;
+			// Seul l'alpha change : la couleur posée par le Dresser (tissu du bandeau) est gardée.
+			r.Tint = r.Tint.WithAlpha( IsInvisible && !IsProxy ? 0.3f : 1f );
 		}
 	}
 

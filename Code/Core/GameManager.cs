@@ -134,6 +134,7 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		ninja.SteamId = channel.SteamId.ValueUnsigned;
 		ninja.StaffRank = data.StaffRank;
 		ApplyCharacter( ninja, character );
+		DressVillage( player, character?.Village );
 
 		// Le client contrôle son déplacement, mais seul l'hôte peut changer le propriétaire.
 		// Le joueur est détruit s'il se déconnecte (NinjaPlayer.OnDestroy sauvegarde).
@@ -174,6 +175,28 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 			if ( def is null ) Log.Warning( $"[Core] jutsu inconnu « {id} » pour le perso {c.Id}" );
 			else caster.Slots.Add( def );
 		}
+	}
+
+	/// <summary>
+	/// Met le bandeau du village (avant le NetworkSpawn). Le Dresser passe en manuel : l'hôte habille l'objet,
+	/// les vêtements créés partent avec lui chez les clients, et le propriétaire qui rhabille au réveil
+	/// relit la même liste. Village inconnu ou sans perso : pas de bandeau.
+	/// </summary>
+	static void DressVillage( GameObject player, string village )
+	{
+		var dresser = player.GetComponentInChildren<Dresser>( true );
+		if ( dresser is null || !NarutoRp.Characters.CharacterRules.Villages.Contains( village ) ) return;
+
+		var headband = ResourceLibrary.Get<Clothing>( $"models/ninja/bandeau_frontal/bandeau_{village}.clothing" );
+		if ( headband is null )
+		{
+			Log.Warning( $"[Core] pas de bandeau pour le village « {village} »" );
+			return;
+		}
+
+		dresser.Source = Dresser.ClothingSource.Manual;
+		dresser.Clothing = [new ClothingContainer.ClothingEntry( headband )];
+		_ = dresser.Apply();
 	}
 
 	protected override void OnFixedUpdate()
