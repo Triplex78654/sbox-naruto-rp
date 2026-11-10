@@ -18,7 +18,7 @@ public sealed class LockedDoor : Component
 
 	[Sync( SyncFlags.FromHost )] public bool IsOpen { get; private set; }
 
-	/// <summary>Clan propriétaire du domaine, rempli par l'hôte (DomainRegistry, tâche 5).</summary>
+	/// <summary>Clan propriétaire du domaine, rempli par l'hôte (DomainRegistry).</summary>
 	[Sync( SyncFlags.FromHost )] public string OwnerClan { get; set; }
 
 	public const float OpenSeconds = 4f;
@@ -26,6 +26,12 @@ public sealed class LockedDoor : Component
 	public const float MaxRequestDistance = 200f;
 
 	TimeUntil _close;
+
+	protected override void OnStart()
+	{
+		// Hôte : une porte qui apparaît après le chargement des domaines prend son clan tout de suite.
+		if ( Networking.IsHost ) OwnerClan = DomainRegistry.ClanOf( DomainId );
+	}
 
 	GameObject Leaf => GameObject.Children.FirstOrDefault( c => c.Name == "Battant" );
 
@@ -63,7 +69,8 @@ public sealed class LockedDoor : Component
 
 		var offset = p.WorldPosition - WorldPosition;
 		if ( offset.Length > MaxRequestDistance ) return;
-		if ( OneWay && Vector3.Dot( offset, WorldRotation.Forward ) <= 0f ) return;
+		// Le staff ouvre tout, y compris dans le mauvais sens.
+		if ( OneWay && string.IsNullOrEmpty( p.StaffRank ) && Vector3.Dot( offset, WorldRotation.Forward ) <= 0f ) return;
 
 		if ( !DoorRules.CanOpen( Rule, Village, OwnerClan, p.Village, p.Grade, p.Clan, p.ClanValidated, p.StaffRank ) )
 		{

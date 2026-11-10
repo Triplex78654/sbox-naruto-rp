@@ -164,6 +164,27 @@ test('log libre et JSON invalide', async () => {
 	assert.equal(res.status, 400);
 });
 
+test('domaines : droits, validation, attribution, retrait', async () => {
+	const post = (id, body) => call('POST', `/domains/${id}/clan`, body);
+	const r = await call('POST', '/characters', { ...perso, slot: 2, clan: 'Hanabi' });
+	assert.equal(r.status, 201);
+	const cid = r.body.id;
+	const ok = { clan: 'Hanabi', village: 'konoha', staffSteamId: STAFF };
+	assert.equal((await post('konoha-D1', { ...ok, staffSteamId: MODO })).status, 403, 'modérateur sans droit clan');
+	assert.equal((await post('konoha-D1', ok)).status, 409, 'clan non validé');
+	assert.equal((await call('POST', `/characters/${cid}/clan`, { approved: true, staffSteamId: STAFF })).status, 200);
+	assert.equal((await post('suna-D1', ok)).status, 400, 'id d un autre village');
+	assert.equal((await post('suna-D1', { ...ok, village: 'suna' })).status, 409, 'clan absent de ce village');
+	assert.equal((await post('konoha-D1', ok)).status, 200);
+	let d = (await call('GET', '/domains')).body.find(x => x.id === 'konoha-D1');
+	assert.deepEqual(d, { id: 'konoha-D1', village: 'konoha', clan: 'Hanabi' });
+	assert.equal((await post('konoha-D1', { ...ok, clan: null })).status, 200);
+	d = (await call('GET', '/domains')).body.find(x => x.id === 'konoha-D1');
+	assert.equal(d.clan, null);
+	assert.equal((await call('POST', '/logs', { type: 'domain_assigned', data: {} })).status, 400, 'faux log refusé');
+	assert.equal((await call('POST', `/characters/${cid}/death`, { staffSteamId: STAFF, reason: 'nettoyage du test' })).status, 200);
+});
+
 test('route inconnue → 404', async () => {
 	assert.equal((await call('GET', '/nimporte')).status, 404);
 });

@@ -43,6 +43,11 @@ try
 	lk.OneWay = true;
 	var start = p.WorldPosition;
 	p.WorldPosition = door.WorldPosition + fwd * 100f; await Task.Delay( 200 ); // derrière la porte (côté opposé à son avant)
+	// Le staff passe par-dessus le sens unique (il ouvre tout) ; un Kage du village, non.
+	lk.RequestOpen(); await Task.Delay( 300 );
+	if ( !lk.IsOpen ) fails.Add( "OneWay : staff refusé du mauvais côté" );
+	await Task.Delay( 4500 );
+	p.StaffRank = null; p.Grade = "kage"; p.Village = "konoha";
 	lk.RequestOpen(); await Task.Delay( 300 );
 	if ( lk.IsOpen ) fails.Add( "OneWay : mauvais côté accepté" );
 	p.WorldPosition = start; await Task.Delay( 200 );

@@ -231,6 +231,36 @@ async function validateClan(env: Env, id: number, b: Json) {
 	return json({ ok: true });
 }
 
+/** Liste des domaines de clan (un domaine libre a clan = null). */
+async function listDomains(env: Env) {
+	const { results } = await env.DB.prepare('SELECT id, village, clan FROM domains ORDER BY id').all();
+	return json(results);
+}
+
+/** Attribue (ou retire, clan = null) un domaine. Le clan doit être validé dans le même village. */
+async function setDomainClan(env: Env, id: string, b: Json) {
+	const s = await requireStaff(env, b.staffSteamId, 'clan');
+	if (!oneOf(VILLAGES, b.village)) bad('village invalide');
+	if (!/^[a-z]+-[A-Za-z0-9_]{1,16}$/.test(id) || !id.startsWith(`${b.village}-`)) bad("l'id du domaine doit commencer par « village- »");
+	let clan: string | null = null;
+	if (b.clan != null) {
+		if (typeof b.clan !== 'string' || b.clan.trim() === '') bad('clan invalide');
+		clan = b.clan.trim();
+		const ok = await env.DB.prepare(
+			'SELECT 1 FROM characters WHERE clan = ? AND clan_validated = 1 AND village = ? AND dead_at IS NULL LIMIT 1')
+			.bind(clan, b.village).first();
+		if (!ok) throw new HttpError(409, "clan non validé dans ce village");
+	}
+	const now = Date.now();
+	await env.DB.batch([
+		env.DB.prepare(`INSERT INTO domains (id, village, clan, assigned_by, assigned_at) VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET clan = excluded.clan, assigned_by = excluded.assigned_by, assigned_at = excluded.assigned_at`)
+			.bind(id, b.village, clan, s.staff, now),
+		logStmt(env, 'domain_assigned', s.staff, null, { domainId: id, clan }),
+	]);
+	return json({ ok: true });
+}
+
 /** Mort RP : jamais automatique, toujours décidée par le staff et loggée. */
 async function killCharacter(env: Env, id: number, b: Json) {
 	const { staff } = await requireStaff(env, b.staffSteamId, 'death');
@@ -315,6 +345,8 @@ async function route(req: Request, env: Env): Promise<Response> {
 	if (res === 'characters' && !idRaw && m === 'POST') return createCharacter(env, await readBody(req));
 	if (res === 'sanctions' && !idRaw && m === 'POST') return addSanction(env, await readBody(req));
 	if (res === 'sanctions' && idRaw && sub === 'revoke' && m === 'POST') return revokeSanction(env, characterId(idRaw), await readBody(req));
+	if (res === 'domains' && !idRaw && m === 'GET') return listDomains(env);
+	if (res === 'domains' && idRaw && sub === 'clan' && m === 'POST') return setDomainClan(env, idRaw, await readBody(req));
 	if (res === 'logs' && !idRaw && m === 'POST') return addLog(env, await readBody(req));
 
 	if (res === 'characters' && idRaw) {

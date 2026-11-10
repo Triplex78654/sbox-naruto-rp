@@ -60,6 +60,20 @@ public sealed class MemoryApiClient : IApiClient
 		return LogAsync( "clan_validated", staff, null, null );
 	}
 
+	static readonly Dictionary<string, DomainDto> Domains = new();
+
+	public Task SetDomainClanAsync( string domainId, string village, string clan, ulong staff, CancellationToken ct = default )
+	{
+		if ( clan is not null && string.IsNullOrWhiteSpace( clan ) ) throw new ApiException( "clan vide", 400, "clan invalide" );
+		lock ( Domains ) Domains[domainId] = new DomainDto { Id = domainId, Village = village, Clan = clan };
+		return LogAsync( "domain_assigned", staff, null, null );
+	}
+
+	public Task<List<DomainDto>> GetDomainsAsync( CancellationToken ct = default )
+	{
+		lock ( Domains ) return Task.FromResult( Domains.Values.ToList() );
+	}
+
 	public Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staff, CancellationToken ct = default )
 	{
 		lock ( Players )

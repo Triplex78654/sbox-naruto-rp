@@ -23,6 +23,10 @@ public interface IApiClient
 	Task UnlockJutsuAsync( long characterId, string jutsuId, ulong staffSteamId, CancellationToken ct = default );
 	Task SetMedicAsync( long characterId, bool isMedic, ulong staffSteamId, CancellationToken ct = default );
 	Task ValidateClanAsync( long characterId, bool approved, ulong staffSteamId, CancellationToken ct = default );
+	/// <summary>Attribue un domaine de clan (clan null = retirer). Le Worker exige un clan validé du même village.</summary>
+	Task SetDomainClanAsync( string domainId, string village, string clan, ulong staffSteamId, CancellationToken ct = default );
+	/// <summary>Domaines connus de la base (clan null = libre).</summary>
+	Task<List<DomainDto>> GetDomainsAsync( CancellationToken ct = default );
 	/// <summary>type : warn, kick, ban. durationMinutes null = permanent (ban, admin seulement).</summary>
 	Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staffSteamId, CancellationToken ct = default );
 

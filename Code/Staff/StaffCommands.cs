@@ -273,4 +273,16 @@ public sealed class StaffCommands : Component
 				else { target.Clan = null; target.ClanValidated = false; }
 			} );
 	}
+
+	[Rpc.Host( NetFlags.OwnerOnly )]
+	public void RequestSetDomainClan( string domainId, string village, string clan )
+	{
+		if ( !Allowed( StaffAction.Clan ) ) return;
+		clan = string.IsNullOrWhiteSpace( clan ) ? null : clan.Trim();
+		// Contrôles de forme ici ; clan validé du même village : revérifié par le Worker.
+		if ( string.IsNullOrEmpty( domainId ) || string.IsNullOrEmpty( village ) || !domainId.StartsWith( village + "-" ) ) { Notify( "Domaine invalide." ); return; }
+		_ = RunApi( api => api.SetDomainClanAsync( domainId, village, clan, Ninja.SteamId ),
+			clan is null ? $"Domaine {domainId} libéré." : $"Domaine {domainId} attribué au clan {clan}.",
+			() => NarutoRp.World.DomainRegistry.Set( domainId, clan ) );
+	}
 }

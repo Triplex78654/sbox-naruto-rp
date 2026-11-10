@@ -51,6 +51,9 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 			Networking.CreateLobby( new LobbyConfig() );
 
 		_nextSave = SaveIntervalSeconds;
+
+		// Domaines de clan : chargés par l'hôte (un échec API laisse les domaines vides, le jeu continue).
+		if ( Networking.IsHost ) _ = NarutoRp.World.DomainRegistry.LoadAsync( GetApi() );
 	}
 
 	/// <summary>L'API est créée à la demande, quand on sait qu'on est l'hôte.</summary>

@@ -33,6 +33,8 @@ npx wrangler d1 execute narutorp --local --command "INSERT INTO staff_members VA
 | POST | `/characters/:id/medic` | statut médic-nin | staff |
 | POST | `/characters/:id/clan` | valider (`approved: true`) ou refuser (retire le clan) un clan original | staff |
 | POST | `/characters/:id/death` | mort RP (jamais automatique, loggée) | staff |
+| GET | `/domains` | domaines de clan `[{ id, village, clan }]` | serveur |
+| POST | `/domains/:id/clan` | attribuer (clan validé du même village) ou retirer (`clan: null`) un domaine | staff |
 | POST | `/sanctions` | avertissement / kick (modérateur), ban temporaire (staff), ban permanent (admin) | selon type |
 | POST | `/sanctions/:id/revoke` | lever une sanction (motif obligatoire) | staff |
 | POST | `/logs` | log libre (combat, mise à terre…) ; types réservés au Worker refusés | serveur |

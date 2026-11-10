@@ -100,6 +100,18 @@
 							}
 						</div>
 					}
+
+					<div class="section">Domaines de clan</div>
+					@foreach ( var d in Domains )
+					{
+						var id = d.DomainId;
+						<div class="row">
+							<div class="note">@id · @(d.OwnerClan ?? "libre")</div>
+							<TextEntry class="small" Value:bind=@_domainClan MaxLength=@(40) Placeholder="Clan" />
+							<Button onclick=@(() => Cmd.RequestSetDomainClan( id, d.Village, _domainClan ))>Attribuer</Button>
+							<Button class="danger" onclick=@(() => Cmd.RequestSetDomainClan( id, d.Village, null ))>Retirer</Button>
+						</div>
+					}
 				</div>
 			</div>
 		</div>
@@ -113,6 +125,12 @@
 	NinjaPlayer _selected;
 	string _reason = "";
 	string _minutes = "60";
+	string _domainClan = "";
+
+	/// <summary>Un domaine par DomainId distinct parmi les portes de clan de la scène.</summary>
+	IEnumerable<NarutoRp.World.LockedDoor> Domains => Scene.GetAllComponents<NarutoRp.World.LockedDoor>()
+		.Where( d => d.Rule == NarutoRp.World.DoorRule.Clan && !string.IsNullOrEmpty( d.DomainId ) )
+		.GroupBy( d => d.DomainId ).Select( g => g.First() ).OrderBy( d => d.DomainId );
 
 	NinjaPlayer Me => NinjaPlayer.Local;
 	StaffCommands Cmd => Me?.GetComponent<StaffCommands>();
@@ -139,6 +157,6 @@
 		var t = _selected;
 		return System.HashCode.Combine(
 			Visible, t, _reason, _minutes, Players.Count(), Cmd?.IsInvisible, Cmd?.SpectateTarget,
-			System.HashCode.Combine( t?.Grade, t?.IsMedic, t?.Clan, t?.ClanValidated, t?.GetComponent<NarutoRp.Combat.JutsuCaster>()?.Slots.Count ) );
+			System.HashCode.Combine( t?.Grade, t?.IsMedic, t?.Clan, t?.ClanValidated, t?.GetComponent<NarutoRp.Combat.JutsuCaster>()?.Slots.Count, _domainClan, string.Join( ',', Domains.Select( d => d.DomainId + d.OwnerClan ) ) ) );
 	}
 }

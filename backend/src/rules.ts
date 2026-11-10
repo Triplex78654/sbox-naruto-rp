@@ -52,7 +52,7 @@ export function oneOf<T extends string>(list: readonly T[], v: unknown): v is T 
 /** Types de logs écrits par le Worker lui-même : interdits via POST /logs (pas de faux logs staff). */
 export function isReservedLogType(type: string): boolean {
 	return type.startsWith('sanction_') ||
-		['character_created', 'grade_changed', 'jutsu_unlocked', 'jutsu_removed', 'medic_changed', 'clan_validated', 'rp_death'].includes(type);
+		['character_created', 'grade_changed', 'jutsu_unlocked', 'jutsu_removed', 'medic_changed', 'clan_validated', 'domain_assigned', 'rp_death'].includes(type);
 }
 
 /** Texte libre borné (motif, raison). */

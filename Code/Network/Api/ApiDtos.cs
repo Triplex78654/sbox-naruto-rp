@@ -13,6 +13,14 @@ public sealed class PlayerDto
 	[JsonPropertyName( "characters" )] public List<CharacterDto> Characters { get; set; } = new();
 }
 
+/// <summary>Domaine de clan : Clan est null tant qu'il n'est attribué à personne.</summary>
+public sealed class DomainDto
+{
+	[JsonPropertyName( "id" )] public string Id { get; set; }
+	[JsonPropertyName( "village" )] public string Village { get; set; }
+	[JsonPropertyName( "clan" )] public string Clan { get; set; }
+}
+
 public sealed class BanDto
 {
 	[JsonPropertyName( "id" )] public long Id { get; set; }

@@ -98,6 +98,15 @@ public sealed class WorkerApiClient : IApiClient
 	public Task ValidateClanAsync( long characterId, bool approved, ulong staff, CancellationToken ct = default )
 		=> Send( "POST", $"/characters/{characterId}/clan", new { approved, staffSteamId = staff.ToString() }, ct );
 
+	public Task SetDomainClanAsync( string domainId, string village, string clan, ulong staff, CancellationToken ct = default )
+		=> Send( "POST", $"/domains/{Uri.EscapeDataString( domainId )}/clan", new { clan, village, staffSteamId = staff.ToString() }, ct );
+
+	public async Task<List<DomainDto>> GetDomainsAsync( CancellationToken ct = default )
+	{
+		var text = await Send( "GET", "/domains", null, ct );
+		return Json.Deserialize<List<DomainDto>>( text ) ?? new();
+	}
+
 	public Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staff, CancellationToken ct = default )
 		=> Send( "POST", "/sanctions", new { type, steamId = steamId.ToString(), reason, durationMinutes, staffSteamId = staff.ToString() }, ct );
 
