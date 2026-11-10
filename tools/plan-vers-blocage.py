@@ -5,8 +5,10 @@
 # Usage : python tools/plan-vers-blocage.py <dossier plans> [sortie]
 import json, math, os, sys, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from carte import CORNERS, INNER, M, CENTRE_R, ANCIEN_PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
-from relief import height_at, oublier_emprises, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits
+from carte import (CORNERS, INNER, M, PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world, world_to_local, territoire,
+                   dist_frontiere_m)
+from relief import (height_at, oublier_emprises, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits,
+                    ROUTES, ROUTE_LARG_U, EAUX, CASCADES, PONTS)
 
 src = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "monde-blocage-v3.cs.txt")
@@ -17,9 +19,6 @@ for f in sorted(glob.glob(os.path.join(src, "*.json"))):
     els.setdefault(d["village"], []).append(d)
 
 oublier_emprises()   # tout se calcule sur le relief sans bosses, même si un appelant les a chargées (tests, même processus)
-
-BORDER = ANCIEN_PAYS_R * M                       # rayon des bornes de l'ancienne frontière (u) : supprimées en tâche 4
-DIST = math.hypot(*CORNERS["konoha"])            # coin -> centre du monde (u)
 
 # Style de chaque village : couleurs (r, g, b) et hauteurs (unités).
 STYLES = {
@@ -46,15 +45,17 @@ def hl(x, y, v=None):
     """z monde du relief au point (x, y) du repère local du village (unités)."""
     return height_at(*local_to_world(v or CUR[0], x / M, y / M))
 
+def couleur(c):
+    return "new Color(" + ",".join(f"{k}f" for k in c) + ")"   # (r, g, b) ou (r, g, b, a)
 def B(group, name, x, y, sx, sy, sz, c, z0=0.0, yaw=0.0, collide=True):
-    lines.append(f'B({group},"{name}",{x:.0f}f,{y:.0f}f,{sx:.0f}f,{sy:.0f}f,{sz:g}f,new Color({c[0]}f,{c[1]}f,{c[2]}f),{z0:.0f}f,{yaw:.1f}f,{"true" if collide else "false"});')
+    lines.append(f'B({group},"{name}",{x:.0f}f,{y:.0f}f,{sx:.0f}f,{sy:.0f}f,{sz:g}f,{couleur(c)},{z0:.0f}f,{yaw:.1f}f,{"true" if collide else "false"});')
 def ZB(group, name, x, y, sx, sy, sz, c, yaw=0.0, collide=True, flat=False):
     """Boîte posée sur le relief : base à la hauteur du terrain au centre (enfoncée de 15 u pour les volumes)."""
     h = hl(x, y)
     if flat: B(group, name, x, y, sx, sy, sz, c, h, yaw, collide)
     else: B(group, name, x, y, sx, sy, sz + 15, c, h - 15, yaw, collide)
 def S(group, name, x, y, z, d, c):
-    lines.append(f'S({group},"{name}",{x:.0f}f,{y:.0f}f,{z:.0f}f,{d:.0f}f,new Color({c[0]}f,{c[1]}f,{c[2]}f));')
+    lines.append(f'S({group},"{name}",{x:.0f}f,{y:.0f}f,{z:.0f}f,{d:.0f}f,{couleur(c)});')
 def disk(group, name, x, y, r, h, c, collide=True, n=None, flat=False):
     # Disque = bandes parallèles de longueur égale à la corde (des carrés tournés donnent une étoile).
     n = n or 14
@@ -469,6 +470,7 @@ def puits(grp, v, code, px, py, ux, uy, floor0, zs):
 
 # ── Villages
 SPAWN_OFFS = ((-500, 500), (500, 500), (-500, -500), (500, -500))
+SPAWNS = []   # points d'apparition (x, y monde) : les postes-frontière s'en tiennent à l'écart
 for v, style in STYLES.items():
     lst = sorted(els.get(v, []), key=lambda e: e.get("order", 999))
     if not lst: continue
@@ -557,26 +559,249 @@ for v, style in STYLES.items():
     sp = next(e for e in lst if e["code"] == "V6")
     for dx, dy in SPAWN_OFFS:
         px, py = sp["shape"]["x"] * M + dx, sp["shape"]["y"] * M + dy
+        SPAWNS.append(local_to_world(v, px / M, py / M))
         lines.append(f'{{ var s = new GameObject({g}, true, "Spawn"); s.LocalPosition = new Vector3({px:.0f}f,{py:.0f}f,{hl(px, py) + 20:.0f}f); s.LocalRotation = Rotation.FromYaw(-90); var sc = s.Components.Create<SpawnPoint>(); sc.Enabled = true; }}')
-    # Frontière : bornes tous les 5° sur l'arc à 900 m, poste-frontière sur la route
-    for i in range(1, 18):
-        ang = 225 + i * 5
-        if ang == 270: continue
-        r = math.radians(ang)
-        bx, by = math.cos(r) * (BORDER - 150), math.sin(r) * (BORDER - 150)
-        ZB(g, "Borne", bx, by, 90, 90, 360, COMMON["rock2"])
-    ZB(g, "Poste-frontière (tour de guet)", 900, -BORDER, 700, 700, 1200, style["rock"])
-    ZB(g, "Poste-frontière (pilier)", -650, -BORDER, 160, 160, 700, style["rock"])
-    ZB(g, "Poste-frontière (pilier)", 650, -BORDER, 160, 160, 700, style["rock"])
-    B(g, "Poste-frontière (arche)", 0, -BORDER, 1500, 200, 120, style["roof"], hl(0, -BORDER) + 700)
-    # Route : de la porte au bord du centre commun
-    gate = next((e for e in lst if e["code"] == "A2"), None)
-    gy = (gate["shape"]["y"] - gate["shape"]["h"] / 2) * M if gate else -20000
-    end = -(DIST - CENTRE_R)
-    B(g, "Route vers le centre", 0, (gy + end) / 2, 640, gy - end, 5, COMMON["road"], hl(0, (gy + end) / 2), 0, False)
     # Souterrains (repère local du village, z monde)
     lines.append(f'var {v}Sous = new GameObject( {v}, true, "Souterrains" );')
     souterrains(v, lst, f"{v}Sous", g)
+
+# ── Territoires (hors villages, coordonnées monde) : un groupe racine par territoire avec routes, ponts, eau, postes-frontière
+# et le contenu replacé de docs/monde-blocage.cs.txt (Pays du Feu, terres neutres, centre commun). Tout est détruit puis
+# reconstruit à chaque exécution (passe (a) du script) : relancer donne le même résultat. Rien n'est posé dans un village
+# (ni à moins de 15 m du rempart) : les bosses des villages (relief.charger_emprises) n'y changent rien.
+TERR = []      # boîtes générées, pour les tests : name, grp, terr, c (centre), s (taille), dir, collide, sol (posée au sol), alpha
+POSTES = []    # {route, x, y} : un poste par frontière traversée par une route
+TERR_NOM = {"konoha": "Konoha", "suna": "Suna", "kumo": "Kumo", "libre": "4e coin", "centre": "Centre"}
+SOUS_GRP = {}
+lines.append("// ═══ TERRITOIRES ═══")
+for t, nom in TERR_NOM.items():
+    lines.append(f'var terr_{t} = new GameObject( true, "{nom} (territoire)" );')
+
+
+def sous_groupe(t, nom):
+    """Variable C# du sous-groupe nom du territoire t (créé au premier usage)."""
+    if (t, nom) not in SOUS_GRP:
+        SOUS_GRP[(t, nom)] = f"terr_{t}_{len(SOUS_GRP)}"
+        lines.append(f'var {SOUS_GRP[(t, nom)]} = new GameObject( terr_{t}, true, "{nom}" );')
+    return SOUS_GRP[(t, nom)]
+
+
+def TB(t, g, name, x, y, sx, sy, sz, c, z0, yaw=0.0, collide=True, sol=False):
+    a = math.radians(yaw)
+    TERR.append(dict(name=name, grp=g, terr=t, c=(x, y, z0 + sz / 2), s=(sx, sy, sz), dir=(math.cos(a), math.sin(a), 0.0),
+                     collide=collide, sol=sol, alpha=c[3] if len(c) > 3 else 1.0))
+    B(sous_groupe(t, g), name, x, y, sx, sy, sz, c, z0, yaw, collide)
+
+
+def TS(t, g, name, x, y, sx, sy, sz, c, yaw=0.0, collide=True):
+    """Boîte posée au sol : base 10 u sous le plus bas des 4 coins et du centre (rien ne flotte), dessus sz au-dessus du
+    plus haut (rien ne s'enfonce). Renvoie le z du dessus."""
+    a = math.radians(yaw); ca, sa = math.cos(a), math.sin(a)
+    hs = [height_at(x, y)] + [height_at(x + ca * i * sx / 2 - sa * j * sy / 2, y + sa * i * sx / 2 + ca * j * sy / 2)
+                              for i in (-1, 1) for j in (-1, 1)]
+    z0 = round(min(hs)) - 10   # entier : B écrit z0 arrondi
+    TB(t, g, name, x, y, sx, sy, max(hs) + sz - z0, c, z0, yaw, collide, True)
+    return max(hs) + sz
+
+
+def TG(t, g, name, a, b, larg, ep, c, collide=True, allonge=1.0):
+    """Boîte orientée centrée sur le segment a -> b (x, y, z), largeur larg, épaisseur ep."""
+    d = tuple(b[k] - a[k] for k in range(3)); m = tuple((a[k] + b[k]) / 2 for k in range(3))
+    L = math.sqrt(sum(k * k for k in d)) * allonge
+    TERR.append(dict(name=name, grp=g, terr=t, c=m, s=(L, larg, ep), dir=d, collide=collide, sol=False,
+                     alpha=c[3] if len(c) > 3 else 1.0))
+    lines.append(f'G({sous_groupe(t, g)},"{name}",{m[0]:.1f}f,{m[1]:.1f}f,{m[2]:.1f}f,{L:.1f}f,{larg:.1f}f,{ep:.1f}f,'
+                 f'{d[0]:.2f}f,{d[1]:.2f}f,{d[2]:.2f}f,{couleur(c)},{"true" if collide else "false"});')
+
+
+def dist_poly(x, y, pts):
+    best = 1e18
+    for (ax, ay, *_), (bx, by, *_) in zip(pts, pts[1:]):
+        l2 = (bx - ax) ** 2 + (by - ay) ** 2
+        k = 0.0 if l2 == 0 else max(0.0, min(1.0, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2))
+        best = min(best, math.hypot(x - ax - k * (bx - ax), y - ay - k * (by - ay)))
+    return best
+
+
+def sur_pont(x, y, p, marge=0.0):
+    a = math.radians(p["yaw"]); dx, dy = x - p["x"], y - p["y"]
+    return (abs(dx * math.cos(a) + dy * math.sin(a)) <= p["long_u"] / 2 + marge
+            and abs(-dx * math.sin(a) + dy * math.cos(a)) <= p["larg_u"] / 2 + marge)
+
+
+FIN_CENTRE = 2200    # les routes s'arrêtent à 2 200 u du centre, devant le temple (coins à 1 700 u)
+# Route de chaque village : ROUTES (porte -> arc du pays, aplanie par le relief) prolongée tout droit jusqu'au temple.
+CHAUSSEES = {}
+for rt in ROUTES:
+    bx, by = rt["pts"][-1]
+    f = FIN_CENTRE / math.hypot(bx, by)
+    CHAUSSEES[rt["v"]] = list(rt["pts"]) + [(bx * f, by * f)]
+
+# Routes : segments de 10 m au plus, posés sur le relief (sans collision, comme les rues des villages), coupés sous les ponts.
+for v, pts in CHAUSSEES.items():
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
+        pris = []
+        for p in PONTS:   # pont dans l'axe de la route : son tablier remplace la chaussée
+            s = (p["x"] - ax) * ux + (p["y"] - ay) * uy
+            if (abs(-(p["x"] - ax) * uy + (p["y"] - ay) * ux) < ROUTE_LARG_U / 2
+                    and abs(math.cos(math.radians(p["yaw"]) - math.atan2(uy, ux))) > 0.99):
+                pris.append((s - p["long_u"] / 2, s + p["long_u"] / 2))
+        libres, s0 = [], 0.0
+        for a0, a1 in sorted(pris):
+            if a0 > s0: libres.append((s0, min(a0, L)))
+            s0 = max(s0, a1)
+        if s0 < L: libres.append((s0, L))
+        for s0, s1 in libres:
+            n = max(1, math.ceil((s1 - s0) / 400))
+            for k in range(n):
+                p0 = (ax + ux * (s0 + (s1 - s0) * k / n), ay + uy * (s0 + (s1 - s0) * k / n))
+                p1 = (ax + ux * (s0 + (s1 - s0) * (k + 1) / n), ay + uy * (s0 + (s1 - s0) * (k + 1) / n))
+                t = territoire((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2)
+                TG(t, "Routes", f"Route de {v.capitalize()}", (*p0, height_at(*p0) + 1), (*p1, height_at(*p1) + 1),
+                   ROUTE_LARG_U, 6, COMMON["road"], False, 1.02)
+
+# Postes-frontière : un par frontière traversée, 15 m avant elle (côté du village), à côté de la chaussée (>= 3 m du bord).
+for v, pts in CHAUSSEES.items():
+    prev = territoire(*pts[0])
+    for (ax, ay), (bx, by) in zip(pts, pts[1:]):
+        L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
+        for k in range(1, int(L // M) + 1):
+            x, y = ax + ux * k * M, ay + uy * k * M
+            t = territoire(x, y)
+            if t == prev: continue
+            POSTES.append(dict(route=v, x=x, y=y))
+            g = f"Poste-frontière {TERR_NOM[prev]} / {TERR_NOM[t]}"
+            px, py = x - ux * 15 * M, y - uy * 15 * M
+            yaw = math.degrees(math.atan2(uy, ux)); nx, ny = -uy, ux
+            o = ROUTE_LARG_U / 2 + 3 * M + 200 + 80     # demi-largeur de la guérite + marge
+            top = TS(prev, g, "Poste-frontière (guérite)", px + nx * o, py + ny * o, 500, 400, 300, STYLES[v]["built"], yaw)
+            TB(prev, g, "Poste-frontière (toit)", px + nx * o, py + ny * o, 600, 500, 30, STYLES[v]["roof"], top, yaw)
+            o = ROUTE_LARG_U / 2 + 3 * M + 80 + 80
+            TS(prev, g, "Poste-frontière (pilier)", px - nx * o, py - ny * o, 160, 160, 700, STYLES[v]["rock"], yaw)
+            prev = t
+
+# Ponts : tablier (dessus au sol aux deux bouts, 200 u au-dessus de l'eau au milieu, rampes de 1 000 u au plus) + 2 garde-corps.
+for i, p in enumerate(PONTS):
+    t = territoire(p["x"], p["y"])
+    a = math.radians(p["yaw"]); ux, uy = math.cos(a), math.sin(a)
+    P = lambda s, o, z: (p["x"] + ux * s - uy * o, p["y"] + uy * s + ux * o, z)
+    L, W, EP = p["long_u"], p["larg_u"], 30
+    R = min(1000, L / 4)
+    zm = max([p["z"]] + [z + 200 for e in EAUX for x, y, z in e["pts"] if sur_pont(x, y, p)])
+    prof = [(-L / 2, height_at(*P(-L / 2, 0, 0)[:2])), (-L / 2 + R, zm), (L / 2 - R, zm), (L / 2, height_at(*P(L / 2, 0, 0)[:2]))]
+    c = (0.6, 0.6, 0.62) if t == "kumo" else COMMON["wood"]
+    for (s0, z0), (s1, z1) in zip(prof, prof[1:]):
+        TG(t, "Ponts", f"Pont {i + 1} (tablier)", P(s0, 0, z0 - EP / 2), P(s1, 0, z1 - EP / 2), W, EP, c)
+        for sg in (-1, 1):
+            TG(t, "Ponts", f"Pont {i + 1} (garde-corps)", P(s0, sg * (W / 2 - 10), z0 + 50), P(s1, sg * (W / 2 - 10), z1 + 50), 20, 100, c)
+
+# Eau (Konoha) : surfaces bleues translucides sans collision le long d'EAUX (morceaux de 2 pas, coupés aux cascades),
+# chute = forme bleue sur la marche, bassin au pied.
+EAU_C = (0.2, 0.45, 0.75, 0.55)
+for e in EAUX:
+    pts = e["pts"]
+    chutes = [k for k in range(1, len(pts)) if pts[k - 1][2] - pts[k][2] >= 100]   # pts[k - 1] en haut, pts[k] en bas
+    for k0, k1 in zip([0] + chutes, [k - 1 for k in chutes] + [len(pts) - 1]):
+        ks = sorted(set(range(k0, k1, 2)) | {k1})
+        for a, b in zip(ks, ks[1:]):
+            TG(territoire(*pts[a][:2]), "Eau", f"Eau ({e['nom']})", pts[a], pts[b], e["larg_u"], 4, EAU_C, False, 1.02)
+for c in CASCADES:
+    a = math.radians(c["yaw"])
+    TB("konoha", "Eau", "Chute", c["x"], c["y"], 60, c["larg_u"], c["z_haut"] - c["z_bas"] + 20, EAU_C, c["z_bas"] - 10, c["yaw"], False)
+    TB("konoha", "Eau", "Bassin", c["x"] + math.cos(a) * c["larg_u"] * 0.6, c["y"] + math.sin(a) * c["larg_u"] * 0.6,
+       1.3 * c["larg_u"], 1.3 * c["larg_u"], 6, EAU_C, c["z_bas"] - 3, c["yaw"], False)
+
+# ── Contenu replacé (docs/monde-blocage.cs.txt) : positions recalculées ici (graine fixe pour ce qui y était tiré au hasard).
+FEU, NEUTRE, CENTRE = "Pays du Feu - zone de Konoha", "Terres neutres de Konoha", "Centre commun"
+TROUS_K = [(h["x"], h["y"]) for h in HOLES_OUT if h["v"] == "konoha" and h["code"][0] == "X"]
+CLAIRIERES = {k: local_to_world("konoha", r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))   # (angle local, rayon m)
+              for k, (a, r) in {"Ferme": (282, 850), "Clairière de chasse": (250, 1150), "Bord de rivière": (300, 1230)}.items()}
+
+
+def libre_konoha(x, y, marge, bande=(VILLAGE_R + 25, PAYS_R - 15), clairieres=True):
+    """(x, y) monde : dans le pays de Konoha (rayon local dans bande, m), loin du bord, des routes, des ponts, de l'eau,
+    des sorties cachées, des postes et des clairières (marge u en plus : demi-diagonale de l'objet)."""
+    if territoire(x, y) != "konoha" or max(abs(x), abs(y)) > INNER - 1500 or dist_frontiere_m(x, y) * M < marge + 2 * M: return False
+    if not bande[0] <= math.hypot(*world_to_local("konoha", x, y)) <= bande[1]: return False
+    if any(dist_poly(x, y, pts) < ROUTE_LARG_U / 2 + 8 * M + marge for pts in CHAUSSEES.values()): return False
+    if any(dist_poly(x, y, e["pts"]) < e["larg_u"] / 2 + 8 * M + marge for e in EAUX): return False
+    if any(sur_pont(x, y, p, 8 * M + marge) for p in PONTS): return False
+    if any(math.hypot(x - hx, y - hy) < 35 * M + marge for hx, hy in TROUS_K): return False
+    if any(math.hypot(x - q["x"], y - q["y"]) < 40 * M + marge for q in POSTES): return False
+    return not clairieres or all(math.hypot(x - cx, y - cy) >= 30 * M + marge for cx, cy in CLAIRIERES.values())
+
+
+def tirage(rng, n, marge, **kw):
+    """n points libres du pays de Konoha tirés au hasard (rejet)."""
+    out = []
+    while len(out) < n:
+        x, y = rng.uniform(-INNER, 0), rng.uniform(0, INNER)
+        if libre_konoha(x, y, marge, **kw): out.append((x, y))
+    return out
+
+
+rng = __import__("random").Random("territoires")
+# Pays du Feu : forêt (650 arbres) et 3 clairières de missions (cabane ; le relief fait le sol : plus de dalle plate).
+for x, y in tirage(rng, 650, 70):
+    s = 1 + rng.random() * 0.8
+    top = TS("konoha", FEU, "Tronc", x, y, 50 * s, 50 * s, 500 * s, COMMON["wood"])
+    S(sous_groupe("konoha", FEU), "Feuillage", x, y, top + 120 * s, 420 * s, COMMON["leaf"])
+for nom, (x, y) in CLAIRIERES.items():
+    assert libre_konoha(x + 500, y, 400, clairieres=False), nom
+    top = TS("konoha", FEU, f"Clairière : {nom} (cabane)", x + 500, y, 500, 400, 250, STYLES["konoha"]["built"])
+    TB("konoha", FEU, f"Clairière : {nom} (toit)", x + 500, y, 560, 460, 30, STYLES["konoha"]["roofs"][3], top)
+# Terres neutres (le pays touche maintenant le centre) : rochers, ruines, ressources dans la bande extérieure du pays.
+BANDE = (1200, PAYS_R - 30)
+for x, y in tirage(rng, 20, 520, bande=BANDE):
+    sx, sy = 300 + rng.randrange(400), 300 + rng.randrange(400)
+    TS("konoha", NEUTRE, "Rocher", x, y, sx, sy, 150 + rng.randrange(350), COMMON["mountain"], rng.randrange(90))
+for a, r in ((258, 1320), (284, 1330)):
+    rx, ry = local_to_world("konoha", r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))
+    for dx, dy, sx, sy, h in ((0, 0, 1200, 120, 400), (500, 600, 120, 1000, 250), (-400, 800, 150, 150, 600)):
+        assert libre_konoha(rx + dx, ry + dy, 700, bande=BANDE), ("ruines", a, r)
+        TS("konoha", NEUTRE, "Ruines (colonne)" if h == 600 else "Ruines (mur effondré)", rx + dx, ry + dy, sx, sy, h, COMMON["rock2"])
+for i, (x, y) in enumerate(tirage(rng, 12, 220, bande=BANDE)):
+    if i % 3 == 0: TS("konoha", NEUTRE, "Minerai", x, y, 220, 220, 160, (0.45, 0.5, 0.6), rng.randrange(90))
+    elif i % 3 == 1: S(sous_groupe("konoha", NEUTRE), "Plante médicinale", x, y, height_at(x, y) + 40, 120, (0.5, 0.85, 0.4))
+    else: TS("konoha", NEUTRE, "Bois coupé", x, y, 400, 80, 80, COMMON["wood"], rng.randrange(180))
+
+
+# Centre commun : temple, pierres levées le long de la frontière (ouvertes sur les routes), marché, arène, minerais rares,
+# panneaux des routes. Le centre est plat (relief nul), tout est quand même posé avec height_at.
+def hors_routes(x, y, marge):
+    return all(dist_poly(x, y, pts) >= ROUTE_LARG_U / 2 + marge for pts in CHAUSSEES.values())
+
+
+for yaw in (0, 45):
+    top = TS("centre", CENTRE, "Temple en ruine", 0, 0, 2400, 2400, 120, COMMON["rock2"], yaw)
+for i in range(8):
+    a = math.radians(i * 45)
+    TB("centre", CENTRE, "Colonne du temple", math.cos(a) * 1000, math.sin(a) * 1000, 160, 160, 500 if i % 3 == 0 else 1000, COMMON["rock2"], top)
+for i in range(24):
+    a = i * 15; ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+    rb = next(r for r in range(0, 2 * INNER, 100) if territoire(ca * r, sa * r) != "centre")   # bord du centre dans cette direction
+    x, y = ca * (rb - 2000), sa * (rb - 2000)
+    if hors_routes(x, y, 3 * M + 820):
+        TS("centre", CENTRE, f"Pierre levée {i}", x, y, 200, 1600, 900, COMMON["rock2"], a)
+for i in range(6):   # marché : à l'est, entre les routes de Suna et de Kumo
+    a = math.radians(-30 + i * 12)
+    x, y = math.cos(a) * 5500, math.sin(a) * 5500
+    top = TS("centre", CENTRE, f"Étal {i + 1}", x, y, 500, 400, 220, STYLES["konoha"]["built"])
+    TB("centre", CENTRE, f"Toile {i + 1}", x, y, 600, 500, 20, STYLES["konoha"]["roofs"][i % 4], top)
+for i in range(20):  # arène neutre : au nord, entre les routes de Konoha et de Suna, ouverte vers le temple
+    a = i * 18
+    if 260 < a < 280: continue
+    TS("centre", CENTRE, f"Arène neutre {i}", math.cos(math.radians(a)) * 1800, 7500 + math.sin(math.radians(a)) * 1800, 200,
+       2 * math.pi * 1800 / 20 * 1.04, 300, COMMON["rock2"], a)
+for i in range(4):
+    a = math.radians(i * 90 + 20)
+    TS("centre", CENTRE, "Minerai rare", math.cos(a) * 9000, math.sin(a) * 9000, 300, 300, 260, (0.55, 0.35, 0.7), 30)
+for v, pts in CHAUSSEES.items():   # panneau à 9 000 u du centre, à côté de la route qui y entre
+    (ax, ay), (bx, by) = pts[-2], pts[-1]
+    L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
+    f = 9000 / math.hypot(bx, by)
+    TS("centre", CENTRE, f"Panneau {v.capitalize()}", bx * f - uy * 700, by * f + ux * 700, 40, 300, 400, COMMON["wood"], math.degrees(math.atan2(uy, ux)))
 
 # ── Murs invisibles du monde
 E = INNER + 2400
@@ -586,6 +811,8 @@ for nm, x, y, sx, sy in (("nord", 0, E + 100, 2 * E + 400, 200), ("sud", 0, -E -
 header = '''// GÉNÉRÉ par tools/plan-vers-blocage.py à partir des plans v3 (ne pas modifier à la main).
 // Blocage des trois villages posé sur le relief (composant Terrain « Relief », voir tools/terrain-import.cs.txt, à lancer avant) :
 // niveaux, murets, ponts, souterrains (salles, tunnels, puits) et portes. Nécessite NarutoRp.World.LockedDoor (Task 4).
+// Puis les territoires (« <Territoire> (territoire) ») : routes, ponts, eau, postes-frontière, Pays du Feu, centre commun.
+// docs/monde-blocage.cs.txt n'est plus nécessaire : son contenu est refait ici.
 // Lancer avec konoha.scene ouverte, puis écrire la scène (docs/sbox-reference.md §11, piège de sauvegarde). Relançable.
 var scene = Editor.SceneEditorSession.Active.Scene;
 var box = Model.Load( "models/dev/box.vmdl" );
@@ -602,14 +829,14 @@ void B( GameObject parent, string name, float x, float y, float sx, float sy, fl
 	count++;
 }
 // Boîte centrée en (x, y, z), orientée selon la direction (dx, dy, dz) : x = longueur, y = largeur, z = épaisseur.
-void G( GameObject parent, string name, float x, float y, float z, float sx, float sy, float sz, float dx, float dy, float dz, Color tint )
+void G( GameObject parent, string name, float x, float y, float z, float sx, float sy, float sz, float dx, float dy, float dz, Color tint, bool collide = true )
 {
 	var g = new GameObject( parent, true, name );
 	g.LocalPosition = new Vector3( x, y, z );
 	g.LocalRotation = Rotation.LookAt( new Vector3( dx, dy, dz ), Vector3.Up );
 	g.LocalScale = new Vector3( sx / 50f, sy / 50f, sz / 50f );
 	var r = g.Components.Create<ModelRenderer>(); r.Model = box; r.Tint = tint;
-	g.Components.Create<BoxCollider>().Scale = new Vector3( 50, 50, 50 );
+	if ( collide ) g.Components.Create<BoxCollider>().Scale = new Vector3( 50, 50, 50 );
 	count++;
 }
 void S( GameObject parent, string name, float x, float y, float z, float d, Color tint )
@@ -638,89 +865,15 @@ void D( GameObject parent, string name, float x, float y, float z, float yaw, fl
 }
 using ( scene.Push() )
 {
-	// (a) Nettoyage : anciens groupes, frontière de Konoha, grand sol du monde, sols plats devenus inutiles (le relief fait le sol).
-	foreach ( var old in scene.GetAllObjects( true ).Where( g => g.Name is "Konoha (blocage)" or "Suna (blocage)" or "Kumo (blocage)" or "Vue d'ensemble (blocage)" or "Frontière du Pays du Feu" or "Limites du monde" ).ToList() )
-		old.Destroy();
-	foreach ( var g in scene.GetAllObjects( true ).Where( g => g.Name == "Sol" && ( g.WorldScale.x > 1000 || g.Parent?.Name == "Centre commun" ) ).ToList() ) g.Destroy();
-
-	// (b) « Pays du Feu - zone de Konoha » et « Terres neutres de Konoha » : de l'ancien repère (village en (-60000, 0, 0), centre vers +x) au coin de Konoha.
-	// Les enfants sont en coordonnées monde (groupes à l'origine).
-	// - Terres neutres : déplacement rigide (elles restent entre le pays et le centre).
-	// - Pays du Feu : l'ancienne forêt faisait un anneau complet de 250 à 500 m autour du village ; le nouveau pays est un quart d'anneau
-	//   juste hors du rempart (de %VR% u + 1 200 u, sur 13 000 u) depuis le coin. Chaque objet (ou chaque clairière, d'un bloc) : angle / 4 autour de l'axe du centre, rayon étiré.
-	var corner = new Vector3( %CX%f, %CY%f, 0 );
-	var rotD = Rotation.FromYaw( %YAW%f - 90f );
-	var oldPos = new Vector3( -60000f, 0, 0 );
-	var axis = ( Vector3.Zero - corner ); var axisLen = axis.Length; axis /= axisLen;
-	var sorties = new Vector3[] { %HOLES% };
-	bool Bad( Vector3 p )
-	{
-		var d = new Vector3( p.x - corner.x, p.y - corner.y, 0 );
-		if ( d.Length < %VR%f ) return true;                                           // dans le village
-		if ( MathF.Max( MathF.Abs( p.x ), MathF.Abs( p.y ) ) > %INNER%f - 1500f ) return true;   // bande de relief ou hors carte
-		var along = d.x * axis.x + d.y * axis.y; var lateral = MathF.Abs( d.x * axis.y - d.y * axis.x );
-		if ( along > 0 && lateral < 1200f ) return true;                              // sur la route du centre
-		foreach ( var h in sorties ) if ( ( p.WithZ( 0 ) - h ).Length < 700f ) return true;   // sur un puits de sortie (trou du relief)
-		return false;
-	}
-	// Ancienne position -> nouvelle (et rotation à appliquer).
-	Vector3 MapPays( Vector3 p, out Rotation turn )
-	{
-		var d = p - oldPos;
-		var r = MathF.Sqrt( d.x * d.x + d.y * d.y );
-		var a = MathF.Atan2( d.y, d.x ) * 180f / MathF.PI;                            // 0 = vers le centre
-		var na = %YAW%f - 90f + a * 0.21f;                                            // ± 38 deg autour de l'axe du centre
-		var nr = %VR%f + 1200f + ( r - 9900f ) * ( 35000f - 22000f ) / ( 20100f - 9900f );
-		turn = Rotation.FromYaw( na - a );
-		return corner + new Vector3( MathF.Cos( na * MathF.PI / 180f ), MathF.Sin( na * MathF.PI / 180f ), 0 ) * nr + Vector3.Up * p.z;
-	}
-	foreach ( var gname in new[] { "Pays du Feu - zone de Konoha", "Terres neutres de Konoha" } )
-	{
-		var grp = scene.GetAllObjects( true ).FirstOrDefault( g => g.Name == gname );
-		if ( grp is null || grp.Tags.Has( "deplace-v3" ) ) continue;
-		grp.Tags.Add( "deplace-v3" );
-		var kill = new System.Collections.Generic.List<GameObject>();
-		if ( gname.StartsWith( "Terres" ) )
-		{
-			grp.WorldPosition = corner - rotD * oldPos;
-			grp.WorldRotation = rotD;
-		}
-		else
-		{
-			foreach ( var c in grp.Children.ToList() )
-			{
-				if ( c.Children.Count == 0 )
-				{
-					var np = MapPays( c.WorldPosition, out var turn );
-					c.WorldPosition = np; c.WorldRotation = turn * c.WorldRotation;
-					continue;
-				}
-				// clairière : bloc rigide autour du centre de ses objets
-				var ctr = Vector3.Zero; foreach ( var l in c.Children ) ctr += l.WorldPosition; ctr /= c.Children.Count;
-				var nc = MapPays( ctr.WithZ( 0 ), out var t2 );
-				c.WorldRotation = t2 * c.WorldRotation;
-				c.WorldPosition = nc - t2 * ctr.WithZ( 0 );   // le groupe est à l'origine : ses enfants (coordonnées monde) suivent
-			}
-		}
-		void Walk( GameObject o )
-		{
-			foreach ( var c in o.Children )
-			{
-				if ( c.Name == "Sol neutre" || c.Name.StartsWith( "Route" ) || ( c.Children.Count == 0 && Bad( c.WorldPosition ) ) ) kill.Add( c );
-				else Walk( c );
-			}
-		}
-		Walk( grp );
-		foreach ( var c in kill ) c.Destroy();
-	}
-
-	// (c) Centre commun : routes et panneaux de l'ancien tracé tournés vers les nouveaux coins (Konoha 180 -> 135 deg, Suna 60 -> 45, Kumo -60 -> -45).
-	foreach ( var (nom, da) in new[] { ("Konoha", -45f), ("Suna", -15f), ("Kumo", 15f) } )
-		foreach ( var g in scene.GetAllObjects( true ).Where( g => g.Parent?.Name == "Centre commun" && ( g.Name.StartsWith( "Route vers " + nom ) || g.Name.StartsWith( "Panneau " + nom ) ) && !g.Tags.Has( "deplace-v3" ) ).ToList() )
-		{
-			var rc = Rotation.FromYaw( da );
-			g.WorldPosition = rc * g.WorldPosition; g.WorldRotation = rc * g.WorldRotation; g.Tags.Add( "deplace-v3" );
-		}
+	// (a) Nettoyage : grand sol du monde, puis tout ce que ce script pose (villages, territoires) et l'ancien blocage du monde
+	// (docs/monde-blocage.cs.txt : « Monde (blocage) » = Pays du Feu, frontière, terres neutres, centre commun, remplacés par les
+	// territoires). Rien d'existant n'est déplacé : tout est reconstruit à neuf, relancer le script donne le même résultat.
+	foreach ( var g in scene.GetAllObjects( true ).Where( g => g.Name == "Sol" && g.WorldScale.x > 1000 ).ToList() ) g.Destroy();
+	bool Vieux( GameObject g ) => g.Name is "Konoha (blocage)" or "Suna (blocage)" or "Kumo (blocage)" or "Vue d'ensemble (blocage)" or "Monde (blocage)"
+		or "Frontière du Pays du Feu" or "Pays du Feu - zone de Konoha" or "Terres neutres de Konoha" or "Centre commun" or "Limites du monde"
+		|| g.Name.EndsWith( " (territoire)" );
+	foreach ( var old in scene.GetAllObjects( true ).Where( g => Vieux( g ) && ( g.Parent is null || !Vieux( g.Parent ) ) ).ToList() )
+		old.Destroy();   // un groupe détruit emporte ses enfants : on ne détruit pas un enfant d'un groupe déjà détruit
 
 	// (g) Murs invisibles autour de la zone jouable : collision seule, de 0 à 20 000 u de haut.
 	var limites = new GameObject( true, "Limites du monde" );
@@ -731,8 +884,7 @@ using ( scene.Push() )
 		g.Components.Create<BoxCollider>().Scale = new Vector3( sx, sy, sz );
 		count++;
 	}
-'''.replace("%CX%", str(CORNERS["konoha"][0])).replace("%CY%", str(CORNERS["konoha"][1])).replace("%YAW%", f'{yaw_of("konoha"):.4f}') \
-   .replace("%HOLES%", ", ".join(f'new Vector3({h["x"]:.0f}f,{h["y"]:.0f}f,0)' for h in HOLES_OUT if h["v"] == "konoha"))    .replace("%VR%", str(VILLAGE_R * M + 800)).replace("%INNER%", str(INNER))
+'''
 footer = '''
 	var cam = scene.GetAllComponents<CameraComponent>().FirstOrDefault();
 	if ( cam is not null ) cam.ZFar = 120000;

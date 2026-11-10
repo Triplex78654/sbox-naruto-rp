@@ -17,7 +17,6 @@ PAYS_R = 1500      # rayon du pays, quart de cercle (m)
 VILLAGE_R = 700    # rayon du village (m)
 ECHELLE_VILLAGE = 1.4
 FONDU_M = 80       # largeur du fondu de biome, centre sur la frontiere (m)
-ANCIEN_PAYS_R = 900   # bornes de l'ancienne frontiere (plan-vers-blocage.py) : supprime en tache 4 avec les bornes
 RAYON_REMPART_M = VILLAGE_R
 # Sorties cachees X1 / X2 des tunnels : (angle local deg, rayon m), hors rempart, loin de la route de la porte (axe 270).
 # Source unique : plans-villages-v3.py y place les sorties, relief.py y aplanit le sol.
