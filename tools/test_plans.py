@@ -4,7 +4,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from carte import TIERS, VILLAGE_R, PAYS_R, ECHELLE_VILLAGE
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-REF = "5d0e71c"   # dernier commit avant l'agrandissement à 700 m (tâche 3) : référence des tailles, portes et domaines
 
 tmp = tempfile.mkdtemp()
 sys.argv = ["plans-villages-v3.py", tmp]
@@ -84,28 +83,25 @@ for t in (d for d in docs if d["code"][0] == "T"):
 
 if TIERS["bas"][1] != VILLAGE_R: erreurs.append(f'TIERS["bas"] finit à {TIERS["bas"][1]} au lieu de {VILLAGE_R}')
 
-# Comparaison avec les plans d'avant l'agrandissement : mêmes éléments, mêmes tailles, mêmes portes et domaines.
-ref_dir, ref_out = tempfile.mkdtemp(), tempfile.mkdtemp()
-for f in ("carte.py", "relief.py", "plans-villages-v3.py"):
-    open(os.path.join(ref_dir, f), "w", encoding="utf-8").write(
-        subprocess.run(["git", "show", f"{REF}:tools/{f}"], cwd=ICI, capture_output=True, check=True, encoding="utf-8").stdout)
-subprocess.run([sys.executable, os.path.join(ref_dir, "plans-villages-v3.py"), ref_out], check=True, stdout=subprocess.DEVNULL)
-avant = {(d["village"], d["code"]): d for d in (json.load(open(os.path.join(ref_out, f), encoding="utf-8")) for f in os.listdir(ref_out) if f.endswith(".json"))}
+# Comparaison avec les plans d'avant l'agrandissement à 700 m (commit 5d0e71c), figés dans tools/tests/plans-reference.json :
+# mêmes éléments, mêmes tailles, mêmes portes et domaines.
+ref = json.load(open(os.path.join(ICI, "tests", "plans-reference.json"), encoding="utf-8"))
+avant = {tuple(k.split("|")): v for k, v in ref.items()}
 apres = {(d["village"], d["code"]): d for d in docs}
 def taille(s):
     t = s["t"]
-    if t == "rect": return (s["w"], s["h"])
+    if t == "rect": return [s["w"], s["h"]]
     if t == "circle": return s["r"]
-    if t == "ring": return (s["r"], s["w"]) if s.get("fill") else s["w"]
-    if t == "houses": return (s["n"], s["zr"])
+    if t == "ring": return [s["r"], s["w"]] if s.get("fill") else s["w"]
+    if t == "houses": return [s["n"], s["zr"]]
     if t == "line": return s["w"]
 if sorted(avant) != sorted(apres): erreurs.append(f"codes différents : {sorted(set(avant) ^ set(apres))}")
 for k, d in avant.items():
-    if k in apres and taille(d["shape"]) != taille(apres[k]["shape"]): erreurs.append(f"{k} : taille {taille(d['shape'])} -> {taille(apres[k]['shape'])}")
-portes = lambda ds: sorted((k, json.dumps(d["door"], sort_keys=True)) for k, d in ds.items() if "door" in d)
-if portes(avant) != portes(apres): erreurs.append("portes différentes de la référence")
-domaines = lambda ds: sorted(k for k, d in ds.items() if d["group"] == "Domaines")
-if domaines(avant) != domaines(apres): erreurs.append("domaines différents de la référence")
+    if k in apres and taille(apres[k]["shape"]) != d["taille"]: erreurs.append(f"{k} : taille {d['taille']} -> {taille(apres[k]['shape'])}")
+portes = lambda ds: sorted((k, json.dumps(p, sort_keys=True)) for k, p in ds.items() if p)
+if portes({k: d["porte"] for k, d in avant.items()}) != portes({k: d.get("door") for k, d in apres.items()}): erreurs.append("portes différentes de la référence")
+domaines = lambda ds: sorted(k for k, est in ds.items() if est)
+if domaines({k: d["domaine"] for k, d in avant.items()}) != domaines({k: d["group"] == "Domaines" for k, d in apres.items()}): erreurs.append("domaines différents de la référence")
 
 if erreurs:
     print("\n".join(erreurs)); sys.exit(1)

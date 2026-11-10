@@ -35,6 +35,7 @@ def periph(d, n=400):
 
 
 def bord_infranchissable():
+    _assure_generation()
     for x, y in periph(INNER + 3000):
         assert height_at(x, y) >= 1900, (x, y, height_at(x, y))
     # montee : plateau atteint a +1200 u, pente moyenne >= 50 deg sur les 600 premieres u, partout
@@ -53,6 +54,7 @@ def bord_infranchissable():
 
 
 def niveaux_village():
+    _assure_generation()
     for v in VILLAGES:
         bas, mil, haut = TIER_Z[v]
         # place d'apparition, et a 30 m des frontieres de niveau (bandes sans bosses)
@@ -62,6 +64,7 @@ def niveaux_village():
 
 
 def rampes_marchables():
+    _assure_generation()
     for v in VILLAGES:
         for a in RAMPS[v]:
             r0 = round(100 * ECHELLE_VILLAGE)
@@ -75,6 +78,7 @@ def rampes_marchables():
 
 
 def apparitions_plates():
+    _assure_generation()
     for v in VILLAGES:
         cx, cy = pt(v, 270, R_V6)
         hs = [height_at(cx + dx, cy + dy) for dx, dy in ((500, 0), (-500, 0), (0, 500), (0, -500))]
@@ -141,12 +145,14 @@ def pont_pose(p):
 
 
 def ponts_poses():
+    _assure_generation()
     assert relief.PONTS
     for p in relief.PONTS:
         assert pont_pose(p), (p, [round(height_at(*b)) for b in bouts_tablier(p)])
 
 
 def pentes_marchables():
+    _assure_generation()
     H, berges = grille(), cases_berges()
     pires = 0.0
     for (i, j), h in H.items():
@@ -168,6 +174,7 @@ def surface_route(x, y):
 
 
 def routes():
+    _assure_generation()
     assert len(relief.ROUTES) == 3 and {r["v"] for r in relief.ROUTES} == set(VILLAGES)
     for rt in relief.ROUTES:
         prev = None
@@ -210,6 +217,7 @@ def _bfs(depart, voisin_ok, but):
 
 
 def chemins():
+    _assure_generation()
     H = grille()
     def ok(c, q):
         if q not in H or dans_village(q[0] * PAS, q[1] * PAS):
@@ -228,6 +236,7 @@ def chemins():
 
 
 def eau_descend():
+    _assure_generation()
     assert relief.EAUX
     for e in relief.EAUX:
         zs = [p[2] for p in e["pts"]]
@@ -242,6 +251,7 @@ def eau_descend():
 
 
 def ravins_sortie():
+    _assure_generation()
     # depuis le fond (les deux bouts et le milieu de chaque troncon entre cascades), on sort a pied de l'eau et des berges
     p5 = PAS / 2
     for e in relief.EAUX:
@@ -263,6 +273,7 @@ def ravins_sortie():
 
 
 def centre_plat():
+    _assure_generation()
     assert abs(height_at(0, 0)) < 1e-6
     H = grille()
     n = 0
@@ -277,6 +288,7 @@ def centre_plat():
 
 
 def relief_present():
+    _assure_generation()
     H = grille()
     routes_v = {r["v"]: r for r in relief.ROUTES}
     for v, mini in (("konoha", 600), ("suna", 600), ("kumo", 1600)):
@@ -302,7 +314,15 @@ def _generer():
     return tmp, gen
 
 
+_GEN = []
+def _assure_generation():
+    # idempotent : charge plans, trous et emprises (bosses des villages) une seule fois, pour que chaque test marche seul
+    if not _GEN: _GEN.append(_generer())
+    return _GEN[0]
+
+
 def generation_stable():
+    _assure_generation()
     # generation dans ce processus (bosses deja chargees) == generation livree (scripts seuls, processus neufs)
     import subprocess
     a, _ = _generer()
@@ -328,6 +348,7 @@ def _codes_attendus(tmp):
 
 
 def trous_sur_sorties():
+    _assure_generation()
     tmp, gen = _generer()
     att = _codes_attendus(tmp)
     assert {(h["v"], h["code"]) for h in relief.HOLES} == att and len(relief.HOLES) == len(att), "trous != X* + S* + H1"
@@ -347,6 +368,7 @@ def trous_sur_sorties():
 
 
 def souterrains_accessibles():
+    _assure_generation()
     tmp, gen = _generer()
     _, holes, _, _ = relief.build()
     step = relief.SIZE / (relief.RES - 1)
@@ -400,6 +422,7 @@ def _coins(b):
 
 
 def souterrains_sous_terrain():
+    _assure_generation()
     tmp, gen = _generer()
     assert gen.UNDER
     pires = []
@@ -451,6 +474,7 @@ def _obb_coupe(a, b, eps=2.0):
 
 
 def souterrains_sans_intrusion():
+    _assure_generation()
     """Aucun couloir, tunnel, puits ou passage n'entre dans la boite d'une AUTRE salle : on n'entre dans une salle que par sa porte."""
     tmp, gen = _generer()
     tun_salle = {}   # (village, "T1") -> code de la salle de depart du tunnel
@@ -509,6 +533,7 @@ def _echantillons(s):
 
 
 def village_bosses():
+    _assure_generation()
     """Bosses des niveaux : presentes (>= 1 m), marchables, et sol plat sous chaque element de surface des plans."""
     tmp, _ = _generer()
     n = 0
@@ -548,6 +573,7 @@ def village_bosses():
 
 
 def sols_biomes():
+    _assure_generation()
     # octet du sol : biome du territoire loin des frontieres, melange des deux biomes au milieu du fondu
     S = relief.sol_case
     def pur(x, y, b): return S(x, y) & 3 == b and S(x, y) >> 4 == 0   # base = b, sans melange
@@ -560,7 +586,6 @@ def sols_biomes():
 
 
 if __name__ == "__main__":
-    _generer()   # plans, trous et emprises (bosses des villages) charges pour tous les tests
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
               generation_stable, ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
