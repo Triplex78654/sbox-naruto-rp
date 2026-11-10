@@ -331,10 +331,59 @@ def budget_objets():
     print("  ", n, "objets dont", vol, "volumes")
 
 
+def _dist_segments(a, b, c, d):
+    """Distance entre les segments [a, b] et [c, d] du plan (0 s'ils se croisent)."""
+    def cote(p, q, r): return (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+    if cote(a, b, c) * cote(a, b, d) < 0 and cote(c, d, a) * cote(c, d, b) < 0: return 0.0
+    return min(dist_seg(*a[:2], c, d), dist_seg(*b[:2], c, d), dist_seg(*c[:2], a, b), dist_seg(*d[:2], a, b))
+
+
+def _couloirs(v=None):
+    """Axe au sol de chaque puits (repere local du village) : du pied du puits au bout du palier, (v, code, a, b, sortie)."""
+    g = gen(); out = []
+    for sh in g.SHAFTS:
+        if v and sh["v"] != v: continue
+        (x0, y0, _), (x1, y1) = sh["start"], sh["top"]
+        n = math.hypot(x1 - x0, y1 - y0); ux, uy = (x1 - x0) / n, (y1 - y0) / n
+        fin = g.PUITS_FIN + 180
+        out.append((sh["v"], sh["code"], (x0, y0), (x1 + ux * fin, y1 + uy * fin), (x1, y1)))
+    return out
+
+
+def puits_separes():
+    # deux puits d'un meme village ne se croisent pas (vu en jeu T6 : Konoha S6 / S8 se bouchaient l'un l'autre)
+    g = gen(); larg = g.PUITS_LARG + 2 * g.T
+    cs = _couloirs(); n = 0
+    for i, (v, c1, a, b, _) in enumerate(cs):
+        for v2, c2, c, d, _ in cs[i + 1:]:
+            if v2 != v: continue
+            n += 1
+            assert _dist_segments(a, b, c, d) >= larg, (v, c1, c2, round(_dist_segments(a, b, c, d)))
+    print("  ", n, "paires de puits")
+
+
+def murets_hors_sorties():
+    # aucun « Muret de terrasse » de Suna sur le couloir d'un puits (vu en jeu T6 : un muret fermait la sortie de S8)
+    import re
+    g = gen(); hw = g.PUITS_LARG / 2 + g.T
+    murets = re.findall(r'B\(\w+,"Muret de terrasse",(-?[\d.]+)f,(-?[\d.]+)f,(-?[\d.]+)f,(-?[\d.]+)f,[^,]+f,new Color\([^)]*\),-?[\d.]+f,(-?[\d.]+)f', script())
+    assert murets, "aucun muret de terrasse"
+    cs = _couloirs("suna")
+    for x, y, sx, sy, yaw in murets:
+        x, y, sx, sy, a = float(x), float(y), float(sx), float(sy), math.radians(float(yaw))
+        lx, ly = -math.sin(a) * sy / 2, math.cos(a) * sy / 2   # demi-longueur du muret (perpendiculaire a son yaw)
+        for _, code, p, q, top in cs:   # partie a l'air libre : du bord amont du trou (170 u avant son centre) au bout du palier
+            n = math.hypot(q[0] - p[0], q[1] - p[1])
+            debut = (top[0] - (q[0] - p[0]) / n * 170, top[1] - (q[1] - p[1]) / n * 170)
+            d = _dist_segments((x - lx, y - ly), (x + lx, y + ly), debut, q)
+            assert d >= hw + sx / 2, ("suna", code, round(x), round(y), round(d))
+    print("  ", len(murets), "murets,", len(cs), "puits")
+
+
 if __name__ == "__main__":
     gen()
     for f in (ponts_construits, postes_frontiere, routes_suivent_relief, bornes_disparues, groupes_territoires,
               contenu_replace, pose_au_sol, eau, vegetation_degagee, densite_vegetation, arches_suna, cascades,
-              budget_objets):
+              budget_objets, puits_separes, murets_hors_sorties):
         f()
         print("OK", f.__name__)

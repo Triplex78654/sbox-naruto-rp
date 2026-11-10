@@ -245,9 +245,11 @@ def levres_suna(g):
     for sh in SHAFTS:
         if sh["v"] != "suna": continue
         dx, dy = sh["top"][0] - sh["start"][0], sh["top"][1] - sh["start"][1]
-        n = math.hypot(dx, dy); sorties.append((sh["top"][0], sh["top"][1], dx / n, dy / n))
-    def sur_sortie(x, y):
-        return any(math.hypot(x - sx - ux * t, y - sy - uy * t) < PUITS_LARG / 2 + T + 3 * M * 1.08 + 20
+        n = math.hypot(dx, dy)
+        assert n > 0, f"suna {sh['code']} : puits sans longueur au sol (pied et trou confondus)"
+        sorties.append((sh["top"][0], sh["top"][1], dx / n, dy / n))
+    def sur_sortie(x, y):   # centre du muret à > demi-largeur du couloir + demi-longueur (3 m × 1,08) + demi-épaisseur (50 u)
+        return any(math.hypot(x - sx - ux * t, y - sy - uy * t) < PUITS_LARG / 2 + T + 3 * M * 1.08 + 50
                    for sx, sy, ux, uy in sorties for t in [max(0.0, min(PUITS_FIN + 180.0, (x - sx) * ux + (y - sy) * uy))])
     for r0 in (TIERS["milieu"][0], TIERS["bas"][0]):
         r = r0 - 4.5
