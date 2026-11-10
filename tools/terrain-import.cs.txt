@@ -3,7 +3,7 @@
 // Prérequis : python tools/relief.py <dossier plans v3> déjà lancé (après plans-villages-v3.py puis plan-vers-blocage.py sur ce dossier), et l'asset créé une fois :
 //   sbox-cli --call create_asset '{"type":"terrain","path":"terrain/monde.terrain"}'
 // Un TerrainStorage non enregistré comme asset est sérialisé "Storage": null dans la scène : l'asset est obligatoire.
-// Matériaux : Assets/terrain/{herbe,sable,roche,neutre}.tmat (créés une fois avec create_asset, image unie de 16 px).
+// Matériaux : Assets/terrain/{herbe,sable,roche,neutre}.tmat (image unie de 16 px ; les 5 images Albedo/Roughness/Normal/Height/AO doivent figurer dans le JSON, sinon sol gris : voir docs/sbox-reference.md).
 // À lancer AVANT docs/monde-blocage-v3.cs.txt.
 var scene = Editor.SceneEditorSession.Active.Scene;
 var root = Project.Current.GetRootPath();
@@ -21,7 +21,6 @@ storage.TerrainHeight = 40000f;
 Buffer.BlockCopy( hm, 0, storage.HeightMap, 0, hm.Length );
 // Sol par biome (sols.u8 = relief.sol_case) : 0 herbe (forêt), 1 sable (désert), 2 roche, 3 neutre ; aux frontières, mélange
 // base / dessus des deux biomes (fondu de 80 m) ; pentes > 35 deg en roche. Matériaux = petites images unies (Assets/terrain/*.png).
-// Rendu constaté (T6) : teinte grise unie, pas les couleurs des images (étape 7 du plan territoires), mais le relief se lit mieux qu'avec la grille par défaut.
 storage.Materials.Clear();
 foreach ( var m in new[] { "herbe", "sable", "roche", "neutre" } ) storage.Materials.Add( ResourceLibrary.Get<TerrainMaterial>( $"terrain/{m}.tmat" ) );
 var hole = new CompactTerrainMaterial( 0, 0, 0, true ).Packed;
