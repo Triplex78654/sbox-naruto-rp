@@ -113,8 +113,14 @@ def dist_poly(x, y, pts):
 
 
 def cases_berges():
-    # cases a <= larg/2 + 30 m d'une eau (berges et parois : pente libre)
+    # cases a <= larg/2 + 30 m d'une riviere ou sur la berge d'un lac (berges et parois : pente libre ; sortie : ravins_sortie)
     out = set()
+    for l in relief.LACS:
+        rad = l["r_u"] + relief.LAC_BERGE_MAX_M * M
+        for j in range(math.floor((l["y"] - rad) / PAS), math.ceil((l["y"] + rad) / PAS) + 1):
+            for i in range(math.floor((l["x"] - rad) / PAS), math.ceil((l["x"] + rad) / PAS) + 1):
+                if math.hypot(i * PAS - l["x"], j * PAS - l["y"]) <= rad:
+                    out.add((i, j))
     for e in relief.EAUX:
         rad = e["larg_u"] / 2 + 30 * M
         for a, b in zip(e["pts"], e["pts"][1:]):
@@ -151,15 +157,25 @@ def ponts_poses():
         assert pont_pose(p), (p, [round(height_at(*b)) for b in bouts_tablier(p)])
 
 
+def flanc_raide(x, y):
+    # zones declarees raides (relief.FLANCS_RAIDES : montagnes, leurs falaises et leur chemin, verifie par chemins_montagnes)
+    return any(math.hypot(x - cx, y - cy) <= r for cx, cy, r in relief.FLANCS_RAIDES)
+
+
 def pentes_marchables():
     _assure_generation()
     H, berges = grille(), cases_berges()
+    # seules exclusions : berges des rivieres, villages, et les disques declares, un par grande montagne
+    assert len(relief.FLANCS_RAIDES) == len(relief.MONTAGNES) == 3
+    for (cx, cy, r), m in zip(relief.FLANCS_RAIDES, relief.MONTAGNES):
+        assert (cx, cy) == (m["x"], m["y"]) and r <= m["rmax"] + (relief.CHEMIN_LARG_M / 2 + relief.CHEMIN_MARGE_M) * M, m["nom"]
+    raide = {c for c in H if flanc_raide(c[0] * PAS, c[1] * PAS)}
     pires = 0.0
     for (i, j), h in H.items():
-        if (i, j) in berges or dans_village(i * PAS, j * PAS, 20):
+        if (i, j) in berges or (i, j) in raide or dans_village(i * PAS, j * PAS, 20):
             continue
         for q in ((i + 1, j), (i, j + 1)):
-            if q in H and q not in berges and not dans_village(q[0] * PAS, q[1] * PAS, 20):
+            if q in H and q not in berges and q not in raide and not dans_village(q[0] * PAS, q[1] * PAS, 20):
                 d = abs(H[q] - h)
                 pires = max(pires, d)
                 assert d <= TAN35 * PAS, ((i * PAS, j * PAS), q, round(pente_deg(d, PAS), 1))
@@ -244,10 +260,86 @@ def eau_descend():
         for x, y, z in e["pts"]:
             assert height_at(x, y) < z, (e["nom"], round(x), round(y))
         assert all(territoire(x, y) == "konoha" for x, y, _ in e["pts"]), e["nom"]
-    assert 4 <= len(relief.CASCADES) <= 8, len(relief.CASCADES)
+    assert 2 <= len(relief.CASCADES) <= 8, len(relief.CASCADES)   # + grandes cascades et cascades des pics : test_blocage.cascades
+    for l in relief.LACS:   # lacs : eau au-dessus du fond, sous toute la rive
+        assert height_at(l["x"], l["y"]) < l["z"] - 100, l["nom"]
+        for k in range(36):
+            a = math.radians(k * 10)
+            for r in (l["r_eau_u"] + 2 * M, l["r_u"] + relief.LAC_BERGE_MAX_M * M):
+                x, y = l["x"] + math.cos(a) * r, l["y"] + math.sin(a) * r
+                if any(dist_poly(x, y, e["pts"]) < e["larg_u"] / 2 + 30 * M for e in relief.EAUX):
+                    continue   # sortie de la riviere
+                assert height_at(l["x"] + math.cos(a) * r, l["y"] + math.sin(a) * r) > l["z"], (l["nom"], k * 10, r)
+    for e in relief.EAUX:   # la riviere sort du lac de la cascade et finit dans l'etang, au niveau de chacun
+        for nom, (x, y, z) in zip(("Lac de la cascade", "Etang de Konoha"), (e["pts"][0], e["pts"][-1])):
+            l = next(l for l in relief.LACS if l["nom"] == nom)
+            assert math.hypot(x - l["x"], y - l["y"]) < 1 and abs(z - l["z"]) < 1e-6, (e["nom"], nom)
     for c in relief.CASCADES:
         assert c["z_haut"] - c["z_bas"] >= 120, c
         assert min(dist_poly(c["x"], c["y"], e["pts"]) for e in relief.EAUX) <= 5 * M, c
+
+
+def _bfs_fin(depart, pas, ok_pente, garder, but):
+    # BFS sur une grille fine (pas u) autour de depart : voisins si garder(point) et pente <= ok_pente
+    x0, y0 = depart
+    P = lambda c: (x0 + c[0] * pas, y0 + c[1] * pas)
+    hc = {}
+    def h(c):
+        if c not in hc:
+            hc[c] = height_at(*P(c))
+        return hc[c]
+    tan = math.tan(math.radians(ok_pente)) * pas
+    return _bfs((0, 0), lambda c, q: garder(*P(q)) and abs(h(q) - h(c)) <= tan, lambda c: but(*P(c)))
+
+
+def chemins_montagnes():
+    _assure_generation()
+    # chaque grande montagne : depuis le pied de son chemin, on atteint a pied (pente <= 30 deg, pas de 2 m) un point a moins
+    # de 20 m du sommet, et ce pied est relie (<= 30 deg) au terrain hors de la zone raide
+    for m, (cx, cy, r) in zip(relief.MONTAGNES, relief.FLANCS_RAIDES):
+        x0, y0, _ = m["chemin"][0]
+        dedans = lambda x, y: math.hypot(x - cx, y - cy) <= r + 30 * M
+        sx, sy = m["sommet"]
+        assert _bfs_fin((x0, y0), 2 * M, 30, dedans, lambda x, y: math.hypot(x - sx, y - sy) <= 20 * M), (m["nom"], "sommet")
+        assert _bfs_fin((x0, y0), 2 * M, 30, dedans, lambda x, y: math.hypot(x - cx, y - cy) > r + 5 * M), (m["nom"], "pied")
+        # le chemin a une seule entree : il fait >= 4 m de large et sa pente est <= 30 deg
+        assert relief.CHEMIN_LARG_M >= 4 and math.degrees(math.atan(relief.CHEMIN_PENTE)) <= 30
+        ch = m["chemin"]
+        pire = max(pente_deg(b[2] - a[2], math.hypot(b[0] - a[0], b[1] - a[1])) for a, b in zip(ch, ch[1:]))
+        assert pire <= 30, (m["nom"], pire)
+        print("  ", m["nom"], "chemin", round(sum(math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(ch, ch[1:])) / M), "m, pente maxi",
+              round(pire, 1), "deg")
+
+
+def hauteurs_annoncees():
+    _assure_generation()
+    # sommets : Konoha ~150 m, Kumo 250-300 m (le plus haut de la carte), mesa 50 m ; dunes 30-60 m
+    som = {m["nom"]: height_at(*m["sommet"]) / M for m in relief.MONTAGNES}
+    assert 140 <= som["Massif de Konoha"] <= 160, som
+    assert 250 <= som["Pic de Kumo"] <= 300, som
+    assert 40 <= som["Mesa de Suna"] <= 60, som
+    assert max(grille().values()) / M <= som["Pic de Kumo"] + 1e-6   # rien de plus haut dans la zone jouable
+    assert len(relief.DUNES) >= 3
+    for e in relief.DUNES:
+        crete = max(height_at(e["ax"] + e["ux"] * e["L"] * k / 20, e["ay"] + e["uy"] * e["L"] * k / 20) for k in range(21))
+        assert 30 * M <= crete <= 60 * M and territoire(e["ax"], e["ay"]) == "suna", (e, crete / M)
+    print("  ", {k: round(v) for k, v in som.items()}, "dunes", [round(e["H"] / M) for e in relief.DUNES])
+
+
+def grandes_cascades():
+    _assure_generation()
+    # chaque montagne a lac a sa grande cascade : >= 40 m de chute (Konoha 40-60 m), du rebord de la falaise a la surface du lac
+    assert {c["montagne"] for c in relief.GRANDES_CASCADES} == {"Massif de Konoha", "Pic de Kumo"}
+    for c in relief.GRANDES_CASCADES:
+        l = next(l for l in relief.LACS if l["nom"] == c["lac"])
+        chute = (c["z_haut"] - c["z_bas"]) / M
+        assert chute >= 40 and (c["montagne"] != "Massif de Konoha" or chute <= 60), (c["nom"], chute)
+        assert abs(c["z_haut"] - height_at(c["x_haut"], c["y_haut"])) <= 1, c["nom"]
+        assert c["z_bas"] == l["z"] and math.hypot(c["x_bas"] - l["x"], c["y_bas"] - l["y"]) < l["r_eau_u"], c["nom"]
+        assert height_at(c["x_bas"], c["y_bas"]) < c["z_bas"], c["nom"]   # elle tombe dans l'eau
+        # falaise : le terrain passe du rebord au lac en moins de 15 m a l'horizontale
+        assert math.hypot(c["x_haut"] - c["x_bas"], c["y_haut"] - c["y_bas"]) <= 15 * M
+        print("  ", c["nom"], round(chute, 1), "m")
 
 
 def ravins_sortie():
@@ -270,6 +362,10 @@ def ravins_sortie():
                 return hc[c]
             ok = lambda c, q: abs(q[0]) < 160 and abs(q[1]) < 160 and abs(h(q) - h(c)) <= TAN35 * p5
             assert _bfs((0, 0), ok, lambda c: dist_poly(*P(c), pts) > rad), (e["nom"], k, round(x0), round(y0))
+    for l in relief.LACS:   # on sort a pied de chaque lac (fond plat puis berge)
+        rad = l["r_u"] + relief.LAC_BERGE_MAX_M * M
+        dist = lambda x, y: math.hypot(x - l["x"], y - l["y"])
+        assert _bfs_fin((l["x"], l["y"]), PAS / 2, 35, lambda x, y: dist(x, y) <= rad + 20 * M, lambda x, y: dist(x, y) > rad), l["nom"]
 
 
 def centre_plat():
@@ -587,7 +683,8 @@ def sols_biomes():
 
 if __name__ == "__main__":
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
-              generation_stable, ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
+              generation_stable, ponts_poses, pentes_marchables, routes, chemins, eau_descend, chemins_montagnes, hauteurs_annoncees,
+              grandes_cascades, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
               souterrains_sans_intrusion, village_bosses, sols_biomes):
         f()

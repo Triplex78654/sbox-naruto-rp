@@ -1,5 +1,6 @@
-# Carte de hauteurs : relief des villages (3 etages, buttes et creux doux), relief de fond par biome (rivieres, cascades, ponts,
-# routes aplanies), bord infranchissable.
+# Carte de hauteurs : relief des villages (3 etages, buttes et creux doux), relief de fond par biome (riviere, lacs, cascades,
+# ponts, routes aplanies), grandes montagnes (massif de Konoha, pic de Kumo, mesa de Suna : flancs raides declares dans
+# FLANCS_RAIDES, un chemin en lacets chacune), grandes dunes de Suna, bord infranchissable.
 # Ecrit tools/out/relief.u16, holes.u8, sols.u8 (biome du sol), relief.json pour le composant Terrain de s&box.
 # Usage : python tools/relief.py [<dossier plans>] ; ordre : plans-villages-v3.py <dossier> -> plan-vers-blocage.py <dossier>
 # -> relief.py <dossier> (lit trous.holes et souterrains.emprises de CE dossier ; sans dossier, il refait les deux etapes).
@@ -11,7 +12,7 @@ import sys
 from array import array
 
 from carte import (BIOME, CORNERS, FONDU_M, HALF, INNER, M, PAYS_R, RAMPS, RAYON_REMPART_M, SORTIES, TIER_Z, TIERS,
-                   biome_poids, local_to_world, territoire, world_to_local)
+                   biome_poids, local_to_world, territoire, world_to_local, yaw_of)
 
 RES = 2048
 TERRAIN_Z = -2000      # le terrain est pose a z = -2000 : hauteur stockee 2000 = z monde 0
@@ -231,15 +232,10 @@ def _relief_biome(b, X, Y):
         return 22 * L * _sinus3(X, Y, 0.0)
     if b == "neutre":   # ondulations faibles
         return 4 * L * _sinus3(0.8 * X, 0.8 * Y, 3.1)
-    if b == "desert":   # dunes allongees (cretes ~ perpendiculaires au vent) + plateaux a bords raides
+    if b == "desert":   # rides allongees (cretes ~ perpendiculaires au vent)
         u, w = 0.866 * X + 0.5 * Y, -0.5 * X + 0.866 * Y
         c = 0.5 + 0.5 * math.sin(0.0483 * u + 1.2 * math.sin(0.015 * w))
-        h = 8 * L * c * c * (0.6 + 0.4 * math.sin(0.0105 * w + 1.0))
-        for px, py, rp, hp in _PLATEAUX:
-            d = math.hypot(X - px, Y - py)
-            if d < rp + PLATEAU_BORD_M:
-                h = max(h, hp * _lisse((rp + PLATEAU_BORD_M - d) / PLATEAU_BORD_M))
-        return h
+        return 8 * L * c * c * (0.6 + 0.4 * math.sin(0.0105 * w + 1.0))   # petites rides ; grandes dunes : DUNES
     # roche : grosses bosses, plus hautes vers le coin, et pics
     t = min(1.0, max(0.0, (r - R_V) / (PAYS_R - R_V)))
     h = 26 * (1.2 - 0.5 * t) * L * _sinus3(0.8 * X, 0.8 * Y, 1.7) ** 1.2
@@ -297,17 +293,37 @@ def sol_case(x, y):
 
 # ── Donnees du relief (lues par les taches 4 a 6). Positions en repere local du village : (angle deg, rayon m).
 PIC_SOMMET_M = 12          # plateau sommital des pics (m)
-PLATEAU_BORD_M = 45        # largeur du bord d'un plateau de Suna (pente ~28 deg)
 PICS_KUMO = [(*local_to_world("kumo", *_pol(a, r)), 140 * M, 55 * M) for a, r in ((254, 1180), (246, 1180))]   # (x, y, r_u, z_sommet)
-_PLATEAUX = [(*(k / M for k in local_to_world("suna", *_pol(a, r))), 50, 16) for a, r in ((250, 1150), (300, 1100))]  # (X, Y, r_m, h_m)
 
 ROUTES = [dict(v=v, pts=[local_to_world(v, 0, -R_V), local_to_world(v, 0, -PAYS_R)], larg_u=ROUTE_LARG_U) for v in VILLAGES]
 
+def _bords(v, d1, d2):
+    """Point monde (u) du pays v donne par ses distances (m) aux deux bords de carte qui encadrent le coin du village :
+    d1 au bord du cote de l'angle local 225, d2 au bord du cote de l'angle local 315 (la route de la porte suit d1 = d2)."""
+    return local_to_world(v, (d1 - d2) / math.sqrt(2), -(d1 + d2) / math.sqrt(2))
+
+
+def _polaire_bords(d1, d2):
+    # (angle local deg, rayon m) du point (d1, d2) (voir _bords)
+    return 315 - math.degrees(math.atan2(d2, d1)), math.hypot(d1, d2)
+
+
+# Lacs : (pays, d1, d2, rayon du fond plat m). Niveau calcule sous le plus bas des terrains de la rive (EAU_REVANCHE_M) ;
+# celui d'un lac relie a une riviere est aussi le niveau de la riviere a ce bout.
+LACS_DEF = {"Lac de la cascade": ("konoha", 1040, 380, 45),    # source de la riviere, au pied du massif
+            "Etang de Konoha": ("konoha", 250, 1150, 35),      # la riviere s'y jette
+            "Bassin du pic": ("kumo", 1128, 215, 28)}          # au pied de la falaise du pic de Kumo
+LAC_PROF_U = 120           # fond plat du lac 3 m sous l'eau
+LAC_BERGE_TAN = math.tan(math.radians(25))   # pente visee de la berge d'un lac (berge de BERGE_M a LAC_BERGE_MAX_M)
+LAC_BERGE_MAX_M = 90
+
 # Rivieres de Konoha : points de controle (angle local, rayon m) de l'amont vers l'aval, angle monotone ;
 # cascades a ces fractions de la longueur. Le niveau de l'eau suit le relief (toujours en dessous) et descend toujours.
+# La riviere sort du lac de la cascade (au pied du massif), passe sous le pont de la route et finit dans l'etang.
 RIVIERES = [
-    dict(nom="Riviere de Konoha", ctrl=[(302, 1150), (267.5, 1150)], larg_m=12, cascades=(0.3, 0.6)),
-    dict(nom="Torrent du ravin", ctrl=[(228, 1120), (240, 1080), (254, 990), (267, 950)], larg_m=8, cascades=(0.35, 0.65)),
+    dict(nom="Riviere de Konoha", ctrl=[_polaire_bords(*LACS_DEF["Lac de la cascade"][1:3]), (283, 1165), (270, 1150), (257, 1160),
+                                         (246, 1175), _polaire_bords(*LACS_DEF["Etang de Konoha"][1:3])],
+         larg_m=12, cascades=(0.22, 0.75), lacs=("Lac de la cascade", "Etang de Konoha")),
 ]
 EAU_PAS_M = 5
 EAU_REVANCHE_M = 2.5       # eau sous le plus bas des terrains voisins (berges)
@@ -324,6 +340,14 @@ def _r_de(ctrl, a):
     return ctrl[0][1] if abs(a - ctrl[0][0]) < abs(a - ctrl[-1][0]) else ctrl[-1][1]
 
 
+def _rive_lac(nom):
+    # niveau maxi de l'eau du lac nom : sous le plus bas du relief de fond sur sa rive (anneau du fond plat au bout de la berge)
+    v, d1, d2, rl = LACS_DEF[nom]
+    x, y = _bords(v, d1, d2)
+    return min(_fond(x + math.cos(t) * r * M, y + math.sin(t) * r * M)
+               for t in (k * math.pi / 16 for k in range(32)) for r in range(rl + 2, rl + LAC_BERGE_MAX_M + 1, 8)) - EAU_REVANCHE_M * M
+
+
 def _riviere(d):
     a0, a1 = d["ctrl"][0][0], d["ctrl"][-1][0]
     n = max(2, round(abs(math.radians(a1 - a0)) * sum(r for _, r in d["ctrl"]) / len(d["ctrl"]) / EAU_PAS_M))
@@ -332,8 +356,11 @@ def _riviere(d):
     casc = {round(f * n) for f in d["cascades"]}
     o = (d["larg_m"] / 2 + 15) * M
     z = []
+    rives = [_rive_lac(n_) for n_ in d.get("lacs", ())]   # niveau max des lacs amont / aval
     for k, (x, y) in enumerate(pts):
         lim = min(_fond(x + dx, y + dy) for dx, dy in ((0, 0), (o, 0), (-o, 0), (0, o), (0, -o))) - EAU_REVANCHE_M * M
+        if rives and k in (0, n):
+            lim = min(lim, rives[0 if k == 0 else -1])
         z.append(lim if k == 0 else min(z[-1] - EAU_PENTE_U - (CHUTE_U if k in casc else 0), lim))
     rs = [math.hypot(*p) for p in loc]
     zone = d["larg_m"] / 2 + BERGE_M
@@ -367,10 +394,229 @@ def _creuse(x, y, h):
         if d < e["zone"]:
             lit = zw - EAU_PROF_U
             h = lit + (h - lit) * _lisse((d - e["larg_m"] / 2) / BERGE_M)
+    for l in LACS:   # lacs : fond plat sur r_u, puis berge jusqu'au relief, assez large pour rester sous ~LAC_BERGE_DEG
+        d = math.hypot(x - l["x"], y - l["y"])
+        if d < l["r_u"] + LAC_BERGE_MAX_M * M:
+            lit = l["z"] - LAC_PROF_U
+            w = min(LAC_BERGE_MAX_M * M, max(BERGE_M * M, 1.5 * (h - lit) / LAC_BERGE_TAN))
+            h = lit + (h - lit) * _lisse((d - l["r_u"]) / w)
     return h
 
 
 _RIV = [_riviere(d) for d in RIVIERES]
+
+
+def _lacs():
+    out = []
+    for nom, (v, d1, d2, rl) in LACS_DEF.items():
+        e = next((e for e, d in zip(_RIV, RIVIERES) if nom in d.get("lacs", ())), None)
+        z = _rive_lac(nom) if e is None else e["z"][0 if nom == RIVIERES[_RIV.index(e)]["lacs"][0] else -1]
+        x, y = _bords(v, d1, d2)
+        out.append(dict(nom=nom, v=v, x=x, y=y, r_u=rl * M, z=z))
+    return out
+
+
+LACS = []                  # rempli apres _RIV (le creusement des rivieres ne lit pas les lacs pour calculer leurs niveaux)
+LACS.extend(_lacs())
+for _l in LACS:   # rayon de l'eau : la ou la berge (relief de fond creuse) sort de l'eau, dans toutes les directions sauf
+    _r = []          # celle du lit de la riviere (toujours plus bas)
+    _lit = [(a, b, e["zone"] * M) for e in _RIV for a, b in e["pts"] if math.hypot(a - _l["x"], b - _l["y"]) > _l["r_u"] + e["zone"] * M]
+    for _t in (k * math.pi / 24 for k in range(48)):
+        _c, _s = math.cos(_t), math.sin(_t)
+        for r in range(int(_l["r_u"]), int(_l["r_u"] + LAC_BERGE_MAX_M * M) + 41, 40):
+            _x, _y = _l["x"] + _c * r, _l["y"] + _s * r
+            if any(math.hypot(_x - a, _y - b) < z for a, b, z in _lit):
+                break    # lit et berges de la riviere : son eau a elle
+            if _creuse(_x, _y, _fond(_x, _y)) > _l["z"]:
+                _r.append(r)
+                break
+    _l["r_eau_u"] = max(_r)
+
+
+# ── Grandes montagnes (verticalite) : massif de Konoha (150 m), pic de Kumo (290 m), mesa de Suna (50 m, canyon).
+# Cone a sommet plat : rayon rs_m (plateau), pied a rb_m, profil H (1 - u)^p (u de 0 au plateau a 1 au pied), rayon module par
+# des lobes (1 + a sin(n phi + ph)). Les flancs sont raides (> 35 deg, zone declaree FLANCS_RAIDES : on y monte par bond /
+# Shunshin) sauf UN chemin en lacets (spirale) taille dans le flanc, du pied au plateau : plat en travers, CHEMIN_PENTE le long.
+# Option lac : le flanc est coupe en falaise verticale au bord du lac (grande cascade). Option canyon : fente traversante.
+# Le relief final est le max du relief de fond et des montagnes (le chemin emerge des collines a son pied).
+CHEMIN_PENTE = math.tan(math.radians(24))   # pente du chemin (<= 30 deg exige, marge pour la grille du terrain)
+CHEMIN_LARG_M = 9            # 9 m : la grille du terrain (1,37 m) adoucit les bords ; >= 4 m vraiment plats partout
+CHEMIN_REMBLAI = 6.0       # pente du remblai sous le bord aval du chemin (80 deg)
+CHEMIN_MARGE_M = 8         # portee du remblai au-dela du bord du chemin
+FALAISE_LAC_M = 6          # la falaise du lac monte sur 6 m (~80 deg)
+MONTAGNES_DEF = [
+    dict(nom="Massif de Konoha", v="konoha", d1=1040, d2=215, h_m=150, rs_m=35, rb_m=178, p=1.4, lobes=(0.06, 3, 0.5),
+         lac="Lac de la cascade", sens=-1),
+    dict(nom="Pic de Kumo", v="kumo", d1=950, d2=215, h_m=290, rs_m=15, rb_m=178, p=1.0, lobes=(0.06, 4, 1.3),
+         lac="Bassin du pic", sens=1),
+    dict(nom="Mesa de Suna", v="suna", d1=1080, d2=190, h_m=50, rs_m=122, rb_m=134, p=1.0, lobes=(0.05, 5, 2.0),
+         canyon=dict(cap_local=305, larg_m=16), depart_rel=60, sens=1),
+]
+
+
+def _lobe(m, phi):
+    a, n, ph = m["lobes"]
+    return 1 + a * math.sin(n * phi + ph)
+
+
+def _cone(m, d, phi):
+    """Hauteur (u) du cone de la montagne m a la distance d (u) de son centre, angle monde phi (rad), sans chemin ni coupes."""
+    f = _lobe(m, phi)
+    u = (d / f - m["rs"]) / (m["rb"] - m["rs"])
+    if u <= 0:
+        return m["H"]
+    return 0.0 if u >= 1 else m["H"] * (1 - u) ** m["p"]
+
+
+def _rayon_chemin(m, z, phi):
+    # rayon (u) ou le cone est a la hauteur z, dans la direction phi
+    return _lobe(m, phi) * (m["rs"] + (m["rb"] - m["rs"]) * (1 - (z / m["H"]) ** (1 / m["p"])))
+
+
+def _trace_chemin(m, phi0):
+    """Spirale du pied (z = 0) au plateau : a chaque pas de 0,1 m de montee, avance en angle juste assez pour que la pente
+    le long du chemin soit CHEMIN_PENTE (ou moins quand le flanc est deja plus doux). Points (x, y, z) tous les ~1,5 m."""
+    th, z, dz = phi0, 0.0, 0.1 * M
+    d = _rayon_chemin(m, 0.0, th)
+    pts = [(m["x"] + d * math.cos(th), m["y"] + d * math.sin(th), 0.0)]
+    while z < m["H"]:
+        z2 = min(m["H"], z + dz)
+        L, dth = (z2 - z) / CHEMIN_PENTE, 0.0
+        for _ in range(4):
+            d2 = _rayon_chemin(m, z2, th + m["sens"] * dth)
+            dth = math.sqrt(max(0.0, L * L - (d2 - d) ** 2)) / ((d + d2) / 2)
+        th += m["sens"] * dth
+        z, d = z2, _rayon_chemin(m, z2, th)
+        x, y = m["x"] + d * math.cos(th), m["y"] + d * math.sin(th)
+        if math.hypot(x - pts[-1][0], y - pts[-1][1]) >= 1.5 * M or z >= m["H"]:
+            pts.append((x, y, z))
+    return pts, th
+
+
+_CASE = 10 * M   # cases de l'index des troncons de chemin
+
+
+def _montagne(d):
+    x, y = _bords(d["v"], d["d1"], d["d2"])
+    m = dict(d, x=x, y=y, H=d["h_m"] * M, rs=d["rs_m"] * M, rb=d["rb_m"] * M)
+    m["rmax"] = (1 + d["lobes"][0]) * m["rb"]
+    if "lac" in d:   # le chemin part a cote du lac et tourne dans le sens donne
+        l = next(l for l in LACS if l["nom"] == d["lac"])
+        m["lac"] = l
+        dl = math.hypot(l["x"] - x, l["y"] - y)
+        phi_l = math.atan2(l["y"] - y, l["x"] - x)
+        phi0 = phi_l + d["sens"] * (math.asin(min(1.0, (l["r_eau_u"] + 10 * M) / dl)) + math.radians(15))
+    else:
+        phi0 = math.radians(d["canyon"]["cap_local"] + yaw_of(d["v"]) + d["depart_rel"])
+    if "canyon" in d:
+        m["cap"] = math.radians(d["canyon"]["cap_local"] + yaw_of(d["v"]))
+    m["chemin"], phi1 = _trace_chemin(m, phi0)
+    m["phi0"], m["phi1"] = phi0, phi1
+    idx = {}
+    portee = CHEMIN_LARG_M / 2 * M + CHEMIN_MARGE_M * M
+    for k, (a, b) in enumerate(zip(m["chemin"], m["chemin"][1:])):
+        for i in range(int((min(a[0], b[0]) - portee) // _CASE), int((max(a[0], b[0]) + portee) // _CASE) + 1):
+            for j in range(int((min(a[1], b[1]) - portee) // _CASE), int((max(a[1], b[1]) + portee) // _CASE) + 1):
+                idx.setdefault((i, j), []).append(k)
+    m["idx"] = idx
+    # sommet : centre du plateau (mesa : milieu de la moitie ou arrive le chemin, le canyon coupe le centre)
+    if "canyon" in d:
+        c = m["cap"] + math.pi / 2
+        m["sommet"] = (x + math.cos(c) * m["rs"] / 2, y + math.sin(c) * m["rs"] / 2)
+    else:
+        m["sommet"] = (x, y)
+    return m
+
+
+def dist_chemin(m, x, y):
+    """(distance u, z du chemin) au plus proche troncon du chemin de la montagne m, (1e18, 0) hors de l'index."""
+    best, zb = 1e18, 0.0
+    ch = m["chemin"]
+    for k in m["idx"].get((int(x // _CASE), int(y // _CASE)), ()):
+        (ax, ay, az), (bx, by, bz) = ch[k], ch[k + 1]
+        l2 = (bx - ax) ** 2 + (by - ay) ** 2
+        t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2))
+        dd = math.hypot(x - ax - t * (bx - ax), y - ay - t * (by - ay))
+        if dd < best:
+            best, zb = dd, az + t * (bz - az)
+    return best, zb
+
+
+def _hauteur_montagne(m, x, y):
+    dx, dy = x - m["x"], y - m["y"]
+    d2 = dx * dx + dy * dy
+    lim = m["rmax"] + (CHEMIN_LARG_M / 2 + CHEMIN_MARGE_M) * M
+    if d2 > lim * lim:
+        return 0.0
+    d = math.sqrt(d2)
+    h = _cone(m, d, math.atan2(dy, dx))
+    dc, zc = dist_chemin(m, x, y)
+    w = CHEMIN_LARG_M / 2 * M
+    if dc <= w:
+        h = zc                                            # chemin taille dans le flanc : plat en travers
+    elif dc < w + CHEMIN_MARGE_M * M:
+        h = max(h, zc - CHEMIN_REMBLAI * (dc - w))        # remblai sous son bord aval
+    if h <= 0:
+        return 0.0
+    if "lac" in m:
+        l = m["lac"]
+        h *= _lisse((math.hypot(x - l["x"], y - l["y"]) - l["r_u"] - M) / (FALAISE_LAC_M * M))
+    if "cap" in m:
+        n = abs(-dx * math.sin(m["cap"]) + dy * math.cos(m["cap"])) / M
+        h *= _lisse((n - m["canyon"]["larg_m"] / 2) / 3)
+    return h
+
+
+MONTAGNES = [_montagne(d) for d in MONTAGNES_DEF]
+# Zones declarees raides (flancs > 35 deg, falaises) : disques (x, y, rayon u) qui couvrent chaque montagne et son chemin.
+FLANCS_RAIDES = [(m["x"], m["y"], m["rmax"] + (CHEMIN_LARG_M / 2 + CHEMIN_MARGE_M) * M) for m in MONTAGNES]
+
+
+# ── Grandes dunes de Suna (30 a 55 m) : crete droite, face au vent douce (~21 deg), face sous le vent (~29 deg), bouts
+# arrondis (emprise en ellipse autour de la crete). Marchables partout (< 35 deg). (d1, d2) des deux bouts de la crete,
+# hauteur m, vent (d1, d2) : direction de la face au vent vue de la crete. Ajoutees par max au relief de fond, placees hors
+# des routes, sorties, villages, arches et de la mesa.
+DUNE_VENT_TAN, DUNE_ABRI_TAN = math.tan(math.radians(21)), math.tan(math.radians(29))
+DUNES_DEF = [((200, 1080), (320, 1080), 40, (0, -1)),
+             ((540, 970), (660, 1090), 48, (1, -1)),
+             ((1080, 560), (1080, 700), 52, (-1, 0))]
+
+
+def _dune(a, b, h_m, vent):
+    (ax, ay), (bx, by) = _bords("suna", *a), _bords("suna", *b)
+    vx, vy = _bords("suna", a[0] + vent[0], a[1] + vent[1])
+    L = math.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / L, (by - ay) / L
+    nx, ny = -uy, ux
+    if (vx - ax) * nx + (vy - ay) * ny < 0:
+        nx, ny = -nx, -ny                       # n : vers la face au vent
+    H = h_m * M
+    abri = 1.5 * H / DUNE_ABRI_TAN              # pente maxi d'une marche lissee sur W : 1,5 H / W
+    return dict(ax=ax, ay=ay, ux=ux, uy=uy, nx=nx, ny=ny, L=L, H=H, vent=1.5 * H / DUNE_VENT_TAN, abri=abri, bout=abri)
+
+
+DUNES = [_dune(*d) for d in DUNES_DEF]
+
+
+def _hauteur_dune(e, x, y):
+    dx, dy = x - e["ax"], y - e["ay"]
+    t = dx * e["ux"] + dy * e["uy"]
+    s = dx * e["nx"] + dy * e["ny"]
+    te = -t if t < 0 else t - e["L"] if t > e["L"] else 0.0
+    rho2 = (s / (e["vent"] if s >= 0 else e["abri"])) ** 2 + (te / e["bout"]) ** 2
+    return 0.0 if rho2 >= 1 else e["H"] * _lisse(1 - math.sqrt(rho2))
+
+
+def _hauteur_relief_ajoute(x, y):
+    # montagnes et dunes (max) ; -inf hors de leur emprise (le max ne doit pas combler les lits et les lacs, sous z = 0)
+    h = -math.inf
+    for m in MONTAGNES:
+        k = _hauteur_montagne(m, x, y)
+        if k > 0: h = max(h, k)
+    for e in DUNES:
+        k = _hauteur_dune(e, x, y)
+        if k > 0: h = max(h, k)
+    return h
 EAUX = [dict(nom=e["nom"], pts=[(x, y, z) for (x, y), z in zip(e["pts"], e["z"])], larg_u=e["larg_m"] * M) for e in _RIV]
 
 
@@ -391,17 +637,11 @@ def _ponts():
         if min(e["a0"], e["a1"]) <= 270 <= max(e["a0"], e["a1"]):
             x, y = local_to_world("konoha", 0, -_r_de(e["ctrl"], 270))
             out.append(dict(x=x, y=y, yaw=_yaw(*rt["pts"]), long_u=2 * (e["zone"] + 6) * M, larg_u=ROUTE_LARG_U + 160, z=0.0))
-    # passerelle sur le torrent, entre ses cascades, la ou les deux rives sont le plus a la meme hauteur
-    e = _RIV[1]
-    lg = 2 * (e["zone"] + 5) * M
-    def bouts(k):
-        yaw = _yaw(e["pts"][k - 1], e["pts"][k + 1]) + 90
-        c, s = math.cos(math.radians(yaw)) * lg / 2, math.sin(math.radians(yaw)) * lg / 2
-        x, y = e["pts"][k]
-        return yaw, x, y, _fond(x + c, y + s), _fond(x - c, y - s)
-    ks = [k for k in range(e["n"] // 5, e["n"] * 4 // 5) if all(abs(k - c) > 10 for c in e["casc"])]
-    yaw, x, y, z1, z2 = min((bouts(k) for k in ks), key=lambda b: abs(b[3] - b[4]))
-    out.append(dict(x=x, y=y, yaw=yaw, long_u=lg, larg_u=200, z=(z1 + z2) / 2))
+    # pont au-dessus du canyon de la mesa de Suna, d'une moitie du plateau a l'autre
+    for m in MONTAGNES:
+        if "cap" in m:
+            out.append(dict(x=m["x"], y=m["y"], yaw=math.degrees(m["cap"]) + 90, long_u=(m["canyon"]["larg_m"] + 20) * M,
+                            larg_u=240, z=m["H"]))
     # pont entre les deux pics de Kumo (d'un sommet a l'autre)
     (ax, ay, _, z), (bx, by, _, _) = PICS_KUMO
     out.append(dict(x=(ax + bx) / 2, y=(ay + by) / 2, yaw=_yaw((ax, ay), (bx, by)),
@@ -421,7 +661,7 @@ def _hauteur(x, y):
         if abs(xc - CORNERS[v][0]) < R_V * M and abs(yc - CORNERS[v][1]) < R_V * M:
             h = _hauteur_village(v, xc, yc) + _bosses(v, *world_to_local(v, xc, yc))
             break
-    h = _creuse(xc, yc, h + _fond(xc, yc))
+    h = max(_creuse(xc, yc, h + _fond(xc, yc)), _hauteur_relief_ajoute(xc, yc))
     if d > 0:
         cible = _cible_bord(x, y)
         # montee raccourcie quand l'ecart est faible : pente toujours >= 55 deg (> 45 = infranchissable)
@@ -433,6 +673,26 @@ def _hauteur(x, y):
 def height_at(x_u, y_u):
     # z monde exact (fonction analytique ; la grille en est l'echantillonnage)
     return _hauteur(x_u, y_u)
+
+
+def _grandes_cascades():
+    """Grandes cascades : la falaise de chaque montagne a lac. Haut : rebord de la falaise, 8 m derriere le bord du fond plat
+    du lac, vers le centre de la montagne ; bas : surface du lac, 4 m devant ce bord."""
+    out = []
+    for m in MONTAGNES:
+        if "lac" not in m:
+            continue
+        l = m["lac"]
+        dl = math.hypot(m["x"] - l["x"], m["y"] - l["y"])
+        ux, uy = (m["x"] - l["x"]) / dl, (m["y"] - l["y"]) / dl
+        xh, yh = l["x"] + ux * (l["r_u"] + 8 * M), l["y"] + uy * (l["r_u"] + 8 * M)
+        xb, yb = l["x"] + ux * (l["r_u"] - 4 * M), l["y"] + uy * (l["r_u"] - 4 * M)
+        out.append(dict(nom="Grande cascade (" + m["nom"] + ")", montagne=m["nom"], lac=l["nom"], x_haut=xh, y_haut=yh,
+                        z_haut=height_at(xh, yh), x_bas=xb, y_bas=yb, z_bas=l["z"], ux=-ux, uy=-uy, larg_u=14 * M))
+    return out
+
+
+GRANDES_CASCADES = _grandes_cascades()
 
 
 def build():
@@ -485,6 +745,11 @@ def vue_dessus(heights, chemin):
         d.line([P(*p) for p in r["pts"]], fill=(200, 170, 110), width=2)
     for e in EAUX:
         d.line([P(x, y) for x, y, _ in e["pts"]], fill=(60, 120, 230), width=2)
+    for l in LACS:
+        (x0, y0), (x1, y1) = P(l["x"] - l["r_eau_u"], l["y"] + l["r_eau_u"]), P(l["x"] + l["r_eau_u"], l["y"] - l["r_eau_u"])
+        d.ellipse((x0, y0, x1, y1), fill=(60, 120, 230))
+    for m in MONTAGNES:
+        d.line([P(x, y) for x, y, _ in m["chemin"]], fill=(240, 200, 80), width=1)
     for c in CASCADES:
         x, y = P(c["x"], c["y"])
         d.ellipse((x - 2, y - 2, x + 2, y + 2), fill=(150, 220, 255))

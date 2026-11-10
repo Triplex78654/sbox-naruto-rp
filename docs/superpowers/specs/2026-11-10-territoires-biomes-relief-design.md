@@ -40,7 +40,7 @@ Vue du dessus de la carte actuelle : villages de 500 m dans les coins, pays de 9
   - Kumo : relief le plus marqué, grosses bosses rocheuses qui montent vers le coin.
   - 4e coin : ondulations faibles.
   - Centre commun : presque plat (lieu de rencontre, marché, arène).
-- **Tout reste marchable** hors villages et bord de carte (pentes < ~35°) : le relief de fond donne du paysage, pas des murs. Les routes porte → centre restent praticables (aplanies sur leur tracé).
+- **Tout reste marchable** hors villages et bord de carte (pentes < ~35°) : le relief de fond donne du paysage, pas des murs. Les routes porte → centre restent praticables (aplanies sur leur tracé). **Exception (ajout « verticalité », plus bas)** : les flancs des grandes montagnes, déclarés un par un dans `FLANCS_RAIDES` (`tools/relief.py`), peuvent dépasser 35° ; chacune a un chemin en lacets marchable.
 - Le relief s'adoucit en approchant des remparts des villages et du centre, pour ne pas casser leurs niveaux.
 
 ### Villages
@@ -104,3 +104,13 @@ Demande : « des cascades aussi, ça pourrait être joli ; un monde rempli de v�
 - La technique du bruit de relief et du fondu des sols.
 - Le placement exact des contenus replacés.
 - L'ordre de construction.
+
+## Ajout de l'utilisateur : verticalité (2026-11-10)
+
+Demande : « plus de grosses montagnes à des moments, de vraies belles et grandes cascades, des dunes, qu'il y ait vraiment une verticalité ».
+
+- **Konoha** : un grand **massif boisé de ~150 m** au fond du pays (loin du village et de la route, côté Suna / bord nord), une **grande cascade de 40 à 60 m** qui tombe de sa falaise dans un **lac**, et ce lac est la **source de la rivière** : massif → lac → rivière → pont de la route → étang en aval (l'ancien torrent sans source est remplacé par cette rivière unique).
+- **Suna** : de **vraies dunes de 30 à 60 m** (en plus des petites rides), et une grande **mesa** rocheuse (plateau à bords verticaux) coupée par un **canyon**, avec un pont d'une moitié du plateau à l'autre.
+- **Kumo** : la **plus haute montagne de la carte** (pic de ~290 m, flancs en falaise) avec une **grande cascade** de plus de 40 m qui tombe dans un bassin. Les deux petits pics et leur pont sont gardés.
+- **Règle d'escalade (décidée)** : chaque grande montagne / massif / mesa a **un seul chemin en lacets** marchable (≤ 30° le long, ≥ 4 m de large) du pied au sommet ; le reste des flancs peut dépasser 35° (on y monte par bond / Shunshin, voulu). Les dunes restent marchables.
+- Inchangé : villages, centre plat, routes ≤ 10° avec ponts, bord infranchissable, sorties cachées (relief tenu à l'écart), 4e coin doux.

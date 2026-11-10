@@ -188,6 +188,9 @@ def eau():
             x, y, z = b["c"]
             zo = min(e["pts"], key=lambda q: math.hypot(q[0] - x, q[1] - y))[2]
             assert dist_poly(x, y, e["pts"]) <= 20 and abs(z - zo) <= 20, (e["nom"], round(z), round(zo))
+    for l in relief.LACS:   # chaque lac a sa surface, a son niveau, au-dessus de son centre
+        surf = [b for b in eaux if b["name"] == f"Lac ({l['nom']})"]
+        assert surf and all(abs(b["c"][2] - l["z"]) <= 5 and math.hypot(b["c"][0] - l["x"], b["c"][1] - l["y"]) < 1 for b in surf), l["nom"]
 
 
 # ── Décor (tâche 5) : végétation, arches de Suna, cascades, budget d'objets
@@ -304,7 +307,9 @@ def cascades():
     chutes = boites(lambda b: b["name"].startswith("Chute"))
     bassins = boites(lambda b: b["name"].startswith("Bassin"))
     n = len(relief.CASCADES) + len(gen().CASCADES_DECOR)
-    assert 4 <= n <= 8 and len(bassins) == n, (n, len(bassins))
+    assert len(bassins) == n, (n, len(bassins))
+    n += len(relief.GRANDES_CASCADES)
+    assert 4 <= n <= 10, n   # 4 a 10 cascades sur la carte (rivieres, pics de Kumo, grandes cascades des montagnes)
     assert all(not b["collide"] and b["alpha"] < 1 for b in chutes + bassins)
     for c in gen().CASCADES_DECOR:
         # vraie marche du relief ; la nappe suit la pente (ne flotte pas, ne s'enfonce pas)
@@ -319,7 +324,40 @@ def cascades():
                 assert 0 <= z - height_at(x, y) <= 150, (c["nom"], round(z - height_at(x, y)))
         bas = [b for b in bassins if b["name"] == f"Bassin ({c['nom']})"]
         assert len(bas) == 1 and dist_boite(c["x_bas"], c["y_bas"], bas[0]) == 0, c["nom"]
-    print("  ", n, "cascades dont", len(gen().CASCADES_DECOR), "hautes")
+    # grandes cascades : la nappe colle a la falaise (le terrain est a sa hauteur a moins de 4 m derriere elle), du rebord au lac
+    grandes = boites(lambda b: b["name"].startswith("Grande chute"))
+    assert all(not b["collide"] and b["alpha"] < 1 for b in grandes)
+    for c in relief.GRANDES_CASCADES:
+        nappe = [b for b in grandes if b["name"] == f"Grande chute ({c['montagne']})"]
+        assert nappe, c["nom"]
+        zs = []
+        for b in nappe:
+            (x0, y0, z0), (x1, y1, z1) = bouts(b)
+            for k in range(11):
+                x, y, z = x0 + (x1 - x0) * k / 10, y0 + (y1 - y0) * k / 10, z0 + (z1 - z0) * k / 10
+                zs.append(z)
+                if z <= c["z_bas"] + 60: continue   # pied de la chute, a la surface du lac (dessus de la nappe : +20)
+                ecart = min(abs(height_at(x - c["ux"] * d * M / 4, y - c["uy"] * d * M / 4) - z) for d in range(17))
+                assert ecart <= 150, (c["nom"], round(z), round(ecart))
+        assert max(zs) >= c["z_haut"] and min(zs) <= c["z_bas"] + 60, (c["nom"], round(max(zs)), round(min(zs)))
+    print("  ", n, "cascades dont", len(gen().CASCADES_DECOR), "hautes et", len(relief.GRANDES_CASCADES), "grandes")
+
+
+def arbres_montagnes():
+    # massif de Konoha boise (densite >= celle du pays), arbres rares sur le pic de Kumo ; aucun arbre sur une falaise
+    # (pente <= 45 deg sur 3 m autour du tronc) ni sur le chemin d'une montagne
+    n = {}
+    for m, (cx, cy, r) in zip(relief.MONTAGNES, relief.FLANCS_RAIDES):
+        ts = [b for b in troncs() if math.hypot(b["c"][0] - cx, b["c"][1] - cy) < r]
+        n[m["nom"]] = len(ts) / (math.pi * (r / M) ** 2 / 1e4)
+        for b in ts:
+            x, y = b["c"][:2]
+            h = height_at(x, y)
+            assert all(abs(height_at(x + dx, y + dy) - h) <= 3 * M for dx, dy in ((3 * M, 0), (-3 * M, 0), (0, 3 * M), (0, -3 * M))), (m["nom"], round(x), round(y))
+            assert relief.dist_chemin(m, x, y)[0] > (relief.CHEMIN_LARG_M / 2 + 3) * M, (m["nom"], "chemin", round(x), round(y))
+    dk = len(troncs("konoha")) / HA_PAYS
+    assert n["Massif de Konoha"] >= dk and 0 < n["Pic de Kumo"] < n["Massif de Konoha"] / 3 and n["Mesa de Suna"] == 0, (n, dk)
+    print("   arbres / ha :", {k: round(v, 1) for k, v in n.items()}, "pays de Konoha", round(dk, 1))
 
 
 def budget_objets():
@@ -383,7 +421,7 @@ def murets_hors_sorties():
 if __name__ == "__main__":
     gen()
     for f in (ponts_construits, postes_frontiere, routes_suivent_relief, bornes_disparues, groupes_territoires,
-              contenu_replace, pose_au_sol, eau, vegetation_degagee, densite_vegetation, arches_suna, cascades,
+              contenu_replace, pose_au_sol, eau, vegetation_degagee, densite_vegetation, arches_suna, cascades, arbres_montagnes,
               budget_objets, puits_separes, murets_hors_sorties):
         f()
         print("OK", f.__name__)

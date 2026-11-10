@@ -8,7 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from carte import (CORNERS, INNER, M, PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world, world_to_local, territoire,
                    dist_frontiere_m)
 from relief import (height_at, oublier_emprises, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits,
-                    ROUTES, ROUTE_LARG_U, EAUX, CASCADES, PONTS, PICS_KUMO, _dist_emprise, _sinus3)
+                    ROUTES, ROUTE_LARG_U, EAUX, CASCADES, PONTS, PICS_KUMO, _dist_emprise, _sinus3, LACS, MONTAGNES,
+                    FLANCS_RAIDES, GRANDES_CASCADES, CHEMIN_LARG_M, dist_chemin, LAC_BERGE_MAX_M)
 
 src = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "monde-blocage-v3.cs.txt")
@@ -772,20 +773,46 @@ for c in CASCADES:
     TB("konoha", "Eau", "Bassin", c["x"] + math.cos(a) * c["larg_u"] * 0.6, c["y"] + math.sin(a) * c["larg_u"] * 0.6,
        1.3 * c["larg_u"], 1.3 * c["larg_u"], 6, EAU_C, c["z_bas"] - 3, c["yaw"], False)
 
+# Lacs : surface (deux carrés, l'un tourné de 45 deg : octogone) jusqu'au rayon où la rive sort de l'eau.
+for l in LACS:
+    for yaw in (0, 45):
+        TB(l["v"], "Eau", f"Lac ({l['nom']})", l["x"], l["y"], 2 * l["r_eau_u"] / 1.08, 2 * l["r_eau_u"] / 1.08, 4, EAU_C, l["z"] - 2, yaw, False)
+# Grandes cascades : nappe collée à la falaise (60 u devant la paroi, échantillonnée tous les mètres du rebord au lac),
+# précédée du torrent qui descend le flanc sur 40 m jusqu'au rebord.
+for c in GRANDES_CASCADES:
+    ux, uy = c["ux"], c["uy"]   # vers le lac
+    t = territoire(c["x_haut"], c["y_haut"])
+    lac = next(l for l in LACS if l["nom"] == c["lac"])
+    pts = []
+    for k in range(-40, 13):   # k m depuis le rebord vers le lac (négatif : sur le flanc, au-dessus)
+        x, y = c["x_haut"] + ux * k * M, c["y_haut"] + uy * k * M
+        h = height_at(x, y)
+        if h <= lac["z"]:
+            pts.append((x + ux * 60, y + uy * 60, lac["z"] + 10))
+            break
+        pts.append((x + ux * (60 if k >= 0 else 0), y + uy * (60 if k >= 0 else 0), h + 25))
+    for a, b in zip(pts, pts[1:]):
+        TG(t, "Cascades", f"Grande chute ({c['montagne']})", a, b, c["larg_u"] if a[2] - b[2] > 2 * M else c["larg_u"] * 0.6, 40, EAU_C, False, 1.04)
+
 # ── Contenu replacé (docs/monde-blocage.cs.txt) : positions recalculées ici (graine fixe pour ce qui y était tiré au hasard).
 FEU, NEUTRE, CENTRE = "Pays du Feu - zone de Konoha", "Terres neutres de Konoha", "Centre commun"
 TROUS_X = {v: [(h["x"], h["y"]) for h in HOLES_OUT if h["v"] == v and h["code"][0] == "X"] for v in STYLES}
 CLAIRIERES = {k: local_to_world("konoha", r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))   # (angle local, rayon m)
-              for k, (a, r) in {"Ferme": (282, 850), "Clairière de chasse": (250, 1150), "Bord de rivière": (300, 1230)}.items()}
+              for k, (a, r) in {"Ferme": (282, 850), "Clairière de chasse": (252, 1000), "Bord de rivière": (262, 1060)}.items()}
 
 
-def libre_konoha(x, y, marge, bande=(VILLAGE_R + 25, PAYS_R - 15), clairieres=True, v="konoha"):
+def libre_konoha(x, y, marge, bande=(VILLAGE_R + 25, PAYS_R - 15), clairieres=True, v="konoha", montagnes=False):
     """(x, y) monde : dans le pays v (Konoha par défaut ; rayon local dans bande, m), loin du bord, des routes, des ponts,
-    de l'eau, des sorties cachées, des postes et des clairières de Konoha (marge u en plus : demi-diagonale de l'objet)."""
+    de l'eau (rivières, lacs), des sorties cachées, des postes et des clairières de Konoha (marge u en plus : demi-diagonale
+    de l'objet), et hors des grandes montagnes sauf si montagnes (arbres : voir pente_ok)."""
     if territoire(x, y) != v or max(abs(x), abs(y)) > INNER - 1500 or dist_frontiere_m(x, y) * M < marge + 2 * M: return False
     if not bande[0] <= math.hypot(*world_to_local(v, x, y)) <= bande[1]: return False
     if any(dist_poly(x, y, pts) < ROUTE_LARG_U / 2 + 8 * M + marge for pts in CHAUSSEES.values()): return False
     if any(dist_poly(x, y, e["pts"]) < e["larg_u"] / 2 + 8 * M + marge for e in EAUX): return False
+    # lacs : hors de l'eau ; hors de toute la berge (pentes jusqu'à ~35 deg) sauf les arbres (montagnes : pente vérifiée à part)
+    if any(math.hypot(x - l["x"], y - l["y"]) < (l["r_eau_u"] + 8 * M if montagnes else l["r_u"] + LAC_BERGE_MAX_M * M) + marge
+           for l in LACS): return False
+    if not montagnes and any(math.hypot(x - cx, y - cy) < r + marge for cx, cy, r in FLANCS_RAIDES): return False
     if any(sur_pont(x, y, p, 8 * M + marge) for p in PONTS): return False
     if any(math.hypot(x - hx, y - hy) < 35 * M + marge for hx, hy in TROUS_X[v]): return False
     if any(math.hypot(x - q["x"], y - q["y"]) < 40 * M + marge for q in POSTES): return False
@@ -865,7 +892,8 @@ for v, pts in CHAUSSEES.items():   # panneau à 9 000 u du centre, à côté de 
 
 # ── Décor (tâche 5) : cascades hautes de Kumo, arches de Suna, végétation par biome. Graines fixes : relancer = même résultat.
 # Cascades hautes : nappe d'eau collée au flanc le plus raide de chaque pic de Kumo (~30 deg, ~25 m de chute), sans
-# collision, bassin au pied. Elles s'ajoutent aux 4 cascades des rivières de Konoha (CASCADES) : 6 en tout.
+# collision, bassin au pied. Elles s'ajoutent aux 2 cascades de la rivière de Konoha (CASCADES) et aux 2 grandes cascades
+# (GRANDES_CASCADES, posées avec l'eau) : 6 en tout.
 CASCADES_DECOR = []
 for i, (px, py, rk, _) in enumerate(PICS_KUMO):
     qx, qy = PICS_KUMO[1 - i][:2]
@@ -888,7 +916,7 @@ for i, (px, py, rk, _) in enumerate(PICS_KUMO):
 # (x, y, cap) locaux (m, deg) ; la 1re longe la route de la porte (à 40 m de son axe, ouverture face à la route).
 ARCHE_W, ARCHE_P, ARCHE_D, ARCHE_H, ARCHE_E = 640, 240, 320, 480, 200   # passage, pilier (long / profondeur), hauteur, linteau
 ROC_SUNA = STYLES["suna"]["rock"]
-for i, (xm, ym, cap) in enumerate(((40, -1000, 90), (-300, -900, 30), (350, -1250, 120), (-150, -1350, 60), (500, -700, 150))):
+for i, (xm, ym, cap) in enumerate(((40, -1000, 90), (-300, -900, 30), (566, -1103, 120), (-150, -1350, 60), (500, -700, 150))):
     nom = f"Arche {i + 1}"
     x, y = local_to_world("suna", xm, ym)
     yaw = cap + yaw_of("suna"); ux, uy = math.cos(math.radians(yaw)), math.sin(math.radians(yaw))
@@ -904,6 +932,13 @@ for i, (xm, ym, cap) in enumerate(((40, -1000, 90), (-300, -900, 30), (350, -125
         TB("suna", "Arches (Suna)", f"{nom} (pilier)", cx, cy, ARCHE_P, ARCHE_D, zb + ARCHE_E / 2 - z0, ROC_SUNA, z0, yaw, True, True)
     TB("suna", "Arches (Suna)", f"{nom} (linteau)", x, y, ARCHE_W + 2 * ARCHE_P + 80, ARCHE_D + 40, ARCHE_E, ROC_SUNA, zb, yaw)
     TB("suna", "Arches (Suna)", f"{nom} (sommet)", x, y, ARCHE_W * 0.8, ARCHE_D * 0.7, 160, ROC_SUNA, zb + ARCHE_E, yaw + 6)
+
+
+def pente_ok(x, y, r=3 * M):
+    """Arbre possible en (x, y) : pente <= 45 deg autour (pas sur une falaise) et à plus de 4 m du bord d'un chemin de montagne."""
+    h = height_at(x, y)
+    if any(abs(height_at(x + dx, y + dy) - h) > r for dx, dy in ((r, 0), (-r, 0), (0, r), (0, -r))): return False
+    return all(dist_chemin(m, x, y)[0] > (CHEMIN_LARG_M / 2 + 4) * M for m in MONTAGNES)
 
 
 def foret(v, n, graine, taille, feuilles, bosquet):
@@ -926,7 +961,7 @@ def foret(v, n, graine, taille, feuilles, bosquet):
             ci, cj = int(x // cell), int(y // cell)
             if any(math.hypot(x - a, y - b) < 6 * M for i in (-1, 0, 1) for j in (-1, 0, 1) for a, b in pris.get((ci + i, cj + j), ())): continue
             if any(math.hypot(x - a, y - b) < r for a, b, r in autres): continue
-            if not libre_konoha(x, y, 70, v=v): continue
+            if not libre_konoha(x, y, 70, v=v, montagnes=True) or not pente_ok(x, y): continue
             s = taille[0] + rng_v.random() * (taille[1] - taille[0])
             top = TS(v, g, "Tronc", x, y, 50 * s, 50 * s, 500 * s, COMMON["wood"])
             S(sous_groupe(v, g), "Feuillage", x, y, top + 120 * s, 420 * s, rng_v.choice(feuilles))
@@ -943,8 +978,10 @@ def coin_pays(v):
 # Konoha : forêt dense par massifs (densité modulée par un bruit lent : forêts serrées et sous-bois plus clairs) autour de
 # l'ancienne forêt du Pays du Feu (650 arbres, comptés). Kumo : petits bosquets isolés (2 à 5 arbres). Suna : rien.
 pt_k = coin_pays("konoha")
+MASSIF = next(m for m in MONTAGNES if m["nom"] == "Massif de Konoha")
 def massif_konoha(r):
     x, y = pt_k(r)
+    if math.hypot(x - MASSIF["x"], y - MASSIF["y"]) < MASSIF["rmax"]: return [(x, y)]   # massif boisé : tout point candidat
     return [(x, y)] if r.random() < 0.15 + 0.85 * _sinus3(1.7 * x / M, 1.7 * y / M, 5.0) ** 2 else []
 foret("konoha", 3000, "végétation konoha", (0.9, 1.8), [COMMON["leaf"], (0.18, 0.4, 0.16), (0.28, 0.5, 0.22)], massif_konoha)
 pt_c = coin_pays("kumo")
