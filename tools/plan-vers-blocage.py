@@ -445,14 +445,14 @@ def puits(grp, v, code, px, py, ux, uy, floor0, zs):
             m = P(s, sg * (PUITS_LARG / 2 + T / 2))
             G(grp, v, code, "puits", f"{code} muret", (m[0], m[1], (zlo + zhi) / 2), (ln * 1.03, T, zhi - zlo), (ux, uy, 0), SOUS["mur"])
     # Toit : le relief (heightfield) n'arrête rien par en dessous (vérifié en jeu, T6) ; dalle parallèle au sol, aussi haute que le relief le permet.
-    # Arrêtée là où il reste < 90 u sous le relief (près du trou) : sortir par là, c'est sortir à côté du trou.
+    # Omise là où il reste < 90 u sous le relief (près du trou) : sortir par là, c'est sortir à côté du trou.
     RT = 20
     for i in range(n):
         s0, s1 = T + i * ln, T + (i + 1) * ln
         c = min(hl(*P(s0 + k * (s1 - s0) / 10, o)) - (floor0 + (s0 + k * (s1 - s0) / 10) * PUITS_PENTE)
                 for k in range(11) for o in (-W2 / 2, 0, W2 / 2))
         b = min(c - RT - 2, TH)
-        if b < 90: break
+        if b < 90: continue  # pas de toit sur ce tronçon seulement (un creux du relief au milieu ne doit pas couper la suite)
         m = P((s0 + s1) / 2)
         G(grp, v, code, "puits", f"{code} toit du puits", (m[0], m[1], floor0 + (s0 + s1) / 2 * PUITS_PENTE + b + RT / 2),
           (ln * math.sqrt(1 + PUITS_PENTE ** 2) * 1.03, W2, RT), d, SOUS["plafond"])

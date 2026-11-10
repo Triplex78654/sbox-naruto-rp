@@ -2,7 +2,7 @@
 // une trace vers l'extérieur sur 8 000 u touche toujours un collider avant |x| ou |y| = HALF (56 000).
 // Éditeur ou Play : sbox-cli --call run_csharp '{"path":"tools/tests/border-check.cs"}'. Renvoie "OK ..." ou les échecs.
 var scene = Game.ActiveScene ?? Editor.SceneEditorSession.Active.Scene;
-const float Half = 56000f, Inner = 50000f;
+const float Half = 56000f, Inner = 50000f; // copiés de tools/carte.py : à garder synchro
 var fails = new System.Collections.Generic.List<string>();
 int n = 0;
 foreach ( var (nom, dir) in new[] { ( "nord", new Vector3( 0, 1, 0 ) ), ( "sud", new Vector3( 0, -1, 0 ) ), ( "est", new Vector3( 1, 0, 0 ) ), ( "ouest", new Vector3( -1, 0, 0 ) ) } )
