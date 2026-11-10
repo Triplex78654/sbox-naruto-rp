@@ -331,7 +331,7 @@ def trous_sur_sorties():
     tmp, gen = _generer()
     att = _codes_attendus(tmp)
     assert {(h["v"], h["code"]) for h in relief.HOLES} == att and len(relief.HOLES) == len(att), "trous != X* + S* + H1"
-    _, holes, _ = relief.build()
+    _, holes, _, _ = relief.build()
     step = relief.SIZE / (relief.RES - 1)
     cells = [(k % relief.RES, k // relief.RES) for k, h in enumerate(holes) if h]
     assert cells
@@ -348,7 +348,7 @@ def trous_sur_sorties():
 
 def souterrains_accessibles():
     tmp, gen = _generer()
-    _, holes, _ = relief.build()
+    _, holes, _, _ = relief.build()
     step = relief.SIZE / (relief.RES - 1)
     def dans_un_trou(h, t):
         # point a la distance t du centre du trou h, sur l'axe : la case de grille la plus proche est-elle trouee ?
@@ -547,11 +547,23 @@ def village_bosses():
     print("  ", n, "elements a plat")
 
 
+def sols_biomes():
+    # octet du sol : biome du territoire loin des frontieres, melange des deux biomes au milieu du fondu
+    S = relief.sol_case
+    def pur(x, y, b): return S(x, y) & 3 == b and S(x, y) >> 4 == 0   # base = b, sans melange
+    assert pur(-30000, 30000, 0) and pur(30000, 30000, 1) and pur(30000, -30000, 2) and pur(-30000, -30000, 3) and pur(0, 0, 3)
+    b = S(0, 30000)   # frontiere Konoha / Suna : foret et desert a 0,5
+    assert {b & 3, b >> 2 & 3} == {0, 1} and 6 <= b >> 4 <= 8, b
+    assert pur(-2000, 30000, 0)   # 50 m de la frontiere : hors du fondu de 80 m
+    c = S(-1000, 30000)   # 25 m de la frontiere, cote foret : foret dominante, un peu de desert
+    assert c & 3 == 0 and c >> 2 & 3 == 1 and 1 <= c >> 4 <= 6, c
+
+
 if __name__ == "__main__":
     _generer()   # plans, trous et emprises (bosses des villages) charges pour tous les tests
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
               generation_stable, ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
-              souterrains_sans_intrusion, village_bosses):
+              souterrains_sans_intrusion, village_bosses, sols_biomes):
         f()
         print("OK", f.__name__)

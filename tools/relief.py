@@ -1,6 +1,6 @@
 # Carte de hauteurs : relief des villages (3 etages, buttes et creux doux), relief de fond par biome (rivieres, cascades, ponts,
 # routes aplanies), bord infranchissable.
-# Ecrit tools/out/relief.u16, holes.u8, relief.json pour le composant Terrain de s&box.
+# Ecrit tools/out/relief.u16, holes.u8, sols.u8 (biome du sol), relief.json pour le composant Terrain de s&box.
 # Usage : python tools/relief.py [<dossier plans>] ; ordre : plans-villages-v3.py <dossier> -> plan-vers-blocage.py <dossier>
 # -> relief.py <dossier> (lit trous.holes et souterrains.emprises de CE dossier ; sans dossier, il refait les deux etapes).
 # Decor pose dans un village hors des emprises des plans : appeler charger_emprises(<dossier>) avant height_at (bosses).
@@ -270,13 +270,29 @@ def _fond(x, y):
         if env == 0.0:
             return 0.0
     X, Y = x / M, y / M
-    # minorant de la distance aux frontieres (axes, cercles des pays) : loin d'elles, un seul biome (rapide)
-    lb = min(abs(X), abs(Y), *(abs(math.hypot(X - cx / M, Y - cy / M) - PAYS_R) for cx, cy in CORNERS.values()))
-    if lb >= FONDU_M / 2:
+    if _loin_frontiere(X, Y):
         h = _relief_biome(BIOME[t], X, Y)
     else:
         h = sum(w * _relief_biome(b, X, Y) for b, w in biome_poids(x, y).items() if w > 0)
     return env * h * M
+
+
+def _loin_frontiere(X, Y):
+    """Vrai si (X, Y) (m) est hors du fondu des biomes : minorant de la distance aux frontieres (axes, cercles des pays)."""
+    return min(abs(X), abs(Y), *(abs(math.hypot(X - cx / M, Y - cy / M) - PAYS_R) for cx, cy in CORNERS.values())) >= FONDU_M / 2
+
+
+SOL_IDX = {"foret": 0, "desert": 1, "roche": 2, "neutre": 3}   # ordre des materiaux dans tools/terrain-import.cs.txt
+
+
+def sol_case(x, y):
+    """Octet du sol en (x, y) monde : base (bits 0-1) | dessus (bits 2-3) | melange 0..15 (bits 4-7), les deux biomes les plus
+    lourds de biome_poids (fondu de FONDU_M aux frontieres) ; lu par terrain-import.cs.txt (CompactTerrainMaterial)."""
+    if _loin_frontiere(x / M, y / M):
+        b = SOL_IDX[BIOME.get(territoire(x, y), "neutre")]
+        return b | b << 2
+    (b1, w1), (b2, w2) = sorted(biome_poids(x, y).items(), key=lambda kv: -kv[1])[:2]
+    return SOL_IDX[b1] | SOL_IDX[b2] << 2 | round(15 * w2 / (w1 + w2)) << 4
 
 
 # ── Donnees du relief (lues par les taches 4 a 6). Positions en repere local du village : (angle deg, rayon m).
@@ -442,8 +458,9 @@ def build():
                 t, n = dx * h["ux"] + dy * h["uy"], -dx * h["uy"] + dy * h["ux"]
                 if TROU_T0 <= t <= TROU_T1 and abs(n) <= TROU_LARG / 2:
                     holes[j * RES + i] = True
+    sols = bytes(sol_case(-HALF + (k % RES) * step, -HALF + (k // RES) * step) for k in range(RES * RES))
     meta = {"res": RES, "size": SIZE, "height": TERRAIN_HEIGHT, "z": TERRAIN_Z, "holes": len(HOLES)}
-    return heights, holes, meta
+    return heights, holes, sols, meta
 
 
 def vue_dessus(heights, chemin):
@@ -490,7 +507,7 @@ def main():
             subprocess.run([sys.executable, os.path.join(here, script), tmp] + extra, check=True, stdout=subprocess.DEVNULL)
         charger_emprises(tmp)
         charger_trous(tmp)
-    heights, holes, meta = build()
+    heights, holes, sols, meta = build()
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
     os.makedirs(out, exist_ok=True)
     vue_dessus(heights, os.path.join(out, "vue-dessus.png"))
@@ -500,6 +517,8 @@ def main():
         heights.tofile(f)
     with open(os.path.join(out, "holes.u8"), "wb") as f:
         f.write(bytes(holes))
+    with open(os.path.join(out, "sols.u8"), "wb") as f:
+        f.write(sols)
     with open(os.path.join(out, "relief.json"), "w") as f:
         json.dump(meta, f)
     print("ecrit", out, meta)

@@ -1,16 +1,17 @@
-// Importe le relief (tools/relief.py -> tools/out/relief.u16 + holes.u8) dans l'asset terrain/monde.terrain
+// Importe le relief (tools/relief.py -> tools/out/relief.u16 + holes.u8 + sols.u8) dans l'asset terrain/monde.terrain
 // et pose l'objet « Relief » (Terrain) dans la scène ouverte. Relançable.
 // Prérequis : python tools/relief.py <dossier plans v3> déjà lancé (après plans-villages-v3.py puis plan-vers-blocage.py sur ce dossier), et l'asset créé une fois :
 //   sbox-cli --call create_asset '{"type":"terrain","path":"terrain/monde.terrain"}'
 // Un TerrainStorage non enregistré comme asset est sérialisé "Storage": null dans la scène : l'asset est obligatoire.
-// Matériaux : Assets/terrain/{herbe,sable,roche}.tmat (créés une fois avec create_asset, image unie de 16 px).
+// Matériaux : Assets/terrain/{herbe,sable,roche,neutre}.tmat (créés une fois avec create_asset, image unie de 16 px).
 // À lancer AVANT docs/monde-blocage-v3.cs.txt.
 var scene = Editor.SceneEditorSession.Active.Scene;
 var root = Project.Current.GetRootPath();
 var hm = System.IO.File.ReadAllBytes( System.IO.Path.Combine( root, "tools", "out", "relief.u16" ) );
 var holes = System.IO.File.ReadAllBytes( System.IO.Path.Combine( root, "tools", "out", "holes.u8" ) );
+var sols = System.IO.File.ReadAllBytes( System.IO.Path.Combine( root, "tools", "out", "sols.u8" ) );
 const int Res = 2048;
-if ( hm.Length != Res * Res * 2 || holes.Length != Res * Res ) return $"tailles inattendues : relief {hm.Length}, trous {holes.Length}";
+if ( hm.Length != Res * Res * 2 || holes.Length != Res * Res || sols.Length != Res * Res ) return $"tailles inattendues : relief {hm.Length}, trous {holes.Length}, sols {sols.Length}";
 var asset = Editor.AssetSystem.FindByPath( "terrain/monde.terrain" );
 if ( asset is null ) return "asset terrain/monde.terrain absent : le créer avec sbox-cli --call create_asset";
 var storage = asset.LoadResource<TerrainStorage>();
@@ -18,12 +19,13 @@ storage.SetResolution( Res );
 storage.TerrainSize = 112000f;
 storage.TerrainHeight = 40000f;
 Buffer.BlockCopy( hm, 0, storage.HeightMap, 0, hm.Length );
-// Sol uni (blocage) : 0 herbe, 1 sable (moitié de Suna), 2 roche (pentes > 35 deg). Matériaux = petites images unies (Assets/terrain/*.png).
-// Rendu constaté (T6) : teinte grise unie, pas les couleurs des images, mais le relief se lit mieux qu'avec la grille par défaut.
+// Sol par biome (sols.u8 = relief.sol_case) : 0 herbe (forêt), 1 sable (désert), 2 roche, 3 neutre ; aux frontières, mélange
+// base / dessus des deux biomes (fondu de 80 m) ; pentes > 35 deg en roche. Matériaux = petites images unies (Assets/terrain/*.png).
+// Rendu constaté (T6) : teinte grise unie, pas les couleurs des images (étape 7 du plan territoires), mais le relief se lit mieux qu'avec la grille par défaut.
 storage.Materials.Clear();
-foreach ( var m in new[] { "herbe", "sable", "roche" } ) storage.Materials.Add( ResourceLibrary.Get<TerrainMaterial>( $"terrain/{m}.tmat" ) );
+foreach ( var m in new[] { "herbe", "sable", "roche", "neutre" } ) storage.Materials.Add( ResourceLibrary.Get<TerrainMaterial>( $"terrain/{m}.tmat" ) );
 var hole = new CompactTerrainMaterial( 0, 0, 0, true ).Packed;
-var mats = new[] { new CompactTerrainMaterial( 0, 0, 0, false ).Packed, new CompactTerrainMaterial( 1, 0, 0, false ).Packed, new CompactTerrainMaterial( 2, 0, 0, false ).Packed };
+var roche = new CompactTerrainMaterial( 2, 2, 0, false ).Packed;
 float cell = 112000f / ( Res - 1 ), hs = 40000f / 65535f, steep = MathF.Tan( 35f * MathF.PI / 180f );
 int n = 0;
 for ( int j = 0; j < Res; j++ )
@@ -33,8 +35,8 @@ for ( int j = 0; j < Res; j++ )
 		if ( holes[k] != 0 ) { storage.ControlMap[k] = hole; n++; continue; }
 		float H( int a, int b ) => storage.HeightMap[Math.Clamp( b, 0, Res - 1 ) * Res + Math.Clamp( a, 0, Res - 1 )] * hs;
 		var gx = ( H( i + 1, j ) - H( i - 1, j ) ) / ( 2 * cell ); var gy = ( H( i, j + 1 ) - H( i, j - 1 ) ) / ( 2 * cell );
-		float x = -56000f + i * cell, y = -56000f + j * cell;
-		storage.ControlMap[k] = MathF.Sqrt( gx * gx + gy * gy ) > steep ? mats[2] : ( x > 0 && y > 0 && x + y > 20000f ) ? mats[1] : mats[0];
+		int s = sols[k];   // base | dessus << 2 | mélange (0..15) << 4
+		storage.ControlMap[k] = MathF.Sqrt( gx * gx + gy * gy ) > steep ? roche : new CompactTerrainMaterial( (byte)( s & 3 ), (byte)( s >> 2 & 3 ), (byte)( ( s >> 4 ) * 17 ), false ).Packed;
 	}
 asset.SaveToDisk( storage );
 using ( scene.Push() )

@@ -240,7 +240,15 @@ def ponts_kumo(g, lst):
             B(g, f"Pont {i + 1} (pile)", px, py, 110, 110, pz - mil + 15, (0.5, 0.5, 0.52), mil - 15, a)
 
 def levres_suna(g):
-    """Murets de roche au bord haut de chaque terrasse (pas sur les rampes)."""
+    """Murets de roche au bord haut de chaque terrasse (pas sur les rampes ni sur la sortie d'un puits : appelée après souterrains())."""
+    sorties = []   # (x, y, ux, uy) : du trou jusqu'au bout du palier
+    for sh in SHAFTS:
+        if sh["v"] != "suna": continue
+        dx, dy = sh["top"][0] - sh["start"][0], sh["top"][1] - sh["start"][1]
+        n = math.hypot(dx, dy); sorties.append((sh["top"][0], sh["top"][1], dx / n, dy / n))
+    def sur_sortie(x, y):
+        return any(math.hypot(x - sx - ux * t, y - sy - uy * t) < PUITS_LARG / 2 + T + 3 * M * 1.08 + 20
+                   for sx, sy, ux, uy in sorties for t in [max(0.0, min(PUITS_FIN + 180.0, (x - sx) * ux + (y - sy) * uy))])
     for r0 in (TIERS["milieu"][0], TIERS["bas"][0]):
         r = r0 - 4.5
         n = math.ceil(2 * math.pi * r * 90 / 360 / 6)
@@ -248,6 +256,7 @@ def levres_suna(g):
             a = 225 + (i + 0.5) * 90 / n
             if any(r * abs(math.sin(math.radians(a - ra))) < RAMPE_LARG[1] + 3 and math.cos(math.radians(a - ra)) > 0 for ra in RAMPS["suna"]): continue
             rad = math.radians(a)
+            if sur_sortie(math.cos(rad) * r * M, math.sin(rad) * r * M): continue
             ZB(g, "Muret de terrasse", math.cos(rad) * r * M, math.sin(rad) * r * M, 100, 6 * M * 1.08, 90, STYLES["suna"]["rock"], a)
 
 def ramp_dist(v, x, y):
@@ -352,16 +361,22 @@ def rect_bouche(r, sx_, sy_, stub):
     a, b = r["cy"] + sy_ * r["h"] / 2, r["cy"] + sy_ * (r["h"] / 2 + T + stub)
     return (r["cx"] - r["w"] / 2, min(a, b), r["cx"] + r["w"] / 2, max(a, b))
 
-def empiete(rooms, code, r, ax, p, nx, ny, sx_, sy_, Ls):
-    """La bouche + le puits d'une salle (emprise au sol, toutes hauteurs) touchent-ils une AUTRE salle ? On n'entre que par sa porte."""
+def emprise_entree(r, ax, p, nx, ny, sx_, sy_, Ls):
+    """Emprise au sol (x0, y0, x1, y1) de la bouche + du puits + du palier d'une salle."""
     ox, oy = (0, p) if ax == "x" else (p, 0)
     a = (r["cx"] + ox, r["cy"] + oy)
     b = (sx_ + nx * (Ls + PUITS_FIN + 180), sy_ + ny * (Ls + PUITS_FIN + 180))
     hw = PUITS_LARG / 2 + T
-    x0, x1 = min(a[0], b[0]) - (hw if ax == "y" else 0), max(a[0], b[0]) + (hw if ax == "y" else 0)
-    y0, y1 = min(a[1], b[1]) - (hw if ax == "x" else 0), max(a[1], b[1]) + (hw if ax == "x" else 0)
+    return (min(a[0], b[0]) - (hw if ax == "y" else 0), min(a[1], b[1]) - (hw if ax == "x" else 0),
+            max(a[0], b[0]) + (hw if ax == "y" else 0), max(a[1], b[1]) + (hw if ax == "x" else 0))
+
+def empiete(rooms, code, q, entrees):
+    """L'emprise q d'une entrée touche-t-elle une AUTRE salle (on n'entre que par sa porte) ou une entrée déjà posée (deux puits
+    qui se croisent se bouchent l'un l'autre, vu en jeu T6 à 700 m) ?"""
+    x0, y0, x1, y1 = q
     return any(x0 < o["cx"] + o["w"] / 2 + T + 20 and o["cx"] - o["w"] / 2 - T - 20 < x1 and y0 < o["cy"] + o["h"] / 2 + T + 20 and o["cy"] - o["h"] / 2 - T - 20 < y1
-               for c, o in rooms.items() if c != code)
+               for c, o in rooms.items() if c != code) \
+        or any(x0 < b[2] + 20 and b[0] - 20 < x1 and y0 < b[3] + 20 and b[1] - 20 < y1 for b in entrees)
 
 def souterrains(v, lst, grp, g):
     CUR[0] = v
@@ -395,6 +410,7 @@ def souterrains(v, lst, grp, g):
         r["hmin"] = min(hmin_rect(v, *q) for q in rects)
     v6 = next(q for q in lst if q["code"] == "V6")["shape"]
     # 3) construire
+    entrees = []   # emprises des entrées déjà posées
     for code, r in sorted(rooms.items()):
         e = r["e"]; tn = r["tun"]
         if tn:
@@ -416,12 +432,13 @@ def souterrains(v, lst, grp, g):
                     p = frac * (perp - TW)
                     sx_, sy_ = (r["cx"] + nx * (half + T + STUB + ext), r["cy"] + p) if ax == "x" else (r["cx"] + p, r["cy"] + ny * (half + T + STUB + ext))
                     res = puits_ok(v, lst, sx_, sy_, nx, ny, z, e["level"], ext)
-                    if res and empiete(rooms, code, r, ax, p, nx, ny, sx_, sy_, res[0]): res = None
+                    if res and empiete(rooms, code, emprise_entree(r, ax, p, nx, ny, sx_, sy_, res[0]), entrees): res = None
                     if res: choix = (ax, sg, p, nx, ny, sx_, sy_, res); break
                 if choix: break
             if choix: break
         assert choix, f"{v} {code} : pas d'entrée de surface"
         ax, sg, p, nx, ny, sx_, sy_, (Ls, zs) = choix
+        entrees.append(emprise_entree(r, ax, p, nx, ny, sx_, sy_, Ls))
         r["ouv"].append((ax, sg, p, TW + 20))
         salle(grp, v, code, r["cx"], r["cy"], r["w"], r["h"], top, None, r["ouv"])
         door = e["door"]
@@ -592,7 +609,6 @@ for v, style in STYLES.items():
             if not flat and f == "built":
                 B(g, f"{tag} (toit)", s["x"] * M, s["y"] * M, s["w"] * M + 60, s["h"] * M + 60, 40, style["roof"], hl(s["x"] * M, s["y"] * M) + HEIGHT.get(f, 400), s.get("rot", 0))
     # Styles : murets de terrasse (Suna), ponts (Kumo)
-    if v == "suna": levres_suna(g)
     if v == "kumo": ponts_kumo(g, surf)
     # Apparition : 4 points sur la place V6
     sp = next(e for e in lst if e["code"] == "V6")
@@ -603,6 +619,7 @@ for v, style in STYLES.items():
     # Souterrains (repère local du village, z monde)
     lines.append(f'var {v}Sous = new GameObject( {v}, true, "Souterrains" );')
     souterrains(v, lst, f"{v}Sous", g)
+    if v == "suna": levres_suna(g)   # murets de terrasse (Suna), après les puits pour laisser leurs sorties libres
     # Végétation du village : parcs partout, bords de rues à Konoha (village arboré)
     arbres_village(v, lst, parc + (rangees_rues(lst) if v == "konoha" else []))
 

@@ -1,6 +1,6 @@
 {
   "Maps": {
-    "$blob": "ac39283d-1b44-820f-be71-fbf6cb4de5e0"
+    "$blob": "b94f6979-9b4a-82a1-814a-8ddf7a770260"
   },
   "Resolution": 2048,
   "TerrainSize": 112000,
@@ -17,6 +17,10 @@
     {
       "Id": "d5f4f644-3188-4fbd-a8bb-79588f395bc3",
       "Path": "terrain/roche.tmat"
+    },
+    {
+      "Id": "497f07ed-66d0-469b-a30f-0436e4a29550",
+      "Path": "terrain/neutre.tmat"
     }
   ],
   "MaterialSettings": {
