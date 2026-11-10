@@ -686,3 +686,11 @@ Testé en direct via `sbox-cli` (pont MCP de l'éditeur) :
 ### Piloter l'éditeur (`sbox-cli`)
 
 `<engine>/bin/managed/sbox-cli.exe`, lancé depuis le dossier du projet : `--call editor_status`, `compile_status`, `play_start/stop`, `network_spawn_instance` (2e client local), `run_csharp` (code C# exécuté dans l'éditeur), `create_asset`, `scene_tree`, `add_component`, `save_scene`. Instructions complètes : `sbox-cli --skill sbox-cli`.
+
+### Terrain (vérifié 2026-11-10, éditeur 26.11.03a)
+
+- Asset : `create_asset {"type":"terrain","path":"terrain/monde.terrain"}` puis `Editor.AssetSystem.FindByPath( ... ).LoadResource<TerrainStorage>()`, modification, `asset.SaveToDisk( storage )`. Un `Terrain` dont le `Storage` n'est pas un asset est sérialisé `"Storage": null`.
+- `TerrainStorage` : `SetResolution( int )`, `HeightMap` (`ushort[]`, ligne y puis x, 0..65535 = 0..`TerrainHeight`), `ControlMap` (`uint[]`), `TerrainSize`, `TerrainHeight` (u), `Materials` (`List<TerrainMaterial>`, vide par défaut). Trou : `new CompactTerrainMaterial( 0, 0, 0, true ).Packed` (= 262144) dans `ControlMap` ; rendu ET collision respectent le trou (trace verticale qui traverse).
+- Le terrain démarre à sa position (coin) et s'étend de `TerrainSize` : `Relief` à (-56000, -56000, -2000), taille 112 000, hauteur 40 000 -> z monde = -2000 + hauteur stockée.
+- `Terrain` : `Storage = storage; Create();` construit rendu + collision. Hauteur relue par trace : exacte au centimètre près.
+- Couleur : `TerrainMaterial` est une ressource avec `AlbedoImage` / `NormalImage` / ... (chemins de textures) : pas de couleur unie sans texture. `Storage.Materials` est vide, le terrain se rend avec le matériau par défaut. À décider avec Task 6.

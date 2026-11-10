@@ -6,14 +6,40 @@ import os
 import sys
 from array import array
 
-from carte import CORNERS, HALF, INNER, M, RAMPS, TIER_Z, TIERS, world_to_local
+from carte import CORNERS, HALF, INNER, M, RAMPS, TIER_Z, TIERS, local_to_world, world_to_local
 
 RES = 2048
 TERRAIN_Z = -2000      # le terrain est pose a z = -2000 : hauteur stockee 2000 = z monde 0
 TERRAIN_HEIGHT = 40000
 SIZE = 2 * HALF
 
-HOLES = []  # trous (centre en metres local + taille), remplis en Task 3
+# Trous des sorties cachees X1 / X2 : {v, code, x, y (monde, centre), ux, uy (direction monde tunnel -> sortie)}.
+# Remplis par charger_trous() depuis les plans v3 ; un trou est un rectangle le long du puits.
+HOLES = []
+PUITS_PENTE = math.tan(math.radians(25))  # pente du puits (marchable : <= 35 deg)
+PUITS_FIN = 100     # le sol du puits atteint z = 0 a 100 u apres le centre de la sortie
+PUITS_LARG = 300    # largeur interieure du puits (u) : plus large que le trou, qui est decoupe par cases de 55 u
+TROU_LARG = 160     # largeur du trou (u)
+TROU_T0, TROU_T1 = -170, 110  # etendue du trou le long du puits (u, 0 = centre de la sortie)
+
+
+def sol_puits(t):
+    # z du sol du puits a la distance t (u) du centre de la sortie, vers l'exterieur
+    return (t - PUITS_FIN) * PUITS_PENTE
+
+
+def charger_trous(plans_dir):
+    HOLES.clear()
+    for v in sorted(CORNERS):
+        for k in ("1", "2"):
+            f = os.path.join(plans_dir, f"{v}-X{k}.json")
+            if not os.path.exists(f):
+                continue
+            x, y = (lambda s: (s["x"], s["y"]))(json.load(open(f, encoding="utf-8"))["shape"])
+            a, b = json.load(open(os.path.join(plans_dir, f"{v}-T{k}.json"), encoding="utf-8"))["shape"]["pts"][-2:]
+            (x0, y0), (x1, y1) = local_to_world(v, *a), local_to_world(v, *b)
+            n = math.hypot(x1 - x0, y1 - y0)
+            HOLES.append({"v": v, "code": "X" + k, "x": x1, "y": y1, "ux": (x1 - x0) / n, "uy": (y1 - y0) / n})
 
 BORD_Z = {"konoha": 2400, "suna": 2000, "kumo": 6000, "libre": 2000}  # sommet du bord (z monde)
 BORD_MONTEE = 1200     # montee du bord : 30 m
@@ -97,11 +123,28 @@ def build():
             heights[k] = 0 if v < 0 else 65535 if v > 65535 else v
             k += 1
     holes = [False] * (RES * RES)
-    meta = {"res": RES, "size": SIZE, "height": TERRAIN_HEIGHT, "z": TERRAIN_Z}
+    for h in HOLES:
+        r = TROU_T1 + TROU_LARG
+        i0, i1 = int((h["x"] - r + HALF) / step), int((h["x"] + r + HALF) / step) + 1
+        j0, j1 = int((h["y"] - r + HALF) / step), int((h["y"] + r + HALF) / step) + 1
+        for j in range(max(0, j0), min(RES, j1 + 1)):
+            for i in range(max(0, i0), min(RES, i1 + 1)):
+                dx, dy = -HALF + i * step - h["x"], -HALF + j * step - h["y"]
+                t, n = dx * h["ux"] + dy * h["uy"], -dx * h["uy"] + dy * h["ux"]
+                if TROU_T0 <= t <= TROU_T1 and abs(n) <= TROU_LARG / 2:
+                    holes[j * RES + i] = True
+    meta = {"res": RES, "size": SIZE, "height": TERRAIN_HEIGHT, "z": TERRAIN_Z, "holes": len(HOLES)}
     return heights, holes, meta
 
 
 def main():
+    if len(sys.argv) > 1:
+        charger_trous(sys.argv[1])
+    else:  # sans dossier : on genere les plans v3 dans un dossier temporaire
+        import subprocess, tempfile
+        tmp = tempfile.mkdtemp()
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "plans-villages-v3.py"), tmp], check=True, stdout=subprocess.DEVNULL)
+        charger_trous(tmp)
     heights, holes, meta = build()
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
     os.makedirs(out, exist_ok=True)

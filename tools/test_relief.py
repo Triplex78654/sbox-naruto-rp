@@ -1,6 +1,8 @@
 # Tests du relief (executables sans dependance : python tools/test_relief.py)
-import math
-from carte import CORNERS, RAMPS, TIER_Z, INNER, M, local_to_world
+import importlib.util, json, math, os, sys, tempfile
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from carte import CORNERS, RAMPS, TIER_Z, INNER, M, HALF, local_to_world
+import relief
 from relief import height_at
 
 VILLAGES = ["konoha", "suna", "kumo"]
@@ -82,8 +84,79 @@ def apparitions_plates():
         assert max(hs) - min(hs) < 10, (v, hs)
 
 
+def _charge(nom, argv):
+    sys.argv = argv
+    spec = importlib.util.spec_from_file_location(nom, os.path.join(os.path.dirname(os.path.abspath(__file__)), nom.replace("_", "-") + ".py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def _generer():
+    tmp = tempfile.mkdtemp()
+    _charge("plans_villages_v3", ["plans-villages-v3.py", tmp])
+    relief.charger_trous(tmp)
+    return tmp, _charge("plan_vers_blocage", ["plan-vers-blocage.py", tmp, os.path.join(tmp, "monde.cs.txt")])
+
+
+def trous_sur_sorties():
+    tmp, gen = _generer()
+    assert len(relief.HOLES) == 6, len(relief.HOLES)
+    _, holes, _ = relief.build()
+    step = relief.SIZE / (relief.RES - 1)
+    cells = [(k % relief.RES, k // relief.RES) for k, h in enumerate(holes) if h]
+    assert cells
+    for i, j in cells:  # aucun trou ailleurs que sur une sortie
+        x, y = -HALF + i * step, -HALF + j * step
+        assert any(math.hypot(x - h["x"], y - h["y"]) < 400 for h in relief.HOLES), (x, y)
+    for h in relief.HOLES:  # chaque sortie a des cases trouees autour de son centre
+        assert sum(1 for i, j in cells if math.hypot(-HALF + i * step - h["x"], -HALF + j * step - h["y"]) < 150) >= 4, h
+    # puits marchable (<= 35 deg), du trou jusqu'au tunnel
+    assert len(gen.SHAFTS) == 6
+    for s in gen.SHAFTS:
+        assert math.degrees(math.atan(relief.PUITS_PENTE)) <= 35
+        assert abs(s["floor_end"] - relief.sol_puits(s["t_end"])) < 1e-6, s["code"]
+        assert relief.sol_puits(0) < 0 and abs(relief.sol_puits(relief.PUITS_FIN)) < 1e-6
+
+
+def _coins(b):
+    # 8 coins monde-local (x, y, z) d'une boite G : centre, tailles, direction (dx, dy, dz)
+    dx, dy, dz = b["dir"]
+    n = math.sqrt(dx * dx + dy * dy + dz * dz)
+    f = (dx / n, dy / n, dz / n)
+    h = math.hypot(f[0], f[1])
+    l = (-f[1] / h, f[0] / h, 0) if h > 1e-9 else (0, 1, 0)
+    u = (f[1] * l[2] - f[2] * l[1], f[2] * l[0] - f[0] * l[2], f[0] * l[1] - f[1] * l[0])
+    out = []
+    for a in (-1, 1):
+        for c in (-1, 1):
+            for d in (-1, 1):
+                out.append(tuple(b["c"][k] + a * b["s"][0] / 2 * f[k] + c * b["s"][1] / 2 * l[k] + d * b["s"][2] / 2 * u[k] for k in range(3)))
+    return out
+
+
+def souterrains_sous_terrain():
+    tmp, gen = _generer()
+    assert gen.UNDER
+    pires = []
+    for b in gen.UNDER:
+        if b["kind"] == "puits":
+            continue
+        v = b["v"]
+        for x, y, z in _coins(b):
+            h = height_at(*local_to_world(v, x / M, y / M))
+            pires.append(h - 60 - z)
+            assert z <= h - 60, (b["code"], b["kind"], round(z), round(h))
+    # les tunnels restent marchables (<= 35 deg) et les pieces alignees avec leur tunnel
+    for b in gen.UNDER:
+        if b["kind"] == "tunnel":
+            dx, dy, dz = b["dir"]
+            assert math.degrees(math.atan2(abs(dz), math.hypot(dx, dy))) <= 35, b["code"]
+    print("   marge mini", round(min(pires)), "u,", len(gen.UNDER), "boites souterraines")
+
+
 if __name__ == "__main__":
     for f in (bord_infranchissable, niveaux_village, rampes_marchables,
-              centre_et_routes_plats, apparitions_plates):
+              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_sous_terrain):
         f()
         print("OK", f.__name__)

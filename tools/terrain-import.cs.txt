@@ -1,0 +1,33 @@
+// Importe le relief (tools/relief.py -> tools/out/relief.u16 + holes.u8) dans l'asset terrain/monde.terrain
+// et pose l'objet « Relief » (Terrain) dans la scène ouverte. Relançable.
+// Prérequis : python tools/relief.py <dossier plans v3> déjà lancé, et l'asset créé une fois :
+//   sbox-cli --call create_asset '{"type":"terrain","path":"terrain/monde.terrain"}'
+// Un TerrainStorage non enregistré comme asset est sérialisé "Storage": null dans la scène : l'asset est obligatoire.
+// À lancer AVANT docs/monde-blocage-v3.cs.txt.
+var scene = Editor.SceneEditorSession.Active.Scene;
+var root = Project.Current.GetRootPath();
+var hm = System.IO.File.ReadAllBytes( System.IO.Path.Combine( root, "tools", "out", "relief.u16" ) );
+var holes = System.IO.File.ReadAllBytes( System.IO.Path.Combine( root, "tools", "out", "holes.u8" ) );
+const int Res = 2048;
+if ( hm.Length != Res * Res * 2 || holes.Length != Res * Res ) return $"tailles inattendues : relief {hm.Length}, trous {holes.Length}";
+var asset = Editor.AssetSystem.FindByPath( "terrain/monde.terrain" );
+if ( asset is null ) return "asset terrain/monde.terrain absent : le créer avec sbox-cli --call create_asset";
+var storage = asset.LoadResource<TerrainStorage>();
+storage.SetResolution( Res );
+storage.TerrainSize = 112000f;
+storage.TerrainHeight = 40000f;
+Buffer.BlockCopy( hm, 0, storage.HeightMap, 0, hm.Length );
+var hole = new CompactTerrainMaterial( 0, 0, 0, true ).Packed;
+int n = 0;
+for ( int i = 0; i < holes.Length; i++ ) if ( holes[i] != 0 ) { storage.ControlMap[i] = hole; n++; }
+asset.SaveToDisk( storage );
+using ( scene.Push() )
+{
+	foreach ( var old in scene.GetAllObjects( true ).Where( g => g.Name == "Relief" ).ToList() ) old.Destroy();
+	var go = new GameObject( true, "Relief" );
+	go.WorldPosition = new Vector3( -56000f, -56000f, -2000f );
+	var t = go.Components.Create<Terrain>();
+	t.Storage = storage;
+	t.Create();
+}
+return $"relief importé : {n} cases trouées";
