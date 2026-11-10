@@ -57,37 +57,65 @@ def territoire(x_u, y_u):
     return v if math.hypot(x_u - cx, y_u - cy) / M <= PAYS_R else "centre"
 
 
-def _candidats(x_u, y_u):
-    # (distance en m, territoire de l'autre cote) pour chaque frontiere possible
-    e = 1e-6   # depassement pour tomber franchement de l'autre cote (cas x = 0, y = 0)
-    t0 = territoire(x_u, y_u)
-    res = [(abs(x_u) / M, territoire(-x_u if x_u < 0 else -x_u - e, y_u)),
-           (abs(y_u) / M, territoire(x_u, -y_u if y_u < 0 else -y_u - e))]
-    for cx, cy in CORNERS.values():
-        r = math.hypot(x_u - cx, y_u - cy)
-        if r > 0:
-            k = (2 * PAYS_R * M - r) / r + (e if r > PAYS_R * M else -e) / r
-            res.append((abs(r / M - PAYS_R), territoire(cx + (x_u - cx) * k, cy + (y_u - cy) * k)))
-    return t0, [(d, t) for d, t in res if t != t0]
+# Frontieres de territoire : segments sur x = 0 / y = 0 (hors des pays proches du centre) et arcs de PAYS_R.
+# Chaque piece : (type, donnees, territoire A, territoire B). Calculees une fois.
+_S = math.sqrt((PAYS_R * M) ** 2 - INNER ** 2)   # decalage entre le coin et les extremites d'un arc
+_YE = INNER - _S                                   # extremites des arcs sur les axes : points triples
+_EPS = 1e-6
+
+
+def _pieces():
+    res = []
+    for sg in (1, -1):
+        res.append(("seg", ((0, sg * _YE), (0, sg * INNER)),
+                    territoire(-_EPS, sg * (_YE + INNER) / 2), territoire(_EPS, sg * (_YE + INNER) / 2)))
+        res.append(("seg", ((sg * _YE, 0), (sg * INNER, 0)),
+                    territoire(sg * (_YE + INNER) / 2, _EPS), territoire(sg * (_YE + INNER) / 2, -_EPS)))
+    for v, (cx, cy) in CORNERS.items():
+        res.append(("arc", (cx, cy, ((0, cy - math.copysign(_S, cy)), (cx - math.copysign(_S, cx), 0))), v, "centre"))
+    return res
+
+
+def _dist_seg(px, py, a, b):
+    (ax, ay), (bx, by) = a, b
+    t = max(0.0, min(1.0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)))
+    return math.hypot(px - ax - t * (bx - ax), py - ay - t * (by - ay)) / M
+
+
+def _dist_arc(px, py, cx, cy, fins):
+    r = math.hypot(px - cx, py - cy)
+    if r > 0:
+        qx, qy = cx + (px - cx) * PAYS_R * M / r, cy + (py - cy) * PAYS_R * M / r
+        if qx * cx >= 0 and qy * cy >= 0:   # le point radial est dans le quart de plan du coin
+            return abs(r / M - PAYS_R)
+    return min(math.hypot(px - fx, py - fy) / M for fx, fy in fins)
+
+
+def _distances(x_u, y_u):
+    # (distance en m, territoire A, territoire B) pour chaque piece de frontiere
+    return [(_dist_seg(x_u, y_u, *d) if k == "seg" else _dist_arc(x_u, y_u, *d), a, b)
+            for k, d, a, b in _PIECES]
 
 
 def dist_frontiere_m(x_u, y_u):
-    return min((d for d, _ in _candidats(x_u, y_u)[1]), default=math.inf)
+    return min(d for d, _, _ in _distances(x_u, y_u))
 
 
 def biome_poids(x_u, y_u):
-    t0, cands = _candidats(x_u, y_u)
-    poids = {"foret": 0.0, "desert": 0.0, "roche": 0.0, "neutre": 0.0}
-    b0 = BIOME.get(t0, "neutre")
-    w = 0.0
-    if cands:
-        d, t1 = min(cands, key=lambda c: c[0])
-        b1 = BIOME.get(t1, "neutre")
-        if b1 != b0:
-            w = max(0.0, 0.5 * (1 - d / (FONDU_M / 2)))
-            poids[b1] = w
-    poids[b0] += 1 - w
-    return poids
+    # Score 1 pour le biome local ; chaque frontiere proche donne a ses deux biomes un score
+    # 1 - d/(FONDU_M/2) (max par biome), puis normalisation. Distance a des segments / arcs :
+    # continu partout, 0,5/0,5 sur une frontiere simple, 1/3 aux points triples.
+    score = {"foret": 0.0, "desert": 0.0, "roche": 0.0, "neutre": 0.0}
+    score[BIOME.get(territoire(x_u, y_u), "neutre")] = 1.0
+    for d, a, b in _distances(x_u, y_u):
+        if BIOME[a] != BIOME[b]:
+            for t in (a, b):
+                score[BIOME[t]] = max(score[BIOME[t]], 1 - d / (FONDU_M / 2))
+    total = sum(score.values())
+    return {k: v / total for k, v in score.items()}
+
+
+_PIECES = _pieces()
 
 
 def zone_of(x_u, y_u):
