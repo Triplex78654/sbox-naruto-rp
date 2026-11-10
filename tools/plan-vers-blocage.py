@@ -309,6 +309,17 @@ def rect_bouche(r, sx_, sy_, stub):
     a, b = r["cy"] + sy_ * r["h"] / 2, r["cy"] + sy_ * (r["h"] / 2 + T + stub)
     return (r["cx"] - r["w"] / 2, min(a, b), r["cx"] + r["w"] / 2, max(a, b))
 
+def empiete(rooms, code, r, ax, p, nx, ny, sx_, sy_, Ls):
+    """La bouche + le puits d'une salle (emprise au sol, toutes hauteurs) touchent-ils une AUTRE salle ? On n'entre que par sa porte."""
+    ox, oy = (0, p) if ax == "x" else (p, 0)
+    a = (r["cx"] + ox, r["cy"] + oy)
+    b = (sx_ + nx * (Ls + PUITS_FIN + 180), sy_ + ny * (Ls + PUITS_FIN + 180))
+    hw = PUITS_LARG / 2 + T
+    x0, x1 = min(a[0], b[0]) - (hw if ax == "y" else 0), max(a[0], b[0]) + (hw if ax == "y" else 0)
+    y0, y1 = min(a[1], b[1]) - (hw if ax == "x" else 0), max(a[1], b[1]) + (hw if ax == "x" else 0)
+    return any(x0 < o["cx"] + o["w"] / 2 + T + 20 and o["cx"] - o["w"] / 2 - T - 20 < x1 and y0 < o["cy"] + o["h"] / 2 + T + 20 and o["cy"] - o["h"] / 2 - T - 20 < y1
+               for c, o in rooms.items() if c != code)
+
 def souterrains(v, lst, grp, g):
     CUR[0] = v
     by = {e["code"]: e for e in lst}
@@ -362,6 +373,7 @@ def souterrains(v, lst, grp, g):
                     p = frac * (perp - TW)
                     sx_, sy_ = (r["cx"] + nx * (half + T + STUB + ext), r["cy"] + p) if ax == "x" else (r["cx"] + p, r["cy"] + ny * (half + T + STUB + ext))
                     res = puits_ok(v, lst, sx_, sy_, nx, ny, z, e["level"], ext)
+                    if res and empiete(rooms, code, r, ax, p, nx, ny, sx_, sy_, res[0]): res = None
                     if res: choix = (ax, sg, p, nx, ny, sx_, sy_, res); break
                 if choix: break
             if choix: break
@@ -432,6 +444,18 @@ def puits(grp, v, code, px, py, ux, uy, floor0, zs):
         for sg in (-1, 1):
             m = P(s, sg * (PUITS_LARG / 2 + T / 2))
             G(grp, v, code, "puits", f"{code} muret", (m[0], m[1], (zlo + zhi) / 2), (ln * 1.03, T, zhi - zlo), (ux, uy, 0), SOUS["mur"])
+    # Toit : le relief (heightfield) n'arrête rien par en dessous (vérifié en jeu, T6) ; dalle parallèle au sol, aussi haute que le relief le permet.
+    # Arrêtée là où il reste < 90 u sous le relief (près du trou) : sortir par là, c'est sortir à côté du trou.
+    RT = 20
+    for i in range(n):
+        s0, s1 = T + i * ln, T + (i + 1) * ln
+        c = min(hl(*P(s0 + k * (s1 - s0) / 10, o)) - (floor0 + (s0 + k * (s1 - s0) / 10) * PUITS_PENTE)
+                for k in range(11) for o in (-W2 / 2, 0, W2 / 2))
+        b = min(c - RT - 2, TH)
+        if b < 90: break
+        m = P((s0 + s1) / 2)
+        G(grp, v, code, "puits", f"{code} toit du puits", (m[0], m[1], floor0 + (s0 + s1) / 2 * PUITS_PENTE + b + RT / 2),
+          (ln * math.sqrt(1 + PUITS_PENTE ** 2) * 1.03, W2, RT), d, SOUS["plafond"])
     zlo = floor0 - T
     side = (W2 - TW) / 2
     for sg in (-1, 1):
@@ -617,28 +641,65 @@ using ( scene.Push() )
 		old.Destroy();
 	foreach ( var g in scene.GetAllObjects( true ).Where( g => g.Name == "Sol" && ( g.WorldScale.x > 1000 || g.Parent?.Name == "Centre commun" ) ).ToList() ) g.Destroy();
 
-	// (b) « Pays du Feu - zone de Konoha » et « Terres neutres de Konoha » : de l'ancien repère (position (-60000, 0, 0), lacet 90) au coin de Konoha.
-	// Le groupe est à l'origine et ses enfants sont en coordonnées monde : un déplacement rigide du groupe les emporte tous.
+	// (b) « Pays du Feu - zone de Konoha » et « Terres neutres de Konoha » : de l'ancien repère (village en (-60000, 0, 0), centre vers +x) au coin de Konoha.
+	// Les enfants sont en coordonnées monde (groupes à l'origine).
+	// - Terres neutres : déplacement rigide (elles restent entre le pays et le centre).
+	// - Pays du Feu : l'ancienne forêt faisait un anneau complet de 250 à 500 m autour du village ; le nouveau pays est un quart d'anneau
+	//   de 520 à 875 m depuis le coin. Chaque objet (ou chaque clairière, d'un bloc) : angle / 4 autour de l'axe du centre, rayon étiré.
 	var corner = new Vector3( %CX%f, %CY%f, 0 );
 	var rotD = Rotation.FromYaw( %YAW%f - 90f );
 	var oldPos = new Vector3( -60000f, 0, 0 );
 	var axis = ( Vector3.Zero - corner ); var axisLen = axis.Length; axis /= axisLen;
+	var sorties = new Vector3[] { %HOLES% };
 	bool Bad( Vector3 p )
 	{
 		var d = new Vector3( p.x - corner.x, p.y - corner.y, 0 );
 		if ( d.Length < %VR% ) return true;                                           // dans le village
-		if ( MathF.Max( MathF.Abs( p.x ), MathF.Abs( p.y ) ) > %INNER%f ) return true;   // bande de relief ou hors carte
+		if ( MathF.Max( MathF.Abs( p.x ), MathF.Abs( p.y ) ) > %INNER%f - 1500f ) return true;   // bande de relief ou hors carte
 		var along = d.x * axis.x + d.y * axis.y; var lateral = MathF.Abs( d.x * axis.y - d.y * axis.x );
-		return along > 0 && lateral < 1200f;                                          // sur la route du centre
+		if ( along > 0 && lateral < 1200f ) return true;                              // sur la route du centre
+		foreach ( var h in sorties ) if ( ( p.WithZ( 0 ) - h ).Length < 700f ) return true;   // sur un puits de sortie (trou du relief)
+		return false;
+	}
+	// Ancienne position -> nouvelle (et rotation à appliquer).
+	Vector3 MapPays( Vector3 p, out Rotation turn )
+	{
+		var d = p - oldPos;
+		var r = MathF.Sqrt( d.x * d.x + d.y * d.y );
+		var a = MathF.Atan2( d.y, d.x ) * 180f / MathF.PI;                            // 0 = vers le centre
+		var na = %YAW%f - 90f + a * 0.21f;                                            // ± 38 deg autour de l'axe du centre
+		var nr = 20800f + 1200f + ( r - 9900f ) * ( 35000f - 22000f ) / ( 20100f - 9900f );
+		turn = Rotation.FromYaw( na - a );
+		return corner + new Vector3( MathF.Cos( na * MathF.PI / 180f ), MathF.Sin( na * MathF.PI / 180f ), 0 ) * nr + Vector3.Up * p.z;
 	}
 	foreach ( var gname in new[] { "Pays du Feu - zone de Konoha", "Terres neutres de Konoha" } )
 	{
 		var grp = scene.GetAllObjects( true ).FirstOrDefault( g => g.Name == gname );
 		if ( grp is null || grp.Tags.Has( "deplace-v3" ) ) continue;
-		grp.WorldPosition = corner - rotD * oldPos;
-		grp.WorldRotation = rotD;
 		grp.Tags.Add( "deplace-v3" );
 		var kill = new System.Collections.Generic.List<GameObject>();
+		if ( gname.StartsWith( "Terres" ) )
+		{
+			grp.WorldPosition = corner - rotD * oldPos;
+			grp.WorldRotation = rotD;
+		}
+		else
+		{
+			foreach ( var c in grp.Children.ToList() )
+			{
+				if ( c.Children.Count == 0 )
+				{
+					var np = MapPays( c.WorldPosition, out var turn );
+					c.WorldPosition = np; c.WorldRotation = turn * c.WorldRotation;
+					continue;
+				}
+				// clairière : bloc rigide autour du centre de ses objets
+				var ctr = Vector3.Zero; foreach ( var l in c.Children ) ctr += l.WorldPosition; ctr /= c.Children.Count;
+				var nc = MapPays( ctr.WithZ( 0 ), out var t2 );
+				c.WorldRotation = t2 * c.WorldRotation;
+				c.WorldPosition = nc - t2 * ctr.WithZ( 0 );   // le groupe est à l'origine : ses enfants (coordonnées monde) suivent
+			}
+		}
 		void Walk( GameObject o )
 		{
 			foreach ( var c in o.Children )
@@ -651,6 +712,14 @@ using ( scene.Push() )
 		foreach ( var c in kill ) c.Destroy();
 	}
 
+	// (c) Centre commun : routes et panneaux de l'ancien tracé tournés vers les nouveaux coins (Konoha 180 -> 135 deg, Suna 60 -> 45, Kumo -60 -> -45).
+	foreach ( var (nom, da) in new[] { ("Konoha", -45f), ("Suna", -15f), ("Kumo", 15f) } )
+		foreach ( var g in scene.GetAllObjects( true ).Where( g => g.Parent?.Name == "Centre commun" && ( g.Name.StartsWith( "Route vers " + nom ) || g.Name.StartsWith( "Panneau " + nom ) ) && !g.Tags.Has( "deplace-v3" ) ).ToList() )
+		{
+			var rc = Rotation.FromYaw( da );
+			g.WorldPosition = rc * g.WorldPosition; g.WorldRotation = rc * g.WorldRotation; g.Tags.Add( "deplace-v3" );
+		}
+
 	// (g) Murs invisibles autour de la zone jouable : collision seule, de 0 à 20 000 u de haut.
 	var limites = new GameObject( true, "Limites du monde" );
 	void W( string name, float x, float y, float sx, float sy, float sz )
@@ -661,7 +730,7 @@ using ( scene.Push() )
 		count++;
 	}
 '''.replace("%CX%", str(CORNERS["konoha"][0])).replace("%CY%", str(CORNERS["konoha"][1])).replace("%YAW%", f'{yaw_of("konoha"):.4f}') \
-   .replace("%VR%", "20800f").replace("%INNER%", str(INNER))
+   .replace("%HOLES%", ", ".join(f'new Vector3({h["x"]:.0f}f,{h["y"]:.0f}f,0)' for h in HOLES_OUT if h["v"] == "konoha"))    .replace("%VR%", "20800f").replace("%INNER%", str(INNER))
 footer = '''
 	var cam = scene.GetAllComponents<CameraComponent>().FirstOrDefault();
 	if ( cam is not null ) cam.ZFar = 120000;

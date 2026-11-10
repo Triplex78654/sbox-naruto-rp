@@ -3,6 +3,7 @@
 // Prérequis : python tools/relief.py <dossier plans v3> déjà lancé, et l'asset créé une fois :
 //   sbox-cli --call create_asset '{"type":"terrain","path":"terrain/monde.terrain"}'
 // Un TerrainStorage non enregistré comme asset est sérialisé "Storage": null dans la scène : l'asset est obligatoire.
+// Matériaux : Assets/terrain/{herbe,sable,roche}.tmat (créés une fois avec create_asset, image unie de 16 px).
 // À lancer AVANT docs/monde-blocage-v3.cs.txt.
 var scene = Editor.SceneEditorSession.Active.Scene;
 var root = Project.Current.GetRootPath();
@@ -17,10 +18,24 @@ storage.SetResolution( Res );
 storage.TerrainSize = 112000f;
 storage.TerrainHeight = 40000f;
 Buffer.BlockCopy( hm, 0, storage.HeightMap, 0, hm.Length );
-System.Array.Clear( storage.ControlMap, 0, storage.ControlMap.Length );   // repartir d'une carte de matériaux vide (anciens trous effacés)
+// Sol uni (blocage) : 0 herbe, 1 sable (moitié de Suna), 2 roche (pentes > 35 deg). Matériaux = petites images unies (Assets/terrain/*.png).
+// Rendu constaté (T6) : teinte grise unie, pas les couleurs des images, mais le relief se lit mieux qu'avec la grille par défaut.
+storage.Materials.Clear();
+foreach ( var m in new[] { "herbe", "sable", "roche" } ) storage.Materials.Add( ResourceLibrary.Get<TerrainMaterial>( $"terrain/{m}.tmat" ) );
 var hole = new CompactTerrainMaterial( 0, 0, 0, true ).Packed;
+var mats = new[] { new CompactTerrainMaterial( 0, 0, 0, false ).Packed, new CompactTerrainMaterial( 1, 0, 0, false ).Packed, new CompactTerrainMaterial( 2, 0, 0, false ).Packed };
+float cell = 112000f / ( Res - 1 ), hs = 40000f / 65535f, steep = MathF.Tan( 35f * MathF.PI / 180f );
 int n = 0;
-for ( int i = 0; i < holes.Length; i++ ) if ( holes[i] != 0 ) { storage.ControlMap[i] = hole; n++; }
+for ( int j = 0; j < Res; j++ )
+	for ( int i = 0; i < Res; i++ )
+	{
+		int k = j * Res + i;
+		if ( holes[k] != 0 ) { storage.ControlMap[k] = hole; n++; continue; }
+		float H( int a, int b ) => storage.HeightMap[Math.Clamp( b, 0, Res - 1 ) * Res + Math.Clamp( a, 0, Res - 1 )] * hs;
+		var gx = ( H( i + 1, j ) - H( i - 1, j ) ) / ( 2 * cell ); var gy = ( H( i, j + 1 ) - H( i, j - 1 ) ) / ( 2 * cell );
+		float x = -56000f + i * cell, y = -56000f + j * cell;
+		storage.ControlMap[k] = MathF.Sqrt( gx * gx + gy * gy ) > steep ? mats[2] : ( x > 0 && y > 0 && x + y > 20000f ) ? mats[1] : mats[0];
+	}
 asset.SaveToDisk( storage );
 using ( scene.Push() )
 {

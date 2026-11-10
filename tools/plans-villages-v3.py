@@ -94,7 +94,7 @@ VILLAGES = {
 }
 
 # Sorties cachées X1 / X2 : (angle, rayon) hors rempart, loin de la route de la porte (axe 270°)
-SORTIES = {"X1": (252, 650), "X2": (288, 700)}
+SORTIES = {"X1": (240, 650), "X2": (288, 700)}
 
 def pts(s, step=4):
     """Points d'échantillonnage d'une forme de surface (bords + intérieur), repère local."""

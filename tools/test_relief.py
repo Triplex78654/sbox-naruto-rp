@@ -188,6 +188,9 @@ def souterrains_sous_terrain():
     pires = []
     for b in gen.UNDER:
         if b["kind"] == "puits":
+            if "toit" in b["name"]:   # le toit du puits reste sous le relief (pas de dalle visible en surface)
+                for x, y, z in _coins(b):
+                    assert z <= height_at(*local_to_world(b["v"], x / M, y / M)) + 1, (b["v"], b["code"], round(z))
             continue
         v = b["v"]
         for x, y, z in _coins(b):
@@ -202,8 +205,75 @@ def souterrains_sous_terrain():
     print("   marge mini", round(min(pires)), "u,", len(gen.UNDER), "boites souterraines")
 
 
+def _axes(b):
+    # axes (avant, gauche, haut) d'une boite G, comme _coins
+    dx, dy, dz = b["dir"]
+    n = math.sqrt(dx * dx + dy * dy + dz * dz)
+    f = (dx / n, dy / n, dz / n)
+    h = math.hypot(f[0], f[1])
+    l = (-f[1] / h, f[0] / h, 0) if h > 1e-9 else (0, 1, 0)
+    u = (f[1] * l[2] - f[2] * l[1], f[2] * l[0] - f[0] * l[2], f[0] * l[1] - f[1] * l[0])
+    return [f, l, u]
+
+
+def _obb_coupe(a, b, eps=2.0):
+    """Test des axes separateurs (15 axes) : les deux boites se chevauchent-elles de plus de eps ?"""
+    A, B = _axes(a), _axes(b)
+    ha, hb = [k / 2 for k in a["s"]], [k / 2 for k in b["s"]]
+    t = [b["c"][k] - a["c"][k] for k in range(3)]
+    dot = lambda p, q: p[0] * q[0] + p[1] * q[1] + p[2] * q[2]
+    cr = lambda p, q: (p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0])
+    for ax in A + B + [cr(p, q) for p in A for q in B]:
+        n = math.sqrt(dot(ax, ax))
+        if n < 1e-6: continue
+        ax = tuple(k / n for k in ax)
+        ra = sum(ha[i] * abs(dot(A[i], ax)) for i in range(3))
+        rb = sum(hb[i] * abs(dot(B[i], ax)) for i in range(3))
+        if abs(dot(t, ax)) > ra + rb - eps: return False
+    return True
+
+
+def souterrains_sans_intrusion():
+    """Aucun couloir, tunnel, puits ou passage n'entre dans la boite d'une AUTRE salle : on n'entre dans une salle que par sa porte."""
+    tmp, gen = _generer()
+    tun_salle = {}   # (village, "T1") -> code de la salle de depart du tunnel
+    salles = {}
+    for f in os.listdir(tmp):
+        if f.endswith(".json"):
+            d = json.load(open(os.path.join(tmp, f), encoding="utf-8"))
+            if d["layer"] == "souterrain" and d["code"][0] == "S":
+                salles[(d["village"], (d["shape"]["x"], d["shape"]["y"]))] = d["code"]
+    for f in os.listdir(tmp):
+        if f.endswith(".json"):
+            d = json.load(open(os.path.join(tmp, f), encoding="utf-8"))
+            if d["code"][0] == "T" and d["layer"] == "souterrain":
+                tun_salle[(d["village"], d["code"])] = salles[(d["village"], tuple(d["shape"]["pts"][0]))]
+    def proprio(b):
+        c = b["code"]
+        if c[0] in "TX" and c[1:].isdigit(): return tun_salle.get((b["v"], "T" + c[1:]))
+        return c
+    # boite englobante de chaque salle (sol + plafond + murs)
+    boites = {}
+    for b in gen.UNDER:
+        if b["kind"] != "salle": continue
+        lo_hi = boites.setdefault((b["v"], b["code"]), [[1e18] * 3, [-1e18] * 3])
+        for p in _coins(b):
+            for k in range(3):
+                lo_hi[0][k] = min(lo_hi[0][k], p[k]); lo_hi[1][k] = max(lo_hi[1][k], p[k])
+    assert boites
+    n = 0
+    for (v, code), (lo, hi) in boites.items():
+        rb = dict(c=[(lo[k] + hi[k]) / 2 for k in range(3)], s=[hi[k] - lo[k] for k in range(3)], dir=(1, 0, 0))
+        for b in gen.UNDER:
+            if b["v"] != v or b["kind"] == "salle" or proprio(b) == code: continue
+            n += 1
+            assert not _obb_coupe(rb, b), (v, code, b["code"], b["kind"], b["name"])
+    print("  ", n, "paires boite / salle testees")
+
+
 if __name__ == "__main__":
     for f in (bord_infranchissable, niveaux_village, rampes_marchables,
-              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain):
+              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
+              souterrains_sans_intrusion):
         f()
         print("OK", f.__name__)

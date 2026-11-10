@@ -1,0 +1,39 @@
+{
+  "Maps": {
+    "$blob": "ac39283d-1b44-820f-be71-fbf6cb4de5e0"
+  },
+  "Resolution": 2048,
+  "TerrainSize": 112000,
+  "TerrainHeight": 40000,
+  "Materials": [
+    {
+      "Id": "e771c978-76a2-4a87-9435-d5a06bb3e8e8",
+      "Path": "terrain/herbe.tmat"
+    },
+    {
+      "Id": "57c82342-8162-4ca6-8186-f65fd7fb7e4f",
+      "Path": "terrain/sable.tmat"
+    },
+    {
+      "Id": "d5f4f644-3188-4fbd-a8bb-79588f395bc3",
+      "Path": "terrain/roche.tmat"
+    }
+  ],
+  "MaterialSettings": {
+    "HeightBlendEnabled": true,
+    "HeightBlendSharpness": 0.87,
+    "Sampler": {
+      "Filter": "Anisotropic",
+      "AddressModeU": "Wrap",
+      "AddressModeV": "Wrap",
+      "AddressModeW": "Wrap",
+      "MipLodBias": 0,
+      "MaxAnisotropy": 8,
+      "BorderColor": "0,0,0,0",
+      "Index": 2
+    }
+  },
+  "ResourceVersion": 3,
+  "__references": [],
+  "__version": 3
+}
