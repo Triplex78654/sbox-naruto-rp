@@ -164,7 +164,7 @@ test('log libre et JSON invalide', async () => {
 	assert.equal(res.status, 400);
 });
 
-test('domaines : droits, validation, attribution, retrait', async () => {
+test('domaines : droits, validation, attribution, retrait, déjà attribué → 409', async () => {
 	const post = (id, body) => call('POST', `/domains/${id}/clan`, body);
 	const r = await call('POST', '/characters', { ...perso, slot: 2, clan: 'Hanabi' });
 	assert.equal(r.status, 201);
@@ -178,6 +178,12 @@ test('domaines : droits, validation, attribution, retrait', async () => {
 	assert.equal((await post('konoha-D1', ok)).status, 200);
 	let d = (await call('GET', '/domains')).body.find(x => x.id === 'konoha-D1');
 	assert.deepEqual(d, { id: 'konoha-D1', village: 'konoha', clan: 'Hanabi' });
+	const r2 = await call('POST', '/characters', { ...perso, steamId: '76561190000000004', slot: 1, clan: 'Autre' });
+	assert.equal(r2.status, 201);
+	assert.equal((await call('POST', `/characters/${r2.body.id}/clan`, { approved: true, staffSteamId: STAFF })).status, 200);
+	assert.equal((await post('konoha-D1', { ...ok, clan: 'Autre' })).status, 409, 'déjà attribué à un autre clan');
+	assert.equal((await call('POST', `/characters/${r2.body.id}/death`, { staffSteamId: STAFF, reason: 'nettoyage du test' })).status, 200);
+	assert.equal((await post('konoha-D1', ok)).status, 200, 'même clan : idempotent');
 	assert.equal((await post('konoha-D1', { ...ok, clan: null })).status, 200);
 	d = (await call('GET', '/domains')).body.find(x => x.id === 'konoha-D1');
 	assert.equal(d.clan, null);

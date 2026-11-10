@@ -62,10 +62,16 @@ public sealed class MemoryApiClient : IApiClient
 
 	static readonly Dictionary<string, DomainDto> Domains = new();
 
+	// shortcut: pas de contrôle clan/village, le Worker fait foi
 	public Task SetDomainClanAsync( string domainId, string village, string clan, ulong staff, CancellationToken ct = default )
 	{
 		if ( clan is not null && string.IsNullOrWhiteSpace( clan ) ) throw new ApiException( "clan vide", 400, "clan invalide" );
-		lock ( Domains ) Domains[domainId] = new DomainDto { Id = domainId, Village = village, Clan = clan };
+		lock ( Domains )
+		{
+			if ( clan is not null && Domains.TryGetValue( domainId, out var cur ) && cur.Clan is not null && cur.Clan != clan )
+				throw new ApiException( "domaine déjà attribué", 409, "domaine déjà attribué : le retirer d'abord" );
+			Domains[domainId] = new DomainDto { Id = domainId, Village = village, Clan = clan };
+		}
 		return LogAsync( "domain_assigned", staff, null, null );
 	}
 

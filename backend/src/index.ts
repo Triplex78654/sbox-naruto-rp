@@ -251,6 +251,10 @@ async function setDomainClan(env: Env, id: string, b: Json) {
 			.bind(clan, b.village).first();
 		if (!ok) throw new HttpError(409, "clan non validé dans ce village");
 	}
+	if (clan !== null) {
+		const cur = await env.DB.prepare('SELECT clan FROM domains WHERE id = ?').bind(id).first<{ clan: string | null }>();
+		if (cur?.clan != null && cur.clan !== clan) throw new HttpError(409, "domaine déjà attribué : le retirer d'abord");
+	}
 	const now = Date.now();
 	await env.DB.batch([
 		env.DB.prepare(`INSERT INTO domains (id, village, clan, assigned_by, assigned_at) VALUES (?, ?, ?, ?, ?)
