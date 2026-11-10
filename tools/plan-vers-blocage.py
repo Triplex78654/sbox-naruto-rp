@@ -5,7 +5,7 @@
 # Usage : python tools/plan-vers-blocage.py <dossier plans> [sortie]
 import json, math, os, sys, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from carte import CORNERS, INNER, M, CENTRE_R, ANCIEN_PAYS_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
+from carte import CORNERS, INNER, M, CENTRE_R, ANCIEN_PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
 from relief import height_at, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits
 
 src = sys.argv[1]
@@ -16,7 +16,7 @@ for f in sorted(glob.glob(os.path.join(src, "*.json"))):
     d = d.get("data", d)
     els.setdefault(d["village"], []).append(d)
 
-BORDER = ANCIEN_PAYS_R * M                              # rayon de la frontière (u)
+BORDER = ANCIEN_PAYS_R * M                       # rayon des bornes de l'ancienne frontière (u) : supprimées en tâche 4
 DIST = math.hypot(*CORNERS["konoha"])            # coin -> centre du monde (u)
 
 # Style de chaque village : couleurs (r, g, b) et hauteurs (unités).
@@ -284,7 +284,7 @@ def puits_ok(v, lst, px, py, ux, uy, floor0, niv, ext=0):
     if L < 300: return None
     xm, ym = (px + ux * L) / M, (py + uy * L) / M
     r = math.hypot(xm, ym); a = math.degrees(math.atan2(ym, xm)) % 360
-    if r > 490 or niveau(r) != niv or not 226 <= a <= 314: return None
+    if r > VILLAGE_R - 10 or niveau(r) != niv or not 226 <= a <= 314: return None
     if ramp_dist(v, xm, ym) < 20: return None
     if not all(libre_ext(lst, xm + dx, ym + dy, 2.5) for dx in (-3, 0, 3) for dy in (-3, 0, 3)): return None
     lat = (-uy, ux)
@@ -645,7 +645,7 @@ using ( scene.Push() )
 	// Les enfants sont en coordonnées monde (groupes à l'origine).
 	// - Terres neutres : déplacement rigide (elles restent entre le pays et le centre).
 	// - Pays du Feu : l'ancienne forêt faisait un anneau complet de 250 à 500 m autour du village ; le nouveau pays est un quart d'anneau
-	//   de 520 à 875 m depuis le coin. Chaque objet (ou chaque clairière, d'un bloc) : angle / 4 autour de l'axe du centre, rayon étiré.
+	//   juste hors du rempart (de %VR% u + 1 200 u, sur 13 000 u) depuis le coin. Chaque objet (ou chaque clairière, d'un bloc) : angle / 4 autour de l'axe du centre, rayon étiré.
 	var corner = new Vector3( %CX%f, %CY%f, 0 );
 	var rotD = Rotation.FromYaw( %YAW%f - 90f );
 	var oldPos = new Vector3( -60000f, 0, 0 );
@@ -654,7 +654,7 @@ using ( scene.Push() )
 	bool Bad( Vector3 p )
 	{
 		var d = new Vector3( p.x - corner.x, p.y - corner.y, 0 );
-		if ( d.Length < %VR% ) return true;                                           // dans le village
+		if ( d.Length < %VR%f ) return true;                                           // dans le village
 		if ( MathF.Max( MathF.Abs( p.x ), MathF.Abs( p.y ) ) > %INNER%f - 1500f ) return true;   // bande de relief ou hors carte
 		var along = d.x * axis.x + d.y * axis.y; var lateral = MathF.Abs( d.x * axis.y - d.y * axis.x );
 		if ( along > 0 && lateral < 1200f ) return true;                              // sur la route du centre
@@ -668,7 +668,7 @@ using ( scene.Push() )
 		var r = MathF.Sqrt( d.x * d.x + d.y * d.y );
 		var a = MathF.Atan2( d.y, d.x ) * 180f / MathF.PI;                            // 0 = vers le centre
 		var na = %YAW%f - 90f + a * 0.21f;                                            // ± 38 deg autour de l'axe du centre
-		var nr = 20800f + 1200f + ( r - 9900f ) * ( 35000f - 22000f ) / ( 20100f - 9900f );
+		var nr = %VR%f + 1200f + ( r - 9900f ) * ( 35000f - 22000f ) / ( 20100f - 9900f );
 		turn = Rotation.FromYaw( na - a );
 		return corner + new Vector3( MathF.Cos( na * MathF.PI / 180f ), MathF.Sin( na * MathF.PI / 180f ), 0 ) * nr + Vector3.Up * p.z;
 	}
@@ -730,7 +730,7 @@ using ( scene.Push() )
 		count++;
 	}
 '''.replace("%CX%", str(CORNERS["konoha"][0])).replace("%CY%", str(CORNERS["konoha"][1])).replace("%YAW%", f'{yaw_of("konoha"):.4f}') \
-   .replace("%HOLES%", ", ".join(f'new Vector3({h["x"]:.0f}f,{h["y"]:.0f}f,0)' for h in HOLES_OUT if h["v"] == "konoha"))    .replace("%VR%", "20800f").replace("%INNER%", str(INNER))
+   .replace("%HOLES%", ", ".join(f'new Vector3({h["x"]:.0f}f,{h["y"]:.0f}f,0)' for h in HOLES_OUT if h["v"] == "konoha"))    .replace("%VR%", str(VILLAGE_R * M + 800)).replace("%INNER%", str(INNER))
 footer = '''
 	var cam = scene.GetAllComponents<CameraComponent>().FirstOrDefault();
 	if ( cam is not null ) cam.ZFar = 120000;
@@ -739,4 +739,14 @@ return $"{count} volumes";
 '''
 open(OUT, "w", encoding="utf-8").write(header + "\n".join("\t" + l for l in "\n".join(lines).split("\n")) + footer)
 json.dump(HOLES_OUT, open(os.path.join(src, "trous.holes"), "w"), indent=0)   # lu par tools/relief.py (extension != .json : pas pris pour un plan)
+# Emprise au sol des souterrains (sols des salles, couloirs, tunnels, puits et paliers, qui couvrent aussi murs et plafonds),
+# en mètres locaux : relief.charger_emprises y garde le sol sans bosses (ce script a tout calculé sur le relief sans bosses).
+SOUS_EMPRISES = {}
+for b in UNDER:
+    if not b["name"].endswith(("sol", "(sol)", "palier")): continue
+    dx, dy, dz = b["dir"]
+    k = b["s"][0] / 2 / math.sqrt(dx * dx + dy * dy + dz * dz) / M   # demi-longueur projetée au sol, par unité de dir
+    cx, cy = b["c"][0] / M, b["c"][1] / M
+    SOUS_EMPRISES.setdefault(b["v"], []).append(dict(t="line", pts=[[cx - dx * k, cy - dy * k], [cx + dx * k, cy + dy * k]], w=b["s"][1] / M))
+json.dump(SOUS_EMPRISES, open(os.path.join(src, "souterrains.emprises"), "w"))
 print(f"{len(lines)} lignes, {len(UNDER)} boîtes souterraines -> {os.path.abspath(OUT)}")

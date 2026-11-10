@@ -8,7 +8,7 @@ M = 40         # unites par metre
 
 CORNERS = {"konoha": (-50000, 50000), "suna": (50000, 50000),
            "kumo": (50000, -50000), "libre": (-50000, -50000)}
-TIERS = {"haut": (0, 170), "milieu": (170, 340), "bas": (340, 500)}  # rayons (m)
+TIERS = {"haut": (0, 238), "milieu": (238, 476), "bas": (476, 700)}  # rayons (m) : anciens rayons (170 / 340 / 500) x ECHELLE_VILLAGE
 TIER_Z = {"konoha": (0, 320, 800), "suna": (0, 320, 800), "kumo": (0, 640, 1600)}  # bas, milieu, haut (u)
 RAMPS = {"konoha": [250, 290], "suna": [245, 270, 295], "kumo": [260, 280]}  # angles locaux (deg)
 
@@ -17,10 +17,11 @@ PAYS_R = 1500      # rayon du pays, quart de cercle (m)
 VILLAGE_R = 700    # rayon du village (m)
 ECHELLE_VILLAGE = 1.4
 FONDU_M = 80       # largeur du fondu de biome, centre sur la frontiere (m)
-# Temporaire jusqu'a la tache 3 : geometrie actuelle des villages (500 m) et de l'ancien pays (900 m).
-ANCIEN_VILLAGE_R = 500
-ANCIEN_PAYS_R = 900
-RAYON_REMPART_M = ANCIEN_VILLAGE_R   # rayon de rempart actuel (la tache 3 le passera a VILLAGE_R)
+ANCIEN_PAYS_R = 900   # bornes de l'ancienne frontiere (plan-vers-blocage.py) : supprime en tache 4 avec les bornes
+RAYON_REMPART_M = VILLAGE_R
+# Sorties cachees X1 / X2 des tunnels : (angle local deg, rayon m), hors rempart, loin de la route de la porte (axe 270).
+# Source unique : plans-villages-v3.py y place les sorties, relief.py y aplanit le sol.
+SORTIES = {"X1": (240, 910), "X2": (288, 980)}
 BIOME = {"konoha": "foret", "suna": "desert", "kumo": "roche", "libre": "neutre", "centre": "neutre"}
 
 

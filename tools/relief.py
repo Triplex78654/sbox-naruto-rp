@@ -1,4 +1,4 @@
-# Carte de hauteurs : relief des villages (3 etages), relief de fond par biome (rivieres, cascades, ponts,
+# Carte de hauteurs : relief des villages (3 etages, buttes et creux doux), relief de fond par biome (rivieres, cascades, ponts,
 # routes aplanies), bord infranchissable.
 # Ecrit tools/out/relief.u16, holes.u8, relief.json pour le composant Terrain de s&box.
 import json
@@ -7,7 +7,7 @@ import os
 import sys
 from array import array
 
-from carte import (ANCIEN_VILLAGE_R, BIOME, CORNERS, FONDU_M, HALF, INNER, M, PAYS_R, RAMPS, RAYON_REMPART_M, TIER_Z, TIERS,
+from carte import (BIOME, CORNERS, FONDU_M, HALF, INNER, M, PAYS_R, RAMPS, RAYON_REMPART_M, SORTIES, TIER_Z, TIERS,
                    biome_poids, local_to_world, territoire, world_to_local)
 
 RES = 2048
@@ -28,6 +28,33 @@ TROU_T0, TROU_T1 = -170, 110  # etendue du trou le long du puits (u, 0 = centre 
 def sol_puits(t, zs=0.0):
     # z du sol du puits a la distance t (u) du centre du trou, vers l'exterieur ; zs = z monde de la surface au trou
     return zs + (t - PUITS_FIN) * PUITS_PENTE
+
+
+def charger_emprises(plans_dir):
+    """Active les bosses des villages : sol plat sous les elements de surface des plans v3 (hors rempart A1 et sorties X*)
+    et au-dessus des souterrains (souterrains.emprises, ecrit par plan-vers-blocage.py). Distance a la plus proche
+    emprise precalculee sur une grille de BOSSE_PAS m (repere local du village)."""
+    formes = {}
+    for f in os.listdir(plans_dir):
+        if f.endswith(".json"):
+            d = json.load(open(os.path.join(plans_dir, f), encoding="utf-8"))
+            if d["layer"] == "surface" and d["code"] != "A1" and d["code"][0] != "X":
+                formes.setdefault(d["village"], []).append(d["shape"])
+    for v, lst in json.load(open(os.path.join(plans_dir, "souterrains.emprises"))).items():
+        formes.setdefault(v, []).extend(lst)
+    _DIST_BOSSE.clear()
+    portee = BOSSE_MARGE_M + BOSSE_FONDU_M
+    for v, lst in formes.items():
+        g = array("d", [portee] * (_NX * _NY))
+        for s in lst:
+            x0, y0, x1, y1 = _bbox(s)
+            for j in range(max(0, int((y0 - portee + R_V) / BOSSE_PAS)), min(_NY, int((y1 + portee + R_V) / BOSSE_PAS) + 2)):
+                for i in range(max(0, int((x0 - portee + R_V) / BOSSE_PAS)), min(_NX, int((x1 + portee + R_V) / BOSSE_PAS) + 2)):
+                    k = j * _NX + i
+                    d = _dist_emprise(s, i * BOSSE_PAS - R_V, j * BOSSE_PAS - R_V)
+                    if d < g[k]:
+                        g[k] = d
+        _DIST_BOSSE[v] = g
 
 
 def charger_trous(plans_dir):
@@ -75,6 +102,73 @@ def _hauteur_village(v, x, y):
     return h
 
 
+# ── Buttes et creux doux dans les niveaux des villages : +/- BOSSE_M, nuls sous les emprises des plans et au-dessus des
+# souterrains (marge BOSSE_MARGE_M), de part et d'autre des frontieres de niveau (marches, rampes, ponts de Kumo, murets
+# de Suna) et pres du rempart. Sans charger_emprises, pas de bosses : plan-vers-blocage.py travaille ainsi (tout ce qu'il
+# pose est sur une emprise ou dans une bande plate) ; tout autre appelant qui pose quelque chose dans un village les charge.
+_DIST_BOSSE = {}       # village -> grille des distances (m) a la plus proche emprise (charger_emprises)
+BOSSE_PAS = 2          # pas de la grille (m) : un point dans une emprise a ses 4 noeuds a < 3 m d'elle
+BOSSE_M = 3.0          # amplitude max (m)
+BOSSE_MARGE_M = 6      # sol plat autour de chaque emprise
+BOSSE_FONDU_M = 20     # la bosse monte sur 20 m au-dela de la marge (pente < 35 deg)
+BOSSE_BANDE_M = 50     # sol plat a moins de 50 m d'une frontiere de niveau ou du rempart
+
+
+def _dist_emprise(s, x, y):
+    # distance (m) de (x, y) a une forme des plans (0 dedans) ; rectangles sans rotation (aucun plan v3 n'en a)
+    t = s["t"]
+    if t == "rect":
+        return math.hypot(max(abs(x - s["x"]) - s["w"] / 2, 0), max(abs(y - s["y"]) - s["h"] / 2, 0))
+    if t == "circle":
+        return max(0.0, math.hypot(x - s["x"], y - s["y"]) - s["r"])
+    if t == "houses":
+        return max(0.0, math.hypot(x - s["zx"], y - s["zy"]) - s["zr"])
+    if t == "ring":   # anneau plein (arenes) : disque
+        return max(0.0, math.hypot(x - s["x"], y - s["y"]) - s["r"] - s["w"] / 2)
+    if t == "line":
+        d = 1e9
+        for (ax, ay), (bx, by) in zip(s["pts"], s["pts"][1:]):
+            l2 = (bx - ax) ** 2 + (by - ay) ** 2
+            k = 0.0 if l2 == 0 else max(0.0, min(1.0, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2))
+            d = min(d, math.hypot(x - ax - k * (bx - ax), y - ay - k * (by - ay)))
+        return max(0.0, d - s["w"] / 2)
+    return 1e9
+
+
+def _bbox(s):
+    t = s["t"]
+    if t == "rect":
+        return s["x"] - s["w"] / 2, s["y"] - s["h"] / 2, s["x"] + s["w"] / 2, s["y"] + s["h"] / 2
+    if t == "line":
+        xs, ys = [p[0] for p in s["pts"]], [p[1] for p in s["pts"]]
+        return min(xs) - s["w"] / 2, min(ys) - s["w"] / 2, max(xs) + s["w"] / 2, max(ys) + s["w"] / 2
+    x, y = (s["zx"], s["zy"]) if t == "houses" else (s["x"], s["y"])
+    r = s["zr"] if t == "houses" else s["r"] + s.get("w", 0) / 2
+    return x - r, y - r, x + r, y + r
+
+
+def _bosses(v, xm, ym):
+    """Bosse (u) au point local (xm, ym) m du village v."""
+    g = _DIST_BOSSE.get(v)
+    if g is None:
+        return 0.0
+    r = math.hypot(xm, ym)
+    d = min(abs(r - TIERS["milieu"][0]), abs(r - TIERS["bas"][0]), R_V - r)
+    m = _lisse((d - BOSSE_BANDE_M) / BOSSE_FONDU_M)
+    if m == 0.0:
+        return 0.0
+    fx, fy = (xm + R_V) / BOSSE_PAS, (ym + R_V) / BOSSE_PAS
+    i, j = min(int(fx), _NX - 2), min(int(fy), _NY - 2)
+    fx, fy = fx - i, fy - j
+    k = j * _NX + i
+    d = (g[k] * (1 - fx) + g[k + 1] * fx) * (1 - fy) + (g[k + _NX] * (1 - fx) + g[k + _NX + 1] * fx) * fy
+    m *= _lisse((d - BOSSE_MARGE_M) / BOSSE_FONDU_M)
+    if m == 0.0:
+        return 0.0
+    ph = VILLAGES.index(v) * 2.3
+    return BOSSE_M * M * m * (2 * _sinus3(3.5 * xm, 3.5 * ym, ph) - 1)   # longueurs d'onde ~ 90, 60, 40 m
+
+
 def _cible_bord(x, y):
     # sommet du bord : melange doux des styles des coins (le plus proche domine)
     ds = {v: math.hypot(x - cx, y - cy) for v, (cx, cy) in CORNERS.items()}
@@ -86,7 +180,8 @@ def _cible_bord(x, y):
 # ── Relief de fond (hors villages, en metres) : un relief par biome, pondere par biome_poids.
 # Nul dans les villages, sur les routes, autour des sorties cachees X* et au centre ; toujours >= 0 hors des eaux
 # (les tunnels des sorties X* passent dessous : un creux leur enleverait de la couverture).
-R_V = RAYON_REMPART_M                     # rayon actuel du rempart (m) ; la tache 3 le passe a VILLAGE_R
+R_V = RAYON_REMPART_M                     # rayon du rempart (m)
+_NX, _NY = 2 * R_V // BOSSE_PAS + 1, R_V // BOSSE_PAS + 1   # grille des bosses : x local de -R_V a R_V, y de -R_V a 0
 FONDU_VILLAGE_M = 60                      # le fond s'efface sur 60 m autour du rempart...
 MONTEE_M = 200                            # ... et son amplitude ne monte que sur 200 m (pentes < 35 deg)
 TAPER_M = (PAYS_R - 300, PAYS_R - 50)     # amplitude ramenee a 0 avant l'arc du pays : frontieres douces, centre plat
@@ -94,8 +189,6 @@ ROUTE_LARG_U = 640
 ROUTE_PLAT_M = ROUTE_LARG_U / M / 2 + 4   # chaussee + 4 m de chaque cote : plat a z = 0
 ROUTE_FONDU_M = 150
 X_PLAT_M, X_FONDU_M = 25, 100     # plat : trou, puits et bout du tunnel (le generateur y suppose z = 0)
-# sorties cachees X1 / X2 : plans-villages-v3.SORTIES (angle local, rayon m pour un rempart de 500 m), a l'echelle du rempart
-SORTIES_X = [(a, r * R_V / ANCIEN_VILLAGE_R) for a, r in ((240, 650), (288, 700))]
 PAYS_DU_BIOME = {"foret": "konoha", "desert": "suna", "roche": "kumo", "neutre": "libre"}
 
 
@@ -103,7 +196,7 @@ def _pol(a, r):
     return (r * math.cos(math.radians(a)), r * math.sin(math.radians(a)))
 
 
-_X_LOC = [_pol(a, r) for a, r in SORTIES_X]
+_X_LOC = [_pol(a, r) for a, r in SORTIES.values()]   # sorties cachees X1 / X2 (carte.SORTIES)
 
 
 def _sinus3(X, Y, ph):
@@ -301,8 +394,8 @@ def _hauteur(x, y):
     yc = max(-INNER, min(INNER, y))
     h = 0.0
     for v in VILLAGES:
-        if abs(xc - CORNERS[v][0]) < RMAX * M and abs(yc - CORNERS[v][1]) < RMAX * M:
-            h = _hauteur_village(v, xc, yc)
+        if abs(xc - CORNERS[v][0]) < R_V * M and abs(yc - CORNERS[v][1]) < R_V * M:
+            h = _hauteur_village(v, xc, yc) + _bosses(v, *world_to_local(v, xc, yc))
             break
     h = _creuse(xc, yc, h + _fond(xc, yc))
     if d > 0:
@@ -379,6 +472,7 @@ def vue_dessus(heights, chemin):
 
 def main():
     if len(sys.argv) > 1:
+        charger_emprises(sys.argv[1])
         charger_trous(sys.argv[1])
     else:  # sans dossier : on genere les plans v3 dans un dossier temporaire
         import subprocess, tempfile
@@ -386,6 +480,7 @@ def main():
         here = os.path.dirname(os.path.abspath(__file__))
         for script, extra in (("plans-villages-v3.py", []), ("plan-vers-blocage.py", [os.path.join(tmp, "monde.cs.txt")])):
             subprocess.run([sys.executable, os.path.join(here, script), tmp] + extra, check=True, stdout=subprocess.DEVNULL)
+        charger_emprises(tmp)
         charger_trous(tmp)
     heights, holes, meta = build()
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")

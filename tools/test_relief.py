@@ -2,12 +2,13 @@
 import importlib.util, json, math, os, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from collections import deque
-from carte import CORNERS, RAMPS, TIER_Z, INNER, M, HALF, RAYON_REMPART_M, local_to_world, territoire
+from carte import CORNERS, ECHELLE_VILLAGE, RAMPS, TIER_Z, TIERS, INNER, M, HALF, RAYON_REMPART_M, local_to_world, territoire
 import relief
 from relief import height_at
 
 VILLAGES = ["konoha", "suna", "kumo"]
-R_V = RAYON_REMPART_M          # rayon actuel du rempart (m)
+R_V = RAYON_REMPART_M          # rayon du rempart (m)
+R_V6 = 420 * ECHELLE_VILLAGE   # rayon de la place d'apparition V6 (axe 270)
 PAS = 10 * M                   # grille de 10 m
 N_G = INNER // PAS             # indices de -N_G a N_G
 TAN35 = math.tan(math.radians(35))
@@ -54,7 +55,8 @@ def bord_infranchissable():
 def niveaux_village():
     for v in VILLAGES:
         bas, mil, haut = TIER_Z[v]
-        for ang, r, att in ((270, 420, bas), (270, 250, mil), (240, 80, haut)):
+        # place d'apparition, et a 30 m des frontieres de niveau (bandes sans bosses)
+        for ang, r, att in ((270, R_V6, bas), (270, TIERS["milieu"][0] + 30, mil), (240, TIERS["milieu"][0] - 30, haut)):
             h = height_at(*pt(v, ang, r))
             assert abs(h - att) <= 5, (v, ang, r, h, att)
 
@@ -62,18 +64,19 @@ def niveaux_village():
 def rampes_marchables():
     for v in VILLAGES:
         for a in RAMPS[v]:
-            prev = height_at(*pt(v, a, 100))
-            for r in range(101, 361):
+            r0 = round(100 * ECHELLE_VILLAGE)
+            prev = height_at(*pt(v, a, r0))
+            for r in range(r0 + 1, TIERS["bas"][0] + 22):
                 h = height_at(*pt(v, a, r))
                 assert pente_deg(h - prev, M) <= 35, (v, a, r)
                 prev = h
-            h1, h2 = height_at(*pt(v, a + 8, 337)), height_at(*pt(v, a + 8, 343))
+            h1, h2 = height_at(*pt(v, a + 8, TIERS["bas"][0] - 3)), height_at(*pt(v, a + 8, TIERS["bas"][0] + 3))
             assert pente_deg(h2 - h1, 6 * M) > 50, (v, a)
 
 
 def apparitions_plates():
     for v in VILLAGES:
-        cx, cy = pt(v, 270, R_V - 80)
+        cx, cy = pt(v, 270, R_V6)
         hs = [height_at(cx + dx, cy + dy) for dx, dy in ((500, 0), (-500, 0), (0, 500), (0, -500))]
         assert max(hs) - min(hs) < 10, (v, hs)
 
@@ -295,6 +298,7 @@ def _generer():
     _charge("plans_villages_v3", ["plans-villages-v3.py", tmp])
     gen = _charge("plan_vers_blocage", ["plan-vers-blocage.py", tmp, os.path.join(tmp, "monde.cs.txt")])
     relief.charger_trous(tmp)
+    relief.charger_emprises(tmp)
     return tmp, gen
 
 
@@ -472,10 +476,70 @@ def souterrains_sans_intrusion():
     print("  ", n, "paires boite / salle testees")
 
 
+def _echantillons(s):
+    # points (m locaux) sur et dans une forme des plans, tous les ~2 m
+    t = s["t"]
+    if t == "rect":
+        nx, ny = math.ceil(s["w"] / 2), math.ceil(s["h"] / 2)
+        return [(s["x"] - s["w"] / 2 + s["w"] * i / nx, s["y"] - s["h"] / 2 + s["h"] * j / ny) for i in range(nx + 1) for j in range(ny + 1)]
+    if t == "line":
+        out = []
+        for (ax, ay), (bx, by) in zip(s["pts"], s["pts"][1:]):
+            L = math.hypot(bx - ax, by - ay)
+            n = math.ceil(L / 2)
+            for k in range(n + 1):
+                for o in (-s["w"] / 2, 0, s["w"] / 2):
+                    out.append((ax + (bx - ax) * k / n - (by - ay) / L * o, ay + (by - ay) * k / n + (bx - ax) / L * o))
+        return out
+    x, y = (s["zx"], s["zy"]) if t == "houses" else (s["x"], s["y"])
+    r = s["zr"] if t == "houses" else s["r"] + s.get("w", 0) / 2
+    return [(x, y)] + [(x + f * r * math.cos(math.radians(a)), y + f * r * math.sin(math.radians(a))) for f in (0.33, 0.66, 1) for a in range(0, 360, 15)]
+
+
+def village_bosses():
+    """Bosses des niveaux : presentes (>= 1 m), marchables, et sol plat sous chaque element de surface des plans."""
+    tmp, _ = _generer()
+    n = 0
+    for f in os.listdir(tmp):
+        if not f.endswith(".json"):
+            continue
+        d = json.load(open(os.path.join(tmp, f), encoding="utf-8"))
+        if d["layer"] != "surface" or d["code"] == "A1" or d["code"][0] == "X" or d["fill"] == "mountain":
+            continue   # rempart, sorties hors village, falaise de Konoha (deborde du quart, sur le bord de carte)
+        pts = _echantillons(d["shape"])
+        if d["shape"]["t"] == "line":   # une rue peut finir sur une rampe (Suna, axe 270) : on ne garde que le plat
+            hw = 22.5 if d["village"] == "kumo" else 12.5
+            pts = [p for p in pts if min(abs(math.hypot(*p) - rb) for rb in (TIERS["milieu"][0], TIERS["bas"][0])) > hw + 3]
+        hs = [height_at(*local_to_world(d["village"], x, y)) for x, y in pts]
+        n += 1
+        assert max(hs) - min(hs) <= 10, (d["village"], d["code"], round(max(hs) - min(hs)))
+    pas = 2
+    for v in VILLAGES:
+        pire, maxi = 0.0, 0.0
+        for i in range(-R_V // pas, R_V // pas):
+            for j in range(-R_V // pas, 0):
+                x, y = i * pas, j * pas
+                b = relief._bosses(v, x, y)
+                maxi = max(maxi, abs(b))
+                if b or relief._bosses(v, x + pas, y) or relief._bosses(v, x, y + pas):
+                    h = height_at(*local_to_world(v, x, y))
+                    for q in ((x, y), (x + pas, y), (x, y + pas)):
+                        if max(map(abs, local_to_world(v, *q))) > INNER:   # bord de carte : hors sujet
+                            break
+                    else:
+                        for q in ((x + pas, y), (x, y + pas)):
+                            pire = max(pire, pente_deg(height_at(*local_to_world(v, *q)) - h, pas * M))
+        assert maxi >= M, (v, maxi)
+        assert pire <= 35, (v, pire)
+        print("  ", v, "bosse maxi", round(maxi / M, 1), "m, pente maxi", round(pire, 1), "deg")
+    print("  ", n, "elements a plat")
+
+
 if __name__ == "__main__":
+    _generer()   # plans, trous et emprises (bosses des villages) charges pour tous les tests
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
               ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
-              souterrains_sans_intrusion):
+              souterrains_sans_intrusion, village_bosses):
         f()
         print("OK", f.__name__)
