@@ -38,3 +38,6 @@ server_secrets.json
 Thumbs.db
 desktop.ini
 .superpowers/
+
+# Sorties generees des scripts tools/
+tools/out/
