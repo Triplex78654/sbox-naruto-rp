@@ -41,3 +41,4 @@ desktop.ini
 
 # Sorties generees des scripts tools/
 tools/out/
+__pycache__/

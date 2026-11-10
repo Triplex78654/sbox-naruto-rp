@@ -29,15 +29,19 @@ def periph(d, n=400):
 def bord_infranchissable():
     for x, y in periph(INNER + 3000):
         assert height_at(x, y) >= 1900, (x, y, height_at(x, y))
-    # pente moyenne vers l'interieur > 45 deg sur [INNER, INNER+1200] (hors zones de village)
-    for x, y in periph(INNER, 400):
-        if any(math.hypot(x - cx, y - cy) < 500 * M for cx, cy in CORNERS.values()):
-            continue
+    # montee : plateau atteint a +1200 u, pente moyenne >= 50 deg sur les 600 premieres u, partout
+    # (dos des villages et abords des coins compris)
+    pts = periph(INNER, 400)
+    for cx, cy in CORNERS.values():
+        for k in range(100):
+            pts += [(cx + math.copysign(20000 * k / 99, -cx), cy), (cx, cy + math.copysign(20000 * k / 99, -cy))]
+    for x, y in pts:
         k = 0 if abs(x) >= abs(y) else 1
-        p, q = [x, y], [x, y]
-        for u, w in ((p, 0), (q, 1200)):
-            u[k] += math.copysign(w, u[k])
-        assert pente_deg(height_at(*q) - height_at(*p), 1200) > 45, (x, y)
+        p, q, r = [x, y], [x, y], [x, y]
+        q[k] += math.copysign(600, q[k])
+        r[k] += math.copysign(1200, r[k])
+        assert pente_deg(height_at(*q) - height_at(*p), 600) >= 50, (x, y)
+        assert height_at(*r) >= 1900, (x, y)
 
 
 def niveaux_village():

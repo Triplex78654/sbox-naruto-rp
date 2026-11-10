@@ -3,9 +3,10 @@
 import json
 import math
 import os
+import sys
 from array import array
 
-from carte import CORNERS, HALF, INNER, M, RAMPS, TIER_Z, TIERS
+from carte import CORNERS, HALF, INNER, M, RAMPS, TIER_Z, TIERS, world_to_local
 
 RES = 2048
 TERRAIN_Z = -2000      # le terrain est pose a z = -2000 : hauteur stockee 2000 = z monde 0
@@ -16,6 +17,7 @@ HOLES = []  # trous (centre en metres local + taille), remplis en Task 3
 
 BORD_Z = {"konoha": 2400, "suna": 2000, "kumo": 6000, "libre": 2000}  # sommet du bord (z monde)
 BORD_MONTEE = 1200     # montee du bord : 30 m
+TAN_BORD = math.tan(math.radians(55))
 BORD_LISSAGE = 3000    # (u) douceur du changement de style entre deux coins
 RAMPE_LARG = (4.0, 6.0)  # demi-largeur pleine / nulle d'une rampe (m)
 VILLAGES = [v for v in CORNERS if v in TIER_Z]
@@ -34,10 +36,7 @@ def _hauteur_village(v, x, y):
     dx, dy = (x - cx) / M, (y - cy) / M
     if dx * dx + dy * dy > RMAX * RMAX:
         return bas
-    # repere local : meme rotation que local_to_world (inverse)
-    t = math.radians(math.degrees(math.atan2(-cx, cy)))
-    c, s = math.cos(t), math.sin(t)
-    xm, ym = dx * c + dy * s, -dx * s + dy * c
+    xm, ym = world_to_local(v, x, y)
     r = math.hypot(xm, ym)
     ang = math.degrees(math.atan2(ym, xm)) % 360
     # distance laterale a la rampe la plus proche
@@ -73,8 +72,10 @@ def _hauteur(x, y):
             h = _hauteur_village(v, xc, yc)
             break
     if d > 0:
-        s = min(1.0, d / BORD_MONTEE)
-        h += (_cible_bord(x, y) - h) * s
+        cible = _cible_bord(x, y)
+        # montee raccourcie quand l'ecart est faible : pente toujours >= 55 deg (> 45 = infranchissable)
+        L = min(BORD_MONTEE, max(1.0, abs(cible - h) / TAN_BORD))
+        h += (cible - h) * min(1.0, d / L)
     return h
 
 
@@ -104,7 +105,7 @@ def main():
     heights, holes, meta = build()
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "out")
     os.makedirs(out, exist_ok=True)
-    if os.sys.byteorder == "big":
+    if sys.byteorder == "big":
         heights.byteswap()
     with open(os.path.join(out, "relief.u16"), "wb") as f:
         heights.tofile(f)
