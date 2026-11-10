@@ -6,7 +6,7 @@
 import json, math, os, sys, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from carte import CORNERS, INNER, M, CENTRE_R, ANCIEN_PAYS_R, VILLAGE_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
-from relief import height_at, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits
+from relief import height_at, oublier_emprises, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits
 
 src = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "monde-blocage-v3.cs.txt")
@@ -15,6 +15,8 @@ for f in sorted(glob.glob(os.path.join(src, "*.json"))):
     d = json.load(open(f, encoding="utf-8"))
     d = d.get("data", d)
     els.setdefault(d["village"], []).append(d)
+
+oublier_emprises()   # tout se calcule sur le relief sans bosses, même si un appelant les a chargées (tests, même processus)
 
 BORDER = ANCIEN_PAYS_R * M                       # rayon des bornes de l'ancienne frontière (u) : supprimées en tâche 4
 DIST = math.hypot(*CORNERS["konoha"])            # coin -> centre du monde (u)

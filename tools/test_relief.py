@@ -302,6 +302,18 @@ def _generer():
     return tmp, gen
 
 
+def generation_stable():
+    # generation dans ce processus (bosses deja chargees) == generation livree (scripts seuls, processus neufs)
+    import subprocess
+    a, _ = _generer()
+    b = tempfile.mkdtemp()
+    for script, extra in (("plans-villages-v3.py", []), ("plan-vers-blocage.py", [os.path.join(b, "monde.cs.txt")])):
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), script), b] + extra,
+                       check=True, stdout=subprocess.DEVNULL)
+    for f in ("trous.holes", "souterrains.emprises", "monde.cs.txt"):
+        assert open(os.path.join(a, f), encoding="utf-8").read() == open(os.path.join(b, f), encoding="utf-8").read(), f
+
+
 def _codes_attendus(tmp):
     att = set()
     for f in os.listdir(tmp):
@@ -538,7 +550,7 @@ def village_bosses():
 if __name__ == "__main__":
     _generer()   # plans, trous et emprises (bosses des villages) charges pour tous les tests
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
-              ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
+              generation_stable, ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
               souterrains_sans_intrusion, village_bosses):
         f()

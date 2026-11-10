@@ -1,6 +1,6 @@
 // Importe le relief (tools/relief.py -> tools/out/relief.u16 + holes.u8) dans l'asset terrain/monde.terrain
 // et pose l'objet « Relief » (Terrain) dans la scène ouverte. Relançable.
-// Prérequis : python tools/relief.py <dossier plans v3> déjà lancé, et l'asset créé une fois :
+// Prérequis : python tools/relief.py <dossier plans v3> déjà lancé (après plans-villages-v3.py puis plan-vers-blocage.py sur ce dossier), et l'asset créé une fois :
 //   sbox-cli --call create_asset '{"type":"terrain","path":"terrain/monde.terrain"}'
 // Un TerrainStorage non enregistré comme asset est sérialisé "Storage": null dans la scène : l'asset est obligatoire.
 // Matériaux : Assets/terrain/{herbe,sable,roche}.tmat (créés une fois avec create_asset, image unie de 16 px).

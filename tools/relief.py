@@ -1,6 +1,9 @@
 # Carte de hauteurs : relief des villages (3 etages, buttes et creux doux), relief de fond par biome (rivieres, cascades, ponts,
 # routes aplanies), bord infranchissable.
 # Ecrit tools/out/relief.u16, holes.u8, relief.json pour le composant Terrain de s&box.
+# Usage : python tools/relief.py [<dossier plans>] ; ordre : plans-villages-v3.py <dossier> -> plan-vers-blocage.py <dossier>
+# -> relief.py <dossier> (lit trous.holes et souterrains.emprises de CE dossier ; sans dossier, il refait les deux etapes).
+# Decor pose dans un village hors des emprises des plans : appeler charger_emprises(<dossier>) avant height_at (bosses).
 import json
 import math
 import os
@@ -55,6 +58,11 @@ def charger_emprises(plans_dir):
                     if d < g[k]:
                         g[k] = d
         _DIST_BOSSE[v] = g
+
+
+def oublier_emprises():
+    # retour au relief sans bosses (celui sur lequel plan-vers-blocage.py calcule)
+    _DIST_BOSSE.clear()
 
 
 def charger_trous(plans_dir):
