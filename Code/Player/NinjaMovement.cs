@@ -35,7 +35,7 @@ public sealed class NinjaMovement : Component
 	{
 		if ( IsProxy ) return;
 
-		if ( NinjaPlayer.InputBlocked || Stats.IsDowned || Stats.IsStunned )
+		if ( NinjaPlayer.InputBlocked || Stats.IsDowned || Stats.IsStunned || GetComponent<Staff.StaffCommands>()?.IsFlying == true )
 		{
 			IsNinjaRunning = false;
 			return;

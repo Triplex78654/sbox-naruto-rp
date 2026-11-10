@@ -2,7 +2,7 @@ namespace NarutoRp.Staff;
 
 public enum StaffAction
 {
-	Teleport, Invisible, Spectate, Warn, Kick, Ban, PermanentBan, Grade, Jutsu, Medic, Clan,
+	Teleport, Invisible, Spectate, Warn, Kick, Ban, PermanentBan, Grade, Jutsu, Medic, Clan, Fly,
 }
 
 /// <summary>
@@ -15,7 +15,7 @@ public static class StaffPermissions
 
 	static string Required( StaffAction a ) => a switch
 	{
-		StaffAction.Teleport or StaffAction.Invisible or StaffAction.Spectate or StaffAction.Warn or StaffAction.Kick => "moderator",
+		StaffAction.Teleport or StaffAction.Fly or StaffAction.Invisible or StaffAction.Spectate or StaffAction.Warn or StaffAction.Kick => "moderator",
 		StaffAction.PermanentBan => "admin",
 		_ => "staff",
 	};

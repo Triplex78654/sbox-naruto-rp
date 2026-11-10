@@ -16,6 +16,10 @@
 			<div class="header">
 				<div class="title">Staff · @Me.StaffRank</div>
 				<Button class="@(Cmd.IsInvisible ? "on" : "")" onclick=@(() => Cmd.RequestSetInvisible( !Cmd.IsInvisible ))>@(Cmd.IsInvisible ? "Invisible" : "Visible")</Button>
+				@if ( StaffPermissions.Has( Me.StaffRank, StaffAction.Fly ) )
+				{
+					<Button class="@(Cmd.IsFlying ? "on" : "")" onclick=@(() => Cmd.RequestSetFlying( !Cmd.IsFlying ))>@($"Vol : {(Cmd.IsFlying ? "oui" : "non")} [{Input.GetButtonOrigin( "Noclip" )}]")</Button>
+				}
 				@if ( Cmd.SpectateTarget.IsValid() )
 				{
 					<Button class="on" onclick=@(() => Cmd.SpectateTarget = null)>Arrêter de suivre</Button>
@@ -157,7 +161,7 @@
 	{
 		var t = _selected;
 		return System.HashCode.Combine(
-			Visible, t, _reason, _minutes, Players.Count(), Cmd?.IsInvisible, Cmd?.SpectateTarget,
+			Visible, t, _reason, _minutes, Players.Count(), System.HashCode.Combine( Cmd?.IsInvisible, Cmd?.IsFlying ), Cmd?.SpectateTarget,
 			System.HashCode.Combine( t?.Grade, t?.IsMedic, t?.Clan, t?.ClanValidated, t?.GetComponent<NarutoRp.Combat.JutsuCaster>()?.Slots.Count, string.Join( '|', _domainClans.Values ), string.Join( ',', Domains.Select( d => d.DomainId + d.OwnerClan ) ) ) );
 	}
 }

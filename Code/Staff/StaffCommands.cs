@@ -149,8 +149,63 @@ public sealed class StaffCommands : Component
 		Notify( invisible ? "Invisible." : "Visible." );
 	}
 
+	// ─── Vol staff (inspection de la carte) ──────────────────────────────────
+
+	/// <summary>Vol staff autorisé par l'hôte. Le propriétaire ne vole que tant que c'est vrai.</summary>
+	[Sync( SyncFlags.FromHost )] public bool IsFlying { get; private set; }
+
+	/// <summary>Vitesse de base du vol (molette), en unités/s. Propriétaire seulement.</summary>
+	public float FlySpeed { get; private set; } = 3000f;
+
+	bool _flyApplied;
+
+	[Rpc.Host( NetFlags.OwnerOnly )]
+	public void RequestSetFlying( bool flying )
+	{
+		// Couper le vol est toujours permis (rang retiré entre-temps).
+		if ( flying == IsFlying || (flying && !Allowed( StaffAction.Fly )) ) return;
+		IsFlying = flying;
+		MarkTeleported( GameObject );
+		LogStaff( "staff_fly", null, new { flying } );
+		Notify( flying ? "Vol staff activé." : "Vol staff coupé." );
+	}
+
+	/// <summary>Propriétaire : la position lui appartient, c'est donc lui qui déplace le joueur en vol.</summary>
+	void UpdateFly()
+	{
+		var controller = GetComponent<PlayerController>();
+		if ( controller is null ) return;
+
+		if ( _flyApplied != IsFlying )
+		{
+			// Corps sans physique ni collision : on traverse sol et murs. À l'arrêt, chute normale depuis ici.
+			_flyApplied = IsFlying;
+			controller.Body.MotionEnabled = !IsFlying;
+			controller.Body.Velocity = 0;
+			if ( controller.ColliderObject.IsValid() ) controller.ColliderObject.Enabled = !IsFlying;
+		}
+
+		// Sinon le contrôleur se recolle au sol qu'il détecte sous lui (même menu F1 ouvert).
+		if ( IsFlying ) controller.PreventGrounding( 0.1f );
+
+		if ( NinjaPlayer.InputBlocked ) return;
+		if ( Input.Pressed( "Noclip" ) && (IsFlying || StaffPermissions.Has( Rank, StaffAction.Fly )) ) RequestSetFlying( !IsFlying );
+		if ( !IsFlying ) return;
+
+		FlySpeed = Math.Clamp( FlySpeed * MathF.Pow( 1.25f, Input.MouseWheel.y ), 500f, 20000f );
+
+		Rotation look = controller.EyeAngles;
+		var move = look * Input.AnalogMove;
+		if ( Input.Down( "Jump" ) ) move += Vector3.Up;
+		if ( Input.Down( "Duck" ) ) move += Vector3.Down;
+		if ( move.Length < 0.01f ) return;
+		WorldPosition += move.Normal * FlySpeed * (Input.Down( "Run" ) ? 4f : 1f) * Time.Delta;
+	}
+
 	protected override void OnUpdate()
 	{
+		if ( !IsProxy ) UpdateFly();
+
 		// Chez tout le monde : un staff invisible n'est pas affiché (le propriétaire le voit en transparence).
 		foreach ( var r in GameObject.Components.GetAll<ModelRenderer>( FindMode.EverythingInSelfAndDescendants ) )
 		{

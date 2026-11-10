@@ -29,6 +29,7 @@
 			{
 				<div class="defense">
 					@if ( Me.GetComponent<NinjaMovement>()?.IsNinjaRunning == true ) { <div class="tag ready">Course ninja</div> }
+					@if ( Me.GetComponent<NarutoRp.Staff.StaffCommands>() is { IsFlying: true } fly ) { <div class="tag ready">@($"Vol staff (vitesse {fly.FlySpeed:0})")</div> }
 					@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
 					@if ( Defense.IsSubstitutionReady ) { <div class="tag ready">Substitution prête</div> }
 					<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@($"[{Input.GetButtonOrigin( "Substitution" )}] Substitution{(Defense.SubstitutionCooldownRemaining > 0 ? $" {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s" : "")}")</div>
@@ -151,6 +152,7 @@
 			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
 				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
 			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ),
+			System.HashCode.Combine( Me?.GetComponent<NarutoRp.Staff.StaffCommands>()?.IsFlying, Me?.GetComponent<NarutoRp.Staff.StaffCommands>()?.FlySpeed ),
 			c is null ? 0 : c.Slots.Aggregate( 17, ( h, j ) => System.HashCode.Combine( h, j?.Id ) ),
 			System.HashCode.Combine( s?.MaxHealth, Me?.CharacterName ),
 			MathF.Round( CastProgress * 40 ) );

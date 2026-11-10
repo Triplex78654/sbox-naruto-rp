@@ -99,6 +99,7 @@ public sealed class NinjaStats : Component
 	{
 		var movement = GetComponent<NinjaMovement>();
 		if ( movement is null || movement.LastBurst < 1.5f || _lastSpeedLog < 10f ) return;
+		if ( GetComponent<Staff.StaffCommands>()?.IsFlying == true ) return; // vol staff autorisé par l'hôte
 
 		var max = _runSpeed * movement.NinjaRunMultiplier * 1.3f;
 		if ( speed <= max ) return;
@@ -121,7 +122,8 @@ public sealed class NinjaStats : Component
 		Controller.RunSpeed = _runSpeed * ninja * SpeedMultiplier;
 
 		// N'écrit UseInputControls qu'au changement, pour ne pas écraser d'autres systèmes (menus...).
-		var locked = IsDowned || IsStunned;
+		// En vol staff, c'est StaffCommands qui déplace le joueur : plus d'entrées de marche / saut / accroupi.
+		var locked = IsDowned || IsStunned || GetComponent<Staff.StaffCommands>()?.IsFlying == true;
 		if ( _appliedLocked != locked )
 		{
 			Controller.UseInputControls = !locked;
