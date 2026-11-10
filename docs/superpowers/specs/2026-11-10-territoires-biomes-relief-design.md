@@ -1,6 +1,6 @@
 # Territoires en arcs, biomes et relief de fond — conception
 
-Date : 2026-11-10. Statut : relu (4 questions traitées), en attente de validation par l'utilisateur.
+Date : 2026-11-10. Statut : relu, validé par l'utilisateur (2026-11-10).
 Repères visuels : `.superpowers/brainstorm/993-1794282681/content/` (`carte-actuelle.html`, `editeur-zones-v2.html`, `frontieres-arcs.html`, choix **B**).
 Suite de : `2026-11-10-carte-coins-relief-souterrains-design.md` (tout ce qui y est décidé reste valable sauf ce qui est changé ici).
 
