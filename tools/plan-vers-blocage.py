@@ -5,7 +5,7 @@
 # Usage : python tools/plan-vers-blocage.py <dossier plans> [sortie]
 import json, math, os, sys, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from carte import CORNERS, INNER, M, CENTRE_R, PAYS_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
+from carte import CORNERS, INNER, M, CENTRE_R, ANCIEN_PAYS_R, TIERS, TIER_Z, RAMPS, yaw_of, local_to_world
 from relief import height_at, RAMPE_LARG, PUITS_PENTE, PUITS_FIN, PUITS_LARG, sol_puits
 
 src = sys.argv[1]
@@ -16,7 +16,7 @@ for f in sorted(glob.glob(os.path.join(src, "*.json"))):
     d = d.get("data", d)
     els.setdefault(d["village"], []).append(d)
 
-BORDER = PAYS_R * M                              # rayon de la frontière (u)
+BORDER = ANCIEN_PAYS_R * M                              # rayon de la frontière (u)
 DIST = math.hypot(*CORNERS["konoha"])            # coin -> centre du monde (u)
 
 # Style de chaque village : couleurs (r, g, b) et hauteurs (unités).
