@@ -4,7 +4,7 @@ using NarutoRp.Core;
 namespace NarutoRp.Player;
 
 /// <summary>
-/// Jauges du ninja : vie, chakra, endurance, et états (à terre, étourdi, ralenti).
+/// Jauges du ninja : vie, chakra, et états (à terre, étourdi, ralenti).
 /// L'hôte est le seul à les modifier ; les clients les reçoivent par [Sync( FromHost )].
 /// </summary>
 public sealed class NinjaStats : Component
@@ -16,7 +16,6 @@ public sealed class NinjaStats : Component
 	/// <summary>Dégâts minimum d'un coup pour interrompre une incantation.</summary>
 	[Property, Group( "Vie" )] public float InterruptDamageThreshold { get; set; } = 10f;
 	[Property, Group( "Chakra" )] public float MaxChakra { get; set; } = 100f;
-	[Property, Group( "Endurance" )] public float MaxStamina { get; set; } = 100f;
 
 	/// <summary>Chakra par seconde en bougeant.</summary>
 	[Property, Group( "Chakra" )] public float ChakraRegen { get; set; } = 1f;
@@ -24,31 +23,17 @@ public sealed class NinjaStats : Component
 	/// <summary>Chakra par seconde à l'arrêt (concentration).</summary>
 	[Property, Group( "Chakra" )] public float ChakraRegenFocused { get; set; } = 5f;
 
-	[Property, Group( "Endurance" )] public float StaminaRegen { get; set; } = 15f;
-	[Property, Group( "Endurance" )] public float StaminaRunCost { get; set; } = 10f;
-
-	/// <summary>Endurance par seconde en course ninja (mesurée par l'hôte à la vitesse).</summary>
-	[Property, Group( "Endurance" )] public float StaminaNinjaRunCost { get; set; } = 22f;
-
-	/// <summary>Part d'endurance à retrouver avant de pouvoir recourir (évite les saccades).</summary>
-	[Property, Group( "Endurance" )] public float StaminaRecoverFraction { get; set; } = 0.2f;
-
 	[Sync( SyncFlags.FromHost )] public float Health { get; private set; }
 	[Sync( SyncFlags.FromHost )] public float Chakra { get; private set; }
-	[Sync( SyncFlags.FromHost )] public float Stamina { get; private set; }
 
 	/// <summary>À terre : à 0 PV, jamais mort automatiquement.</summary>
 	[Sync( SyncFlags.FromHost )] public bool IsDowned { get; private set; }
-
-	/// <summary>Plus assez d'endurance pour courir.</summary>
-	[Sync( SyncFlags.FromHost )] public bool IsExhausted { get; private set; }
 
 	[Sync( SyncFlags.FromHost )] public bool IsStunned { get; private set; }
 
 	/// <summary>Multiplicateur de vitesse (1 = normal).</summary>
 	[Sync( SyncFlags.FromHost )] public float SpeedMultiplier { get; private set; } = 1f;
 
-	TimeSince _lastStaminaUse;
 	TimeUntil _stunEnd;
 	TimeUntil _slowEnd;
 	Vector3 _lastPos;
@@ -69,7 +54,6 @@ public sealed class NinjaStats : Component
 		if ( !Networking.IsHost ) return;
 		Health = MaxHealth;
 		Chakra = MaxChakra;
-		Stamina = MaxStamina;
 		_lastPos = WorldPosition;
 	}
 
@@ -97,21 +81,6 @@ public sealed class NinjaStats : Component
 		var speed = _speed;
 		CheckSpeed( speed );
 
-		var running = speed > _walkSpeed * 1.2f;
-		var ninjaRunning = speed > _runSpeed * 1.25f;
-		if ( running )
-		{
-			Stamina = MathF.Max( 0f, Stamina - (ninjaRunning ? StaminaNinjaRunCost : StaminaRunCost) * dt );
-			_lastStaminaUse = 0;
-		}
-		else if ( _lastStaminaUse > 1f )
-		{
-			Stamina = MathF.Min( MaxStamina, Stamina + StaminaRegen * dt );
-		}
-
-		if ( Stamina <= 0f ) IsExhausted = true;
-		else if ( Stamina >= MaxStamina * StaminaRecoverFraction ) IsExhausted = false;
-
 		if ( !IsDowned )
 		{
 			var regen = speed < 1f ? ChakraRegenFocused : ChakraRegen;
@@ -124,21 +93,21 @@ public sealed class NinjaStats : Component
 
 	/// <summary>
 	/// La position appartient au client : l'hôte ne peut pas bloquer un speedhack, mais le signale au staff.
-	/// Plus rapide que la course ninja (+30 %), ou plus rapide que la marche épuisé, hors bond / Shunshin récent.
+	/// Plus rapide que la course ninja (+30 %), hors bond / Shunshin récent.
 	/// </summary>
 	void CheckSpeed( float speed )
 	{
 		var movement = GetComponent<NinjaMovement>();
 		if ( movement is null || movement.LastBurst < 1.5f || _lastSpeedLog < 10f ) return;
 
-		var max = IsExhausted ? _walkSpeed * 1.3f : _runSpeed * movement.NinjaRunMultiplier * 1.3f;
+		var max = _runSpeed * movement.NinjaRunMultiplier * 1.3f;
 		if ( speed <= max ) return;
 
 		_lastSpeedLog = 0;
 		var ninja = GetComponent<NinjaPlayer>();
 		Log.Warning( $"[Anti-triche] {GameObject.Name} : vitesse {speed:0} (max {max:0})" );
 		GameManager.Current?.LogEvent( "speed_suspect", ninja?.SteamId, null,
-			new { name = ninja?.CharacterName, speed = MathF.Round( speed ), max = MathF.Round( max ), exhausted = IsExhausted } );
+			new { name = ninja?.CharacterName, speed = MathF.Round( speed ), max = MathF.Round( max ) } );
 	}
 
 	void TickOwner()
@@ -149,7 +118,7 @@ public sealed class NinjaStats : Component
 		Controller.WalkSpeed = _walkSpeed * SpeedMultiplier;
 		var movement = GetComponent<NinjaMovement>();
 		var ninja = movement?.IsNinjaRunning == true ? movement.NinjaRunMultiplier : 1f;
-		Controller.RunSpeed = (IsExhausted ? _walkSpeed : _runSpeed * ninja) * SpeedMultiplier;
+		Controller.RunSpeed = _runSpeed * ninja * SpeedMultiplier;
 
 		// N'écrit UseInputControls qu'au changement, pour ne pas écraser d'autres systèmes (menus...).
 		var locked = IsDowned || IsStunned;
@@ -192,17 +161,6 @@ public sealed class NinjaStats : Component
 		if ( !float.IsFinite( amount ) || amount <= 0f ) return;
 
 		Health = MathF.Min( MaxHealth, Health + amount );
-	}
-
-	/// <summary>Dépense de l'endurance si possible. Hôte seulement.</summary>
-	public bool TrySpendStamina( float amount )
-	{
-		if ( !Networking.IsHost || IsDowned ) return false;
-		if ( !float.IsFinite( amount ) || amount < 0f || Stamina < amount ) return false;
-
-		Stamina -= amount;
-		_lastStaminaUse = 0;
-		return true;
 	}
 
 	/// <summary>Dépense du chakra si possible. Hôte seulement.</summary>

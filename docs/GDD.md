@@ -76,8 +76,8 @@ MVP : 3 jutsus par nature, plus 3 en médical, 3 en taijutsu et 3 en kenjutsu.
 
 ## Combat et mort RP
 
-- **Jauges** : vie, chakra, endurance. Recharge du chakra lente, plus rapide en concentration à l'arrêt.
-- **Défense** : esquive (endurance), garde, substitution (chakra, cooldown long).
+- **Jauges** : vie, chakra (pas d'endurance : retirée le 2026-11-10 à la demande de l'utilisateur, course et esquive illimitées hors temps de recharge). Recharge du chakra lente, plus rapide en concentration à l'arrêt.
+- **Défense** : esquive (temps de recharge), garde, substitution (chakra, cooldown long).
 - **Signes** : incantation interruptible par un coup.
 - **À terre** : à 0 PV, le perso tombe, peut parler mais pas agir. Un médic-nin peut le relever.
 - **Mort RP** : jamais automatique (accord du joueur, guerre déclarée ou décision staff), toujours loggée.

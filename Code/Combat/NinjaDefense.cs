@@ -12,10 +12,7 @@ public sealed class NinjaDefense : Component
 	[RequireComponent] PlayerController Controller { get; set; }
 
 	[Property, Group( "Garde" )] public float GuardDamageReduction { get; set; } = 0.6f;
-	/// <summary>Endurance perdue par point de dégât bloqué.</summary>
-	[Property, Group( "Garde" )] public float GuardStaminaPerDamage { get; set; } = 0.5f;
 
-	[Property, Group( "Esquive" )] public float DodgeStaminaCost { get; set; } = 25f;
 	[Property, Group( "Esquive" )] public float DodgeCooldown { get; set; } = 1f;
 	/// <summary>Durée d'invulnérabilité pendant l'esquive.</summary>
 	[Property, Group( "Esquive" )] public float DodgeInvulnerableSeconds { get; set; } = 0.35f;
@@ -73,8 +70,8 @@ public sealed class NinjaDefense : Component
 	{
 		if ( !Networking.IsHost ) return;
 
-		// Garde rompue si plus d'endurance ou incapacité.
-		if ( IsGuarding && (Stats.IsDowned || Stats.IsStunned || Stats.Stamina <= 0f) )
+		// Garde rompue en cas d'incapacité.
+		if ( IsGuarding && (Stats.IsDowned || Stats.IsStunned) )
 			IsGuarding = false;
 
 		if ( IsSubstitutionReady && _substitutionEnd )
@@ -84,7 +81,7 @@ public sealed class NinjaDefense : Component
 	[Rpc.Host( NetFlags.OwnerOnly )]
 	public void RequestGuard( bool guard )
 	{
-		if ( guard && (Stats.IsDowned || Stats.IsStunned || Stats.Stamina <= 0f) ) return;
+		if ( guard && (Stats.IsDowned || Stats.IsStunned) ) return;
 		IsGuarding = guard;
 		if ( guard ) GetComponent<JutsuCaster>()?.Interrupt();
 	}
@@ -95,7 +92,6 @@ public sealed class NinjaDefense : Component
 		if ( !float.IsFinite( dir.x ) || !float.IsFinite( dir.y ) || !float.IsFinite( dir.z ) ) return;
 		if ( Stats.IsDowned || Stats.IsStunned || IsGuarding ) return;
 		if ( !_dodgeCooldown ) return;
-		if ( !Stats.TrySpendStamina( DodgeStaminaCost ) ) return;
 
 		_dodgeCooldown = DodgeCooldown;
 		_invulnerableEnd = DodgeInvulnerableSeconds;
@@ -169,12 +165,7 @@ public sealed class NinjaDefense : Component
 	{
 		if ( !Networking.IsHost || !IsGuarding ) return amount;
 
-		// La garde ne bloque que ce que l'endurance restante peut payer.
-		var blocked = amount * Math.Clamp( GuardDamageReduction, 0f, 1f );
-		if ( GuardStaminaPerDamage > 0f )
-			blocked = MathF.Min( blocked, Stats.Stamina / GuardStaminaPerDamage );
-		Stats.TrySpendStamina( blocked * GuardStaminaPerDamage );
-		return amount - blocked;
+		return amount * (1f - Math.Clamp( GuardDamageReduction, 0f, 1f ));
 	}
 
 	[Rpc.Owner( NetFlags.HostOnly )]

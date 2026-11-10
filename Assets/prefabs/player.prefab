@@ -228,15 +228,12 @@
         "ChakraRegenFocused": 5,
         "MaxChakra": 100,
         "MaxHealth": 100,
-        "MaxStamina": 100,
         "OnComponentDestroy": null,
         "OnComponentDisabled": null,
         "OnComponentEnabled": null,
         "OnComponentFixedUpdate": null,
         "OnComponentStart": null,
-        "OnComponentUpdate": null,
-        "StaminaRegen": 15,
-        "StaminaRunCost": 10
+        "OnComponentUpdate": null
       },
       {
         "__type": "NarutoRp.Combat.JutsuCaster",

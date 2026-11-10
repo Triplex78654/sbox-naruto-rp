@@ -3,8 +3,8 @@ namespace NarutoRp.Player;
 /// <summary>
 /// Déplacements ninja : course ninja (double appui sur Shift), bond ninja (Espace en course ninja),
 /// et téléportation courte demandée par l'hôte (Shunshin).
-/// La position appartient au client : la vitesse est appliquée chez lui, l'hôte mesure et fait payer l'endurance
-/// (NinjaStats), et valide le chakra du bond.
+/// La position appartient au client : la vitesse est appliquée chez lui, l'hôte mesure la vitesse
+/// (NinjaStats, signalement anti-triche), et valide le chakra du bond.
 /// </summary>
 public sealed class NinjaMovement : Component
 {
@@ -35,7 +35,7 @@ public sealed class NinjaMovement : Component
 	{
 		if ( IsProxy ) return;
 
-		if ( NinjaPlayer.InputBlocked || Stats.IsDowned || Stats.IsStunned || Stats.IsExhausted )
+		if ( NinjaPlayer.InputBlocked || Stats.IsDowned || Stats.IsStunned )
 		{
 			IsNinjaRunning = false;
 			return;

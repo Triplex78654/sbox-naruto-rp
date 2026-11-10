@@ -122,7 +122,6 @@
 	{
 		("health", "Vie", Stats.Health, Stats.MaxHealth),
 		("chakra", "Chakra", Stats.Chakra, Stats.MaxChakra),
-		("stamina", "Endurance", Stats.Stamina, Stats.MaxStamina),
 	};
 
 	static string Css( Color c ) => $"rgba({(int)(c.r * 255)}, {(int)(c.g * 255)}, {(int)(c.b * 255)}, 1)";
@@ -147,7 +146,7 @@
 		var s = Stats;
 		var c = Caster;
 		return System.HashCode.Combine(
-			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), MathF.Round( s?.Stamina ?? 0 ) ),
+			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ) ),
 			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice, Me?.Grade, Me?.IsMedic, Me?.GetComponent<NinjaMovement>()?.IsNinjaRunning ),
 			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
 				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
