@@ -11,7 +11,7 @@ nom = sys.argv[1]
 out = os.environ.get("GEN3D_OUT") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "out", "gen3d")
 os.makedirs(out, exist_ok=True)
 tok = os.environ.get("HF_TOKEN")
-kw = {"hf_token": tok} if tok else {}
+kw = {"token": tok} if tok else {}
 png = os.path.join(out, nom + ".png")
 
 if sys.argv[2] == "--image":
@@ -27,7 +27,7 @@ c = Client("microsoft/TRELLIS.2", verbose=False, **kw)
 c.predict(api_name="/start_session")
 img = c.predict(handle_file(png), api_name="/preprocess_image")
 c.predict(image=handle_file(img if isinstance(img, str) else img["path"]), seed=0, resolution="1024", api_name="/image_to_3d")
-glb = c.predict(decimation_target=60000, texture_size=2048, api_name="/extract_glb")
+glb = c.predict(decimation_target=100000, texture_size=2048, api_name="/extract_glb")
 src = glb[1] if isinstance(glb, (list, tuple)) else glb
 dst = os.path.join(out, nom + ".glb")
 shutil.copy(src if isinstance(src, str) else src["path"], dst)
