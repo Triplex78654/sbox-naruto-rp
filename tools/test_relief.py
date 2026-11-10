@@ -1,11 +1,16 @@
 # Tests du relief (executables sans dependance : python tools/test_relief.py)
 import importlib.util, json, math, os, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from carte import CORNERS, RAMPS, TIER_Z, INNER, M, HALF, local_to_world
+from collections import deque
+from carte import CORNERS, RAMPS, TIER_Z, INNER, M, HALF, RAYON_REMPART_M, local_to_world, territoire
 import relief
 from relief import height_at
 
 VILLAGES = ["konoha", "suna", "kumo"]
+R_V = RAYON_REMPART_M          # rayon actuel du rempart (m)
+PAS = 10 * M                   # grille de 10 m
+N_G = INNER // PAS             # indices de -N_G a N_G
+TAN35 = math.tan(math.radians(35))
 
 
 def pt(v, ang, r_m):
@@ -66,22 +71,185 @@ def rampes_marchables():
             assert pente_deg(h2 - h1, 6 * M) > 50, (v, a)
 
 
-def centre_et_routes_plats():
-    assert abs(height_at(0, 0)) < 1e-6
-    for v in VILLAGES:
-        gx, gy = pt(v, 270, 500)
-        L = math.hypot(gx, gy)
-        e = (L - 15000) / L
-        for k in range(50):
-            f = e * k / 49
-            assert abs(height_at(gx * (1 - f), gy * (1 - f))) <= 5, (v, k)
-
-
 def apparitions_plates():
     for v in VILLAGES:
-        cx, cy = pt(v, 270, 420)
+        cx, cy = pt(v, 270, R_V - 80)
         hs = [height_at(cx + dx, cy + dy) for dx, dy in ((500, 0), (-500, 0), (0, 500), (0, -500))]
         assert max(hs) - min(hs) < 10, (v, hs)
+
+
+# ── Relief de fond, eaux, ponts, routes (grille de 10 m sur la zone jouable, calculee une fois)
+_H = {}
+
+
+def grille():
+    if not _H:
+        for j in range(-N_G, N_G + 1):
+            for i in range(-N_G, N_G + 1):
+                _H[(i, j)] = height_at(i * PAS, j * PAS)
+    return _H
+
+
+def dans_village(x, y, marge_m=0):
+    return any(math.hypot(x - CORNERS[v][0], y - CORNERS[v][1]) <= (R_V + marge_m) * M for v in VILLAGES)
+
+
+def dist_seg(px, py, a, b):
+    (ax, ay), (bx, by) = a[:2], b[:2]
+    l2 = (bx - ax) ** 2 + (by - ay) ** 2
+    t = 0.0 if l2 == 0 else max(0.0, min(1.0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / l2))
+    return math.hypot(px - ax - t * (bx - ax), py - ay - t * (by - ay))
+
+
+def dist_poly(x, y, pts):
+    return min(dist_seg(x, y, a, b) for a, b in zip(pts, pts[1:]))
+
+
+def cases_berges():
+    # cases a <= larg/2 + 30 m d'une eau (berges et parois : pente libre)
+    out = set()
+    for e in relief.EAUX:
+        rad = e["larg_u"] / 2 + 30 * M
+        for a, b in zip(e["pts"], e["pts"][1:]):
+            i0, i1 = math.floor((min(a[0], b[0]) - rad) / PAS), math.ceil((max(a[0], b[0]) + rad) / PAS)
+            j0, j1 = math.floor((min(a[1], b[1]) - rad) / PAS), math.ceil((max(a[1], b[1]) + rad) / PAS)
+            for j in range(j0, j1 + 1):
+                for i in range(i0, i1 + 1):
+                    if dist_seg(i * PAS, j * PAS, a, b) <= rad:
+                        out.add((i, j))
+    return out
+
+
+def sur_tablier(x, y, p):
+    a = math.radians(p["yaw"])
+    dx, dy = x - p["x"], y - p["y"]
+    return abs(dx * math.cos(a) + dy * math.sin(a)) <= p["long_u"] / 2 + 1 and abs(-dx * math.sin(a) + dy * math.cos(a)) <= p["larg_u"] / 2 + 1
+
+
+def pentes_marchables():
+    H, berges = grille(), cases_berges()
+    pires = 0.0
+    for (i, j), h in H.items():
+        if (i, j) in berges or dans_village(i * PAS, j * PAS, 20):
+            continue
+        for q in ((i + 1, j), (i, j + 1)):
+            if q in H and q not in berges and not dans_village(q[0] * PAS, q[1] * PAS, 20):
+                d = abs(H[q] - h)
+                pires = max(pires, d)
+                assert d <= TAN35 * PAS, ((i * PAS, j * PAS), q, round(pente_deg(d, PAS), 1))
+    print("   pente maxi", round(pente_deg(pires, PAS), 1), "deg")
+
+
+def surface_route(x, y):
+    for p in relief.PONTS:
+        if sur_tablier(x, y, p):
+            return p["z"]
+    return height_at(x, y)
+
+
+def routes():
+    assert len(relief.ROUTES) == 3 and {r["v"] for r in relief.ROUTES} == set(VILLAGES)
+    for rt in relief.ROUTES:
+        prev = None
+        for a, b in zip(rt["pts"], rt["pts"][1:]):
+            L = math.hypot(b[0] - a[0], b[1] - a[1])
+            ux, uy = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+            for k in range(int(L // 200) + 1):
+                x, y = a[0] + ux * 200 * k, a[1] + uy * 200 * k
+                z = surface_route(x, y)
+                if prev is not None:
+                    assert pente_deg(z - prev, 200) <= 10, (rt["v"], round(x), round(y), z, prev)
+                prev = z
+                trav = [surface_route(x - uy * o, y + ux * o) for o in (-400, -200, 0, 200, 400)]
+                assert max(trav) - min(trav) <= 5, (rt["v"], round(x), round(y), trav)
+        # chaque croisement route x eau a son pont
+        for a, b in zip(rt["pts"], rt["pts"][1:]):
+            for e in relief.EAUX:
+                for c, d in zip(e["pts"], e["pts"][1:]):
+                    den = (b[0] - a[0]) * (d[1] - c[1]) - (b[1] - a[1]) * (d[0] - c[0])
+                    if den == 0:
+                        continue
+                    t = ((c[0] - a[0]) * (d[1] - c[1]) - (c[1] - a[1]) * (d[0] - c[0])) / den
+                    s = ((c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0])) / den
+                    if 0 <= t <= 1 and 0 <= s <= 1:
+                        x, y = a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])
+                        assert any(math.hypot(p["x"] - x, p["y"] - y) <= 20 * M for p in relief.PONTS), (rt["v"], e["nom"], round(x), round(y))
+
+
+def _bfs(depart, voisin_ok, but):
+    vu, f = {depart}, deque([depart])
+    while f:
+        c = f.popleft()
+        if but(c):
+            return c
+        for q in ((c[0] + 1, c[1]), (c[0] - 1, c[1]), (c[0], c[1] + 1), (c[0], c[1] - 1)):
+            if q not in vu and voisin_ok(c, q):
+                vu.add(q)
+                f.append(q)
+    return None
+
+
+def chemins():
+    H = grille()
+    def ok(c, q):
+        if q not in H or dans_village(q[0] * PAS, q[1] * PAS):
+            return False
+        if abs(H[q] - H[c]) <= TAN35 * PAS:
+            return True
+        return any(sur_tablier(c[0] * PAS, c[1] * PAS, p) and sur_tablier(q[0] * PAS, q[1] * PAS, p) for p in relief.PONTS)
+    portes = {}
+    for v in VILLAGES:
+        x, y = pt(v, 270, R_V + 30)
+        portes[v] = (round(x / PAS), round(y / PAS))
+    for v in VILLAGES:
+        for but in [(0, 0)] + [portes[w] for w in VILLAGES if w != v]:
+            assert _bfs(portes[v], ok, lambda c: c == but), (v, "->", but)
+
+
+def eau_descend():
+    assert relief.EAUX
+    for e in relief.EAUX:
+        zs = [p[2] for p in e["pts"]]
+        assert all(a > b for a, b in zip(zs, zs[1:])), e["nom"]
+        for x, y, z in e["pts"]:
+            assert height_at(x, y) < z, (e["nom"], round(x), round(y))
+        assert all(territoire(x, y) == "konoha" for x, y, _ in e["pts"]), e["nom"]
+    assert 4 <= len(relief.CASCADES) <= 8, len(relief.CASCADES)
+    for c in relief.CASCADES:
+        assert c["z_haut"] - c["z_bas"] >= 120, c
+        assert min(dist_poly(c["x"], c["y"], e["pts"]) for e in relief.EAUX) <= 5 * M, c
+
+
+def ravins_sortie():
+    for e in relief.EAUX:
+        rad = e["larg_u"] / 2 + 30 * M
+        for x0, y0, _ in (e["pts"][0], e["pts"][-1]):
+            P = lambda c: (x0 + c[0] * PAS, y0 + c[1] * PAS)
+            ok = lambda c, q: abs(q[0]) < 40 and abs(q[1]) < 40 and abs(height_at(*P(q)) - height_at(*P(c))) <= TAN35 * PAS
+            assert _bfs((0, 0), ok, lambda c: dist_poly(*P(c), e["pts"]) > rad), (e["nom"], round(x0), round(y0))
+
+
+def centre_plat():
+    assert abs(height_at(0, 0)) < 1e-6
+    H = grille()
+    n = 0
+    for (i, j), h in H.items():
+        if territoire(i * PAS, j * PAS) != "centre":
+            continue
+        for q in ((i + 1, j), (i, j + 1)):
+            if q in H and territoire(q[0] * PAS, q[1] * PAS) == "centre":
+                n += 1
+                assert pente_deg(H[q] - h, PAS) <= 5, (i, j)
+    assert n > 1000
+
+
+def relief_present():
+    H = grille()
+    routes_v = {r["v"]: r for r in relief.ROUTES}
+    for v, mini in (("konoha", 600), ("suna", 600), ("kumo", 1600)):
+        hs = [h for (i, j), h in H.items() if territoire(i * PAS, j * PAS) == v and not dans_village(i * PAS, j * PAS, 20)
+              and dist_poly(i * PAS, j * PAS, routes_v[v]["pts"]) > routes_v[v]["larg_u"] / 2 + 10 * M]
+        assert max(hs) - min(hs) >= mini, (v, round(max(hs) - min(hs)))
 
 
 def _charge(nom, argv):
@@ -146,6 +314,9 @@ def souterrains_accessibles():
     for (v, code), s in par_code.items():
         h = hole[(v, code)]
         assert dans_un_trou(h, 0) and dans_un_trou(h, relief.TROU_T1 - 30), (v, code)   # on sort bien dans le trou
+        if code[0] == "X":   # sortie cachee hors rempart : le relief de fond reste a plat autour du trou
+            for dx, dy in ((0, 0), (300, 0), (-300, 0), (0, 300), (0, -300)):
+                assert abs(height_at(h["x"] + dx, h["y"] + dy) - h["zs"]) <= 5, (v, code, dx, dy)
         # polyligne : depart (fin du couloir) -> sol a z = surface sous le trou ; pente <= 35 deg
         x0, y0, z0 = s["start"]
         xt, yt = s["top"]
@@ -272,8 +443,9 @@ def souterrains_sans_intrusion():
 
 
 if __name__ == "__main__":
-    for f in (bord_infranchissable, niveaux_village, rampes_marchables,
-              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
+    for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
+              pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
+              trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
               souterrains_sans_intrusion):
         f()
         print("OK", f.__name__)
