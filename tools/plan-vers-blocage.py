@@ -64,16 +64,20 @@ def disk(group, name, x, y, r, h, c, collide=True, n=None, flat=False):
     for i in range(n):
         yy = -r + (i + 0.5) * w
         ZB(group, name, x, y + yy, 2 * math.sqrt(max(0, r * r - yy * yy)), w * 1.02, h, c, 0, collide, flat)
-def ring(group, name, x, y, r, w, a0, a1, h, c, step_m=12, jag=None, flat=False):
-    span = a1 - a0
-    n = max(4, math.ceil(2 * math.pi * r * span / 360 / step_m))
-    da = span / n
-    seg = 2 * math.pi * r * da / 360 * 1.06
-    for i in range(n):
-        a = a0 + (i + 0.5) * da
-        rad = math.radians(a)
-        hh = h if jag is None else jag(i)
-        ZB(group, f"{name} {i}", (x + math.cos(rad) * r) * M, (y + math.sin(rad) * r) * M, w * M, seg * M, hh, c, a, not flat, flat)
+def ring(group, name, x, y, r, w, a0, a1, h, c, step_m=12, jag=None, flat=False, trou=0.0):
+    """Arc de boîtes de a0 à a1 (deg) ; trou : demi-ouverture (deg) laissée vide autour de la grande porte (angle 270)."""
+    i = 0
+    for b0, b1 in ([(a0, 270 - trou), (270 + trou, a1)] if trou else [(a0, a1)]):
+        span = b1 - b0
+        n = max(4, math.ceil(2 * math.pi * r * span / 360 / step_m))
+        da = span / n
+        seg = 2 * math.pi * r * da / 360 * 1.06
+        for k in range(n):
+            a = b0 + (k + 0.5) * da
+            rad = math.radians(a)
+            hh = h if jag is None else jag(i)
+            ZB(group, f"{name} {i}", (x + math.cos(rad) * r) * M, (y + math.sin(rad) * r) * M, w * M, seg * M, hh, c, a, not flat, flat)
+            i += 1
 
 # ── Souterrains : boîtes centrées G (repère local du village, z monde), enregistrées dans UNDER pour les tests.
 UNDER, SHAFTS, HOLES_OUT = [], [], []
@@ -201,6 +205,8 @@ def houses(lst, it):
     HOUSES_CACHE[id(it)] = out
     return out
 
+PASSAGE_M = ROUTE_LARG_U / M + 8   # passage des grandes portes : chaussée (16 m) + 4 m de chaque côté, comme le plat du relief
+PORTE_H, PORTE_DESSOUS = 900, 600  # Konoha : tours de 22,5 m, linteau à 15 m du sol
 HEIGHT = dict(built=400, tower=1600, mark=900, rock2=320, wall=650, mountain=2400)
 FLAT = dict(road=5, zone=6, water=4, park=3)
 
@@ -558,7 +564,11 @@ for v, style in STYLES.items():
         elif s["t"] == "ring":
             if e["code"] == "A1":
                 lo, hi = style["rampart_h"]; rr = __import__("random").Random(v + "A1")
-                ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], hi, c, 12, lambda i: rr.randint(lo, hi))
+                # ouverture face à la route : passage de la porte, ou jusque dans les tours de la porte bâtie (Konoha)
+                a2 = next(q for q in lst if q["code"] == "A2")
+                demi = a2["shape"]["w"] / 2 - 2 if a2["fill"] not in FLAT else max(a2["shape"]["w"], PASSAGE_M) / 2 + 1
+                trou = math.degrees(math.asin(demi / (s["r"] - s["w"] / 2)))   # mesurée sur la face intérieure
+                ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], hi, c, 12, lambda i: rr.randint(lo, hi), trou=trou)
             elif f in FLAT:
                 ring(g, tag, s["x"], s["y"], s["r"], s["w"], s["a0"], s["a1"], FLAT[f], c, 10, flat=True)
             else:
@@ -606,6 +616,14 @@ for v, style in STYLES.items():
             hz = hl(x, y)
             B(g, f"{tag} (demeure)", x, y, w * 0.55, h * 0.5, 420, COMMON["domain"], hz)
             B(g, f"{tag} (toit)", x, y, w * 0.55 + 80, h * 0.5 + 80, 40, style["roof"], hz + 420)
+        elif s["t"] == "rect" and e["code"] == "A2" and f not in FLAT:
+            # Grande porte bâtie : deux tours de part et d'autre du passage + linteau à PORTE_DESSOUS u du sol (rien de plein
+            # dans le passage). Porte allongée de 5 m vers l'extérieur (1 m vers l'intérieur) : elle recouvre le rempart, ouvert jusque dans les tours.
+            x, y, w, d = s["x"] * M, (s["y"] - 2) * M, s["w"] * M, (s["h"] + 6) * M
+            p = PASSAGE_M * M; tw = (w - p) / 2; hz = hl(x, y)
+            for sg in (-1, 1): ZB(g, f"{tag} (tour)", x + sg * (p + tw) / 2, y, tw, d, PORTE_H, c)
+            B(g, f"{tag} (linteau)", x, y, p + 2 * M, d, PORTE_H - PORTE_DESSOUS, c, hz + PORTE_DESSOUS)
+            B(g, f"{tag} (toit)", x, y, w + 120, d + 120, 40, style["roof"], hz + PORTE_H)
         elif s["t"] == "rect":
             flat = f in FLAT
             ZB(g, tag, s["x"] * M, s["y"] * M, s["w"] * M, s["h"] * M, FLAT[f] if flat else HEIGHT.get(f, 400), c, s.get("rot", 0), not flat, flat)

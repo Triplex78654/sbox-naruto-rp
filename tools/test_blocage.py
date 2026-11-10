@@ -418,8 +418,73 @@ def murets_hors_sorties():
     print("  ", len(murets), "murets,", len(cs), "puits")
 
 
+def _volumes_solides():
+    """Boîtes avec collision du script (B et G, villages + territoires), en monde : (cx, cy, ux, uy, demi-long, demi-larg, z0, z1, nom)."""
+    import re
+    out = []
+    for grp, nom, args, coll in re.findall(r'^\t*B\((\w+),"([^"]*)",((?:-?[\d.]+f,){5})new Color\([^)]*\),((?:-?[\d.]+f,){2}(?:true|false))\);', script(), re.M):
+        x, y, sx, sy, sz = [float(k[:-1]) for k in args.rstrip(",").split(",")]
+        z0, yaw, c = coll.split(",")
+        if c != "true": continue
+        z0, yaw = float(z0[:-1]), float(yaw[:-1])
+        v = next((k for k in ("konoha", "suna", "kumo") if grp.startswith(k)), None)
+        if v:   # groupe de village : repère local (coin, tourné de yaw_of)
+            x, y = carte.local_to_world(v, x / M, y / M); yaw += carte.yaw_of(v)
+        a = math.radians(yaw)
+        out.append((x, y, math.cos(a), math.sin(a), sx / 2, sy / 2, z0, z0 + sz, nom))
+    for grp, nom, args, coll in re.findall(r'^\t*G\((\w+),"([^"]*)",((?:-?[\d.]+f,){9})new Color\([^)]*\)(,(?:true|false))?\);', script(), re.M):
+        if coll == ",false": continue
+        x, y, z, sx, sy, sz, dx, dy, dz = [float(k[:-1]) for k in args.rstrip(",").split(",")]
+        v = next((k for k in ("konoha", "suna", "kumo") if grp.startswith(k)), None)
+        a = math.atan2(dy, dx)
+        if v:
+            x, y = carte.local_to_world(v, x / M, y / M); a += math.radians(carte.yaw_of(v))
+        n, dh = math.sqrt(dx * dx + dy * dy + dz * dz), math.hypot(dx, dy)
+        hl, hz = (sx * dh + sz * abs(dz)) / n / 2, (sx * abs(dz) + sz * dh) / n / 2   # enveloppe d'une boîte inclinée
+        out.append((x, y, math.cos(a), math.sin(a), hl, sy / 2, z - hz, z + hz, nom))
+    return out
+
+
+def _touche(b, px, py, h):
+    """Le carré joueur (centre px, py, demi-côté h, aligné sur les axes du monde) recoupe-t-il l'emprise de la boîte b ?"""
+    cx, cy, ux, uy, a, w = b[:6]
+    dx, dy = px - cx, py - cy
+    if abs(dx * ux + dy * uy) > a + h * (abs(ux) + abs(uy)): return False
+    if abs(-dx * uy + dy * ux) > w + h * (abs(ux) + abs(uy)): return False
+    return abs(dx) <= h + a * abs(ux) + w * abs(uy) and abs(dy) <= h + a * abs(uy) + w * abs(ux)
+
+
+def portes_ouvertes():
+    # vu en jeu : on ne sortait d'aucun village par la grande porte (rempart A1 fermé, grande porte de Konoha pleine).
+    # Joueur 32 x 32 x 72 u (pieds 20 u au-dessus du sol : marches tolérées) poussé sur l'axe de la porte de 600 à 800 m
+    # du coin, comme tools/tests/gate-check.cs : aucune boîte avec collision, sol en pente <= 35 deg.
+    vols = _volumes_solides()
+    assert len(vols) > 1000, len(vols)
+    pas, tan35 = 10, math.tan(math.radians(35))
+    erreurs = []
+    for v in ("konoha", "suna", "kumo"):
+        a, b_ = carte.local_to_world(v, 0, -600), carte.local_to_world(v, 0, -800)
+        proches = [b for b in vols if dist_seg(b[0], b[1], a, b_) < b[4] + b[5] + 30 * M]   # tri grossier
+        for lat in (-5, 0, 5):   # axe de la route et 5 m de chaque côté (chaussée de 16 m)
+            prev, bloque = None, None
+            for k in range(int(600 * M), int(800 * M) + 1, pas):
+                x, y = carte.local_to_world(v, lat, -k / M)
+                g = height_at(x, y)
+                if prev is not None and abs(g - prev) > tan35 * pas:
+                    erreurs.append((v, lat, "pente", k / M, round(g), round(prev)))
+                prev = g
+                bloque = next((b for b in proches if b[7] > g + 20 and b[6] < g + 92 and _touche(b, x, y, 16)), None)
+                if bloque:
+                    erreurs.append((v, lat, "bloqué à", round(k / M, 1), "m par", bloque[8], "z sol", round(g)))
+                    break
+        print("  ", v, "passage libre" if not any(e[0] == v for e in erreurs) else "BLOQUÉ")
+    assert not erreurs, erreurs
+
+
 if __name__ == "__main__":
     gen()
+    portes_ouvertes()
+    print("OK portes_ouvertes")
     for f in (ponts_construits, postes_frontiere, routes_suivent_relief, bornes_disparues, groupes_territoires,
               contenu_replace, pose_au_sol, eau, vegetation_degagee, densite_vegetation, arches_suna, cascades, arbres_montagnes,
               budget_objets, puits_separes, murets_hors_sorties):
