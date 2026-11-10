@@ -189,14 +189,14 @@ ROUTES = [dict(v=v, pts=[local_to_world(v, 0, -R_V), local_to_world(v, 0, -PAYS_
 # Rivieres de Konoha : points de controle (angle local, rayon m) de l'amont vers l'aval, angle monotone ;
 # cascades a ces fractions de la longueur. Le niveau de l'eau suit le relief (toujours en dessous) et descend toujours.
 RIVIERES = [
-    dict(nom="Riviere de Konoha", ctrl=[(302, 1150), (267, 1150)], larg_m=12, cascades=(0.2, 0.4, 0.6)),
+    dict(nom="Riviere de Konoha", ctrl=[(302, 1150), (267.5, 1150)], larg_m=12, cascades=(0.3, 0.6)),
     dict(nom="Torrent du ravin", ctrl=[(228, 1120), (240, 1080), (254, 990), (267, 950)], larg_m=8, cascades=(0.35, 0.65)),
 ]
 EAU_PAS_M = 5
 EAU_REVANCHE_M = 2.5       # eau sous le plus bas des terrains voisins (berges)
 EAU_PROF_U = 48            # lit 1,2 m sous l'eau
 EAU_PENTE_U = 1            # descente mini de l'eau tous les 5 m
-CHUTE_U = 180              # hauteur d'une cascade (4,5 m)
+CHUTE_U = 130              # hauteur d'une cascade (3,25 m) : le terrain ne descend pas assez pour plus (bouts peu profonds)
 BERGE_M = 30               # paroi / berge entre le bord de l'eau et le relief de fond
 
 
@@ -274,14 +274,17 @@ def _ponts():
         if min(e["a0"], e["a1"]) <= 270 <= max(e["a0"], e["a1"]):
             x, y = local_to_world("konoha", 0, -_r_de(e["ctrl"], 270))
             out.append(dict(x=x, y=y, yaw=_yaw(*rt["pts"]), long_u=2 * (e["zone"] + 6) * M, larg_u=ROUTE_LARG_U + 160, z=0.0))
-    # passerelle au milieu du torrent
+    # passerelle sur le torrent, entre ses cascades, la ou les deux rives sont le plus a la meme hauteur
     e = _RIV[1]
-    k = e["n"] // 2
-    yaw = _yaw(e["pts"][k - 1], e["pts"][k + 1]) + 90
     lg = 2 * (e["zone"] + 5) * M
-    c, s = math.cos(math.radians(yaw)) * lg / 2, math.sin(math.radians(yaw)) * lg / 2
-    x, y = e["pts"][k]
-    out.append(dict(x=x, y=y, yaw=yaw, long_u=lg, larg_u=200, z=max(_fond(x + c, y + s), _fond(x - c, y - s))))
+    def bouts(k):
+        yaw = _yaw(e["pts"][k - 1], e["pts"][k + 1]) + 90
+        c, s = math.cos(math.radians(yaw)) * lg / 2, math.sin(math.radians(yaw)) * lg / 2
+        x, y = e["pts"][k]
+        return yaw, x, y, _fond(x + c, y + s), _fond(x - c, y - s)
+    ks = [k for k in range(e["n"] // 5, e["n"] * 4 // 5) if all(abs(k - c) > 10 for c in e["casc"])]
+    yaw, x, y, z1, z2 = min((bouts(k) for k in ks), key=lambda b: abs(b[3] - b[4]))
+    out.append(dict(x=x, y=y, yaw=yaw, long_u=lg, larg_u=200, z=(z1 + z2) / 2))
     # pont entre les deux pics de Kumo (d'un sommet a l'autre)
     (ax, ay, _, z), (bx, by, _, _) = PICS_KUMO
     out.append(dict(x=(ax + bx) / 2, y=(ay + by) / 2, yaw=_yaw((ax, ay), (bx, by)),

@@ -126,6 +126,23 @@ def sur_tablier(x, y, p):
     return abs(dx * math.cos(a) + dy * math.sin(a)) <= p["long_u"] / 2 + 1 and abs(-dx * math.sin(a) + dy * math.cos(a)) <= p["larg_u"] / 2 + 1
 
 
+def bouts_tablier(p):
+    a = math.radians(p["yaw"])
+    dx, dy = math.cos(a) * p["long_u"] / 2, math.sin(a) * p["long_u"] / 2
+    return (p["x"] - dx, p["y"] - dy), (p["x"] + dx, p["y"] + dy)
+
+
+def pont_pose(p):
+    # les deux bouts du tablier arrivent au niveau du sol (on monte dessus et on en descend des deux cotes)
+    return all(abs(height_at(*b) - p["z"]) <= 50 for b in bouts_tablier(p))
+
+
+def ponts_poses():
+    assert relief.PONTS
+    for p in relief.PONTS:
+        assert pont_pose(p), (p, [round(height_at(*b)) for b in bouts_tablier(p)])
+
+
 def pentes_marchables():
     H, berges = grille(), cases_berges()
     pires = 0.0
@@ -196,7 +213,8 @@ def chemins():
             return False
         if abs(H[q] - H[c]) <= TAN35 * PAS:
             return True
-        return any(sur_tablier(c[0] * PAS, c[1] * PAS, p) and sur_tablier(q[0] * PAS, q[1] * PAS, p) for p in relief.PONTS)
+        return any(sur_tablier(c[0] * PAS, c[1] * PAS, p) and sur_tablier(q[0] * PAS, q[1] * PAS, p) for p in ponts_ok)
+    ponts_ok = [p for p in relief.PONTS if pont_pose(p)]
     portes = {}
     for v in VILLAGES:
         x, y = pt(v, 270, R_V + 30)
@@ -221,12 +239,24 @@ def eau_descend():
 
 
 def ravins_sortie():
+    # depuis le fond (les deux bouts et le milieu de chaque troncon entre cascades), on sort a pied de l'eau et des berges
+    p5 = PAS / 2
     for e in relief.EAUX:
         rad = e["larg_u"] / 2 + 30 * M
-        for x0, y0, _ in (e["pts"][0], e["pts"][-1]):
-            P = lambda c: (x0 + c[0] * PAS, y0 + c[1] * PAS)
-            ok = lambda c, q: abs(q[0]) < 40 and abs(q[1]) < 40 and abs(height_at(*P(q)) - height_at(*P(c))) <= TAN35 * PAS
-            assert _bfs((0, 0), ok, lambda c: dist_poly(*P(c), e["pts"]) > rad), (e["nom"], round(x0), round(y0))
+        pts = e["pts"]
+        coupes = [0] + [k for k in range(1, len(pts)) if pts[k - 1][2] - pts[k][2] >= 120] + [len(pts) - 1]
+        departs = [0, len(pts) - 1] + [(a + b) // 2 for a, b in zip(coupes, coupes[1:])]
+        assert len(departs) >= 4, e["nom"]
+        for k in departs:
+            x0, y0, _ = pts[k]
+            P = lambda c: (x0 + c[0] * p5, y0 + c[1] * p5)
+            hc = {}
+            def h(c):
+                if c not in hc:
+                    hc[c] = height_at(*P(c))
+                return hc[c]
+            ok = lambda c, q: abs(q[0]) < 160 and abs(q[1]) < 160 and abs(h(q) - h(c)) <= TAN35 * p5
+            assert _bfs((0, 0), ok, lambda c: dist_poly(*P(c), pts) > rad), (e["nom"], k, round(x0), round(y0))
 
 
 def centre_plat():
@@ -444,7 +474,7 @@ def souterrains_sans_intrusion():
 
 if __name__ == "__main__":
     for f in (bord_infranchissable, niveaux_village, rampes_marchables, apparitions_plates,
-              pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
+              ponts_poses, pentes_marchables, routes, chemins, eau_descend, ravins_sortie, centre_plat, relief_present,
               trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain,
               souterrains_sans_intrusion):
         f()
