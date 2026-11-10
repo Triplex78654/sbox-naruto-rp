@@ -17,6 +17,7 @@ storage.SetResolution( Res );
 storage.TerrainSize = 112000f;
 storage.TerrainHeight = 40000f;
 Buffer.BlockCopy( hm, 0, storage.HeightMap, 0, hm.Length );
+System.Array.Clear( storage.ControlMap, 0, storage.ControlMap.Length );   // repartir d'une carte de matériaux vide (anciens trous effacés)
 var hole = new CompactTerrainMaterial( 0, 0, 0, true ).Packed;
 int n = 0;
 for ( int i = 0; i < holes.Length; i++ ) if ( holes[i] != 0 ) { storage.ControlMap[i] = hole; n++; }

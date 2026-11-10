@@ -95,28 +95,75 @@ def _charge(nom, argv):
 def _generer():
     tmp = tempfile.mkdtemp()
     _charge("plans_villages_v3", ["plans-villages-v3.py", tmp])
+    gen = _charge("plan_vers_blocage", ["plan-vers-blocage.py", tmp, os.path.join(tmp, "monde.cs.txt")])
     relief.charger_trous(tmp)
-    return tmp, _charge("plan_vers_blocage", ["plan-vers-blocage.py", tmp, os.path.join(tmp, "monde.cs.txt")])
+    return tmp, gen
+
+
+def _codes_attendus(tmp):
+    att = set()
+    for f in os.listdir(tmp):
+        if f.endswith(".json"):
+            d = json.load(open(os.path.join(tmp, f), encoding="utf-8"))
+            c = d["code"]
+            if c[0] == "X" or (c[0] == "S" and d["layer"] == "souterrain"):
+                att.add((d["village"], c))
+            if c == "H1":
+                att |= {(d["village"], "H1a"), (d["village"], "H1b")}
+    return att
 
 
 def trous_sur_sorties():
     tmp, gen = _generer()
-    assert len(relief.HOLES) == 6, len(relief.HOLES)
+    att = _codes_attendus(tmp)
+    assert {(h["v"], h["code"]) for h in relief.HOLES} == att and len(relief.HOLES) == len(att), "trous != X* + S* + H1"
     _, holes, _ = relief.build()
     step = relief.SIZE / (relief.RES - 1)
     cells = [(k % relief.RES, k // relief.RES) for k, h in enumerate(holes) if h]
     assert cells
-    for i, j in cells:  # aucun trou ailleurs que sur une sortie
+    for i, j in cells:  # aucun trou ailleurs que sur un puits
         x, y = -HALF + i * step, -HALF + j * step
         assert any(math.hypot(x - h["x"], y - h["y"]) < 400 for h in relief.HOLES), (x, y)
-    for h in relief.HOLES:  # chaque sortie a des cases trouees autour de son centre
+    for h in relief.HOLES:  # chaque puits a des cases trouees autour de son centre
         assert sum(1 for i, j in cells if math.hypot(-HALF + i * step - h["x"], -HALF + j * step - h["y"]) < 150) >= 4, h
-    # puits marchable (<= 35 deg), du trou jusqu'au tunnel
-    assert len(gen.SHAFTS) == 6
+    assert len(gen.SHAFTS) == len(att)
     for s in gen.SHAFTS:
         assert math.degrees(math.atan(relief.PUITS_PENTE)) <= 35
-        assert abs(s["floor_end"] - relief.sol_puits(s["t_end"])) < 1e-6, s["code"]
-        assert relief.sol_puits(0) < 0 and abs(relief.sol_puits(relief.PUITS_FIN)) < 1e-6
+        assert abs(s["floor_end"] - relief.sol_puits(s["t_end"], s["zs"])) < 1e-6, s["code"]
+
+
+def souterrains_accessibles():
+    tmp, gen = _generer()
+    _, holes, _ = relief.build()
+    step = relief.SIZE / (relief.RES - 1)
+    def dans_un_trou(h, t):
+        # point a la distance t du centre du trou h, sur l'axe : la case de grille la plus proche est-elle trouee ?
+        x, y = h["x"] + h["ux"] * t, h["y"] + h["uy"] * t
+        i, j = round((x + HALF) / step), round((y + HALF) / step)
+        return any(holes[(j + dj) * relief.RES + i + di] for di in (-1, 0, 1) for dj in (-1, 0, 1))
+    par_code = {(s["v"], s["code"]): s for s in gen.SHAFTS}
+    hole = {(h["v"], h["code"]): h for h in relief.HOLES}
+    for (v, code), s in par_code.items():
+        h = hole[(v, code)]
+        assert dans_un_trou(h, 0) and dans_un_trou(h, relief.TROU_T1 - 30), (v, code)   # on sort bien dans le trou
+        # polyligne : depart (fin du couloir) -> sol a z = surface sous le trou ; pente <= 35 deg
+        x0, y0, z0 = s["start"]
+        xt, yt = s["top"]
+        zt = relief.sol_puits(relief.PUITS_FIN, s["zs"])
+        run = math.hypot(xt - x0, yt - y0) + relief.PUITS_FIN
+        assert math.degrees(math.atan2(zt - z0, run)) <= 35, (v, code)
+        assert abs(zt - s["zs"]) < 1e-6
+        if code[0] == "S":  # le depart est le bout du couloir de la salle
+            nrm = lambda d: math.sqrt(sum(k * k for k in d))
+            bouts = [(b["c"][0] + b["dir"][0] / nrm(b["dir"]) * b["s"][0] / 2, b["c"][1] + b["dir"][1] / nrm(b["dir"]) * b["s"][0] / 2) for b in gen.UNDER
+                     if b["v"] == v and b["code"] == code and b["kind"] == "stub" and b["name"].endswith("sol")]
+            assert any(math.hypot(bx - x0, by - y0) < 20 for bx, by in bouts), (v, code, "puits non raccorde au couloir")
+        else:
+            assert code[:2] in ("X1", "X2", "H1")
+    for v in ("konoha", "suna", "kumo"):
+        tiers = sorted(hole[(v, c)]["tier"] for c in ("H1a", "H1b"))
+        assert tiers == ["bas", "milieu"], (v, tiers)
+        assert not any(b["code"] == "H1" and "porte" in b["name"].lower() for b in gen.UNDER)
 
 
 def _coins(b):
@@ -157,6 +204,6 @@ def souterrains_sous_terrain():
 
 if __name__ == "__main__":
     for f in (bord_infranchissable, niveaux_village, rampes_marchables,
-              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_sous_terrain):
+              centre_et_routes_plats, apparitions_plates, trous_sur_sorties, souterrains_accessibles, souterrains_sous_terrain):
         f()
         print("OK", f.__name__)

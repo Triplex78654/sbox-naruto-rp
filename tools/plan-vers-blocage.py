@@ -72,14 +72,14 @@ def ring(group, name, x, y, r, w, a0, a1, h, c, step_m=12, jag=None, flat=False)
         ZB(group, f"{name} {i}", (x + math.cos(rad) * r) * M, (y + math.sin(rad) * r) * M, w * M, seg * M, hh, c, a, not flat, flat)
 
 # ── Souterrains : boîtes centrées G (repère local du village, z monde), enregistrées dans UNDER pour les tests.
-UNDER, SHAFTS = [], []
+UNDER, SHAFTS, HOLES_OUT = [], [], []
 T, TW, TH, RH = 40, 120, 220, 300     # épaisseur des parois, largeur / hauteur intérieures du tunnel, hauteur des salles
 MARGE = 110                           # dessus du plafond (intérieur) sous le relief : les dalles de 40 u laissent >= 60 u
 LTAN = math.tan(math.radians(10))     # pente max cherchée des tunnels (la limite de marche est 35 deg)
 
 def G(grp, v, code, kind, name, c, s, d, color):
     c = tuple(round(k, 1) for k in c); s = tuple(round(k, 1) for k in s); d = tuple(round(k, 4) for k in d)
-    UNDER.append(dict(v=v, code=code, kind=kind, c=c, s=s, dir=d))
+    UNDER.append(dict(v=v, code=code, kind=kind, name=name, c=c, s=s, dir=d))
     lines.append(f'G({grp},"{name}",{c[0]}f,{c[1]}f,{c[2]}f,{s[0]}f,{s[1]}f,{s[2]}f,{d[0]}f,{d[1]}f,{d[2]}f,new Color({color[0]}f,{color[1]}f,{color[2]}f));')
 
 def galerie(grp, v, code, kind, pts, W=TW, H=TH):
@@ -247,7 +247,69 @@ def levres_suna(g):
             rad = math.radians(a)
             ZB(g, "Muret de terrasse", math.cos(rad) * r * M, math.sin(rad) * r * M, 100, 6 * M * 1.08, 90, STYLES["suna"]["rock"], a)
 
-def souterrains(v, lst, grp):
+def ramp_dist(v, x, y):
+    """Distance (m) à l'axe de la rampe la plus proche (comme plans-villages-v3)."""
+    hw = 22.5 if v == "kumo" else 12.5
+    best = 1e9
+    for a in RAMPS[v]:
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        for rb in (TIERS["milieu"][0], TIERS["bas"][0]):
+            t = min(rb + hw, max(rb - hw, x * ca + y * sa))
+            best = min(best, math.hypot(x - t * ca, y - t * sa))
+    return best
+
+def niveau(r): return "haut" if r < TIERS["milieu"][0] else "milieu" if r < TIERS["bas"][0] else "bas"
+
+def libre_ext(lst, x, y, marge):
+    """libre() + routes (lignes) : (x, y) en mètres locaux."""
+    if not libre(lst, x, y, marge): return False
+    for e in lst:
+        q = e["shape"]
+        if e["layer"] != "surface" or q["t"] != "line": continue
+        p = q["pts"]
+        for (x1, y1), (x2, y2) in zip(p, p[1:]):
+            L2 = (x2 - x1) ** 2 + (y2 - y1) ** 2
+            t = max(0, min(1, ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / L2))
+            if math.hypot(x - x1 - t * (x2 - x1), y - y1 - t * (y2 - y1)) < q["w"] / 2 + marge: return False
+    return True
+
+def puits_ok(v, lst, px, py, ux, uy, floor0, niv, ext=0):
+    """Un puits de (px, py) (unités) selon (ux, uy), sol à floor0, peut-il sortir à la surface du niveau niv ?
+    Renvoie (L, zs) ou None : sortie libre (hors emprises, routes, rampes), niveau uniforme, terrain toujours >= 110 u au-dessus du sol."""
+    zs = hl(px, py)
+    for _ in range(3):
+        L = (zs - floor0) / PUITS_PENTE - PUITS_FIN
+        zs = hl(px + ux * L, py + uy * L)
+    L = (zs - floor0) / PUITS_PENTE - PUITS_FIN
+    if L < 300: return None
+    xm, ym = (px + ux * L) / M, (py + uy * L) / M
+    r = math.hypot(xm, ym); a = math.degrees(math.atan2(ym, xm)) % 360
+    if r > 490 or niveau(r) != niv or not 226 <= a <= 314: return None
+    if ramp_dist(v, xm, ym) < 20: return None
+    if not all(libre_ext(lst, xm + dx, ym + dy, 2.5) for dx in (-3, 0, 3) for dy in (-3, 0, 3)): return None
+    lat = (-uy, ux)
+    for i in range(1, int(ext / 40) + 1):   # couloir allongé avant le puits : son plafond (+ dalle) doit rester >= 60 u sous le relief
+        for o in (-110, 0, 110):
+            if hl(px - ux * i * 40.0 + lat[0] * o, py - uy * i * 40.0 + lat[1] * o) < floor0 + TH + T + 62: return None
+    for i in range(int((L + PUITS_FIN + 120) / 40) + 1):
+        s = i * 40.0
+        floor = floor0 + s * PUITS_PENTE if s <= L + PUITS_FIN else zs
+        for o in (-100, 0, 100):
+            h = hl(px + ux * s + lat[0] * o, py + uy * s + lat[1] * o)
+            if s - L >= -170:   # sous le trou et au-delà : terrain plat, c'est le trou qui ouvre
+                if s - L <= 120 and abs(h - zs) > 8: return None
+            elif h - floor < 110: return None
+    return L, zs
+
+def rect_bouche(r, sx_, sy_, stub):
+    """Emprise (x0, y0, x1, y1) de la bouche de longueur stub sortant du côté (sx_, sy_) d'une salle."""
+    if sx_:
+        a, b = r["cx"] + sx_ * r["w"] / 2, r["cx"] + sx_ * (r["w"] / 2 + T + stub)
+        return (min(a, b), r["cy"] - r["h"] / 2, max(a, b), r["cy"] + r["h"] / 2)
+    a, b = r["cy"] + sy_ * r["h"] / 2, r["cy"] + sy_ * (r["h"] / 2 + T + stub)
+    return (r["cx"] - r["w"] / 2, min(a, b), r["cx"] + r["w"] / 2, max(a, b))
+
+def souterrains(v, lst, grp, g):
     CUR[0] = v
     by = {e["code"]: e for e in lst}
     rooms = {}
@@ -256,38 +318,28 @@ def souterrains(v, lst, grp):
             s = e["shape"]
             rooms[e["code"]] = dict(e=e, cx=s["x"] * M, cy=s["y"] * M, w=s["w"] * M, h=s["h"] * M, ouv=[], tun=None)
     def sale_de(p): return next(r for r in rooms.values() if abs(r["cx"] - p[0] * M) < 1 and abs(r["cy"] - p[1] * M) < 1)
-    # 1) tunnels : profil sous le relief, puits jusqu'à la sortie
+    STUB = 400
+    # 1) tunnels vers les sorties
     for k in ("1", "2"):
-        t, x = by["T" + k], by["X" + k]
+        t = by["T" + k]
         (ax, ay), (bx, by_) = t["shape"]["pts"]
         r = sale_de((ax, ay))
         x0, y0, x1, y1 = ax * M, ay * M, bx * M, by_ * M
         L = math.hypot(x1 - x0, y1 - y0); ux, uy = (x1 - x0) / L, (y1 - y0) / L
         side, dint = cote(ux, uy, r["w"] / 2, r["h"] / 2)
         comp = abs(ux) if side == "x" else abs(uy)
-        s_d = dint + T / 2 / comp
         sg = (1 if ux > 0 else -1) if side == "x" else (1 if uy > 0 else -1)
         p = uy * dint if side == "x" else ux * dint
         r["ouv"].append((side, sg, p, min(TW / comp + 20, (r["h"] if side == "x" else r["w"]) - 40)))
-        r["tun"] = dict(k=k, side=(side, sg))
         floor_end = -MARGE - TH
-        s_end = L + PUITS_FIN + floor_end / PUITS_PENTE
-        r["stub_side"] = None
-        r["tun"].update(x0=x0, y0=y0, ux=ux, uy=uy, L=L, s_end=s_end, floor_end=floor_end, s_d=s_d, dint=dint, door=t["door"])
-    # 2) côté et emprise de la bouche (stub) de chaque salle : face au centre du village, hors côté du tunnel
-    for code, r in rooms.items():
-        d0 = math.hypot(r["cx"], r["cy"]) or 1
-        cand = [(("x", 1), 1, 0), (("x", -1), -1, 0), (("y", 1), 0, 1), (("y", -1), 0, -1)]
-        cand = [c for c in cand if not (r["tun"] and r["tun"]["side"] == c[0])]
-        (ax, sg), nx, ny = max(cand, key=lambda c: -(r["cx"] * c[1] + r["cy"] * c[2]) / d0)
-        r["stub"] = dict(ax=ax, sg=sg, n=(nx, ny))
-        half = r["w"] / 2 if ax == "x" else r["h"] / 2
-        ex = half + T + 600
-        xa, xb = sorted((r["cx"] + nx * (half), r["cx"] + nx * ex)); ya, yb = sorted((r["cy"] + ny * half, r["cy"] + ny * ex))
-        if ax == "x": ya, yb = r["cy"] - TW / 2 - T, r["cy"] + TW / 2 + T
-        else: xa, xb = r["cx"] - TW / 2 - T, r["cx"] + TW / 2 + T
-        r["hmin"] = min(hmin_rect(v, r["cx"] - r["w"] / 2 - T, r["cy"] - r["h"] / 2 - T, r["cx"] + r["w"] / 2 + T, r["cy"] + r["h"] / 2 + T),
-                        hmin_rect(v, xa, ya, xb, yb))
+        r["tun"] = dict(k=k, side=(side, sg), x0=x0, y0=y0, ux=ux, uy=uy, L=L, s_end=L + PUITS_FIN + floor_end / PUITS_PENTE,
+                        floor_end=floor_end, s_d=dint + T / 2 / comp, dint=dint, door=t["door"])
+    # 2) emprise : salle + les 4 bouches possibles (le plafond reste sous le relief quel que soit le côté choisi)
+    for r in rooms.values():
+        hw, hh = r["w"] / 2 + T, r["h"] / 2 + T
+        rects = [(r["cx"] - hw, r["cy"] - hh, r["cx"] + hw, r["cy"] + hh)] + [rect_bouche(r, sx_, sy_, STUB) for sx_, sy_ in ((1, 0), (-1, 0), (0, 1), (0, -1))]
+        r["hmin"] = min(hmin_rect(v, *q) for q in rects)
+    v6 = next(q for q in lst if q["code"] == "V6")["shape"]
     # 3) construire
     for code, r in sorted(rooms.items()):
         e = r["e"]; tn = r["tun"]
@@ -296,15 +348,34 @@ def souterrains(v, lst, grp):
             top = ck[0] + 80
         else:
             top = r["hmin"] - MARGE
-        ax, sg = r["stub"]["ax"], r["stub"]["sg"]
-        r["ouv"].append((ax, sg, 0, TW + 20))
-        z = salle(grp, v, code, r["cx"], r["cy"], r["w"], r["h"], top, None, r["ouv"])
+        z = top - RH
+        # entrée de surface : côté face à la place d'apparition d'abord, puis décalages le long du mur ; premier puits valide
+        cand = [c for c in (("x", 1), ("x", -1), ("y", 1), ("y", -1)) if not (tn and tn["side"] == c)]
+        vx, vy = v6["x"] * M - r["cx"], v6["y"] * M - r["cy"]
+        cand.sort(key=lambda c: -(vx * c[1] if c[0] == "x" else vy * c[1]))
+        choix = None
+        for ext in (0, 800, 1600, 2400, 3200):
+            for ax, sg in cand:
+                half, perp = (r["w"] / 2, r["h"] / 2) if ax == "x" else (r["h"] / 2, r["w"] / 2)
+                nx, ny = (sg, 0) if ax == "x" else (0, sg)
+                for frac in (0, 0.5, -0.5, 1, -1):
+                    p = frac * (perp - TW)
+                    sx_, sy_ = (r["cx"] + nx * (half + T + STUB + ext), r["cy"] + p) if ax == "x" else (r["cx"] + p, r["cy"] + ny * (half + T + STUB + ext))
+                    res = puits_ok(v, lst, sx_, sy_, nx, ny, z, e["level"], ext)
+                    if res: choix = (ax, sg, p, nx, ny, sx_, sy_, res); break
+                if choix: break
+            if choix: break
+        assert choix, f"{v} {code} : pas d'entrée de surface"
+        ax, sg, p, nx, ny, sx_, sy_, (Ls, zs) = choix
+        r["ouv"].append((ax, sg, p, TW + 20))
+        salle(grp, v, code, r["cx"], r["cy"], r["w"], r["h"], top, None, r["ouv"])
         door = e["door"]
-        nx, ny = r["stub"]["n"]
         half = r["w"] / 2 if ax == "x" else r["h"] / 2
-        galerie(grp, v, code, "stub", [(r["cx"] + nx * half, r["cy"] + ny * half, z), (r["cx"] + nx * (half + T + 600), r["cy"] + ny * (half + T + 600), z)])
-        G(grp, v, code, "stub", f"{code} fond", (r["cx"] + nx * (half + T + 600 + T / 2), r["cy"] + ny * (half + T + 600 + T / 2), z + TH / 2), (T, TW + 2 * T, TH + 2 * T), (nx, ny, 0), SOUS["mur"])
-        lines.append(f'D({grp},"Porte {code}",{r["cx"] + nx * (half + T / 2):.1f}f,{r["cy"] + ny * (half + T / 2):.1f}f,{z:.1f}f,{math.degrees(math.atan2(-ny, -nx)):.1f}f,{TW}f,{TH}f,NarutoRp.World.DoorRule.{door["rule"]},"{v}","{door["domain"] or ""}",{"true" if door["oneWay"] else "false"});')
+        ox, oy = (0, p) if ax == "x" else (p, 0)   # décalage de la bouche le long du mur
+        galerie(grp, v, code, "stub", [(r["cx"] + ox + nx * half, r["cy"] + oy + ny * half, z), (sx_, sy_, z)])
+        lines.append(f'D({grp},"Porte {code}",{r["cx"] + ox + nx * (half + T / 2):.1f}f,{r["cy"] + oy + ny * (half + T / 2):.1f}f,{z:.1f}f,{math.degrees(math.atan2(-ny, -nx)):.1f}f,{TW}f,{TH}f,NarutoRp.World.DoorRule.{door["rule"]},"{v}","{door["domain"] or ""}",{"true" if door["oneWay"] else "false"});')
+        X = puits(grp, v, code, sx_, sy_, nx, ny, z, zs)
+        kiosque(g, X[0], X[1], nx, ny, zs, code)
         if tn:
             fl = [ck_ - TH for ck_ in ck]
             pts = [(tn["x0"] + tn["ux"] * s, tn["y0"] + tn["uy"] * s, f) for s, f in zip([tn["dint"]] + ks[1:], fl)]
@@ -312,45 +383,63 @@ def souterrains(v, lst, grp):
             assert abs(fl[-1] - tn["floor_end"]) < 1e-6, (v, tn["k"], fl[-1])
             sd = tn["s_d"]
             lines.append(f'D({grp},"Porte T{tn["k"]}",{tn["x0"] + tn["ux"] * sd:.1f}f,{tn["y0"] + tn["uy"] * sd:.1f}f,{fl[0]:.1f}f,{math.degrees(math.atan2(-tn["uy"], -tn["ux"])):.1f}f,{TW}f,{TH}f,NarutoRp.World.DoorRule.{tn["door"]["rule"]},"{v}","",true);')
-            puits(grp, v, "X" + tn["k"], tn["x0"], tn["y0"], tn["ux"], tn["uy"], tn["L"], tn["s_end"], tn["floor_end"])
-    # 4) passage caché H1 (sans porte, sous la marche entre le bas et le milieu ; culs-de-sac à ses deux bouts)
+            puits(grp, v, "X" + tn["k"], tn["x0"] + tn["ux"] * tn["s_end"], tn["y0"] + tn["uy"] * tn["s_end"], tn["ux"], tn["uy"], tn["floor_end"], 0.0)
+    # 4) passage caché H1 : ouvert aux deux bouts, un puits côté milieu, un côté bas, sans porte ni kiosque
     h1 = by.get("H1")
     if h1:
         (ax, ay), (bx, by_) = h1["shape"]["pts"]
         x0, y0, x1, y1 = ax * M, ay * M, bx * M, by_ * M
         L = math.hypot(x1 - x0, y1 - y0); ux, uy = (x1 - x0) / L, (y1 - y0) / L
         ks, ck = profil(v, x0, y0, ux, uy, L)
-        galerie(grp, v, "H1", "passage", [(x0 + ux * s, y0 + uy * s, c - TH) for s, c in zip(ks, ck)])
-        for s, c in ((0, ck[0]), (L, ck[-1])):
-            G(grp, v, "H1", "passage", "H1 fond", (x0 + ux * s, y0 + uy * s, c - TH / 2), (T, TW + 2 * T, TH + 2 * T), (ux, uy, 0), SOUS["mur"])
+        fl = [c - TH for c in ck]
+        galerie(grp, v, "H1", "passage", [(x0 + ux * s, y0 + uy * s, f) for s, f in zip(ks, fl)])
+        for suf, (px, py, dx, dy, f0, niv) in (("a", (x0, y0, -ux, -uy, fl[0], "milieu")), ("b", (x1, y1, ux, uy, fl[-1], "bas"))):
+            res = puits_ok(v, lst, px, py, dx, dy, f0, niv)
+            assert res, f"{v} H1{suf} : pas de sortie"
+            puits(grp, v, "H1" + suf, px, py, dx, dy, f0, res[1])
 
-def puits(grp, v, code, x0, y0, ux, uy, L, s_end, floor_end):
-    """Puits d'une sortie : sol incliné (25 deg) de la fin du tunnel jusqu'à z = 0 sous le trou, murets, mur de tête, palier."""
-    SHAFTS.append(dict(v=v, code=code, floor_end=floor_end, t_end=s_end - L))
+def kiosque(g, x, y, ux, uy, zs, code):
+    """Petit auvent sur 2 poteaux au-dessus de l'escalier d'une salle."""
+    yaw = math.degrees(math.atan2(uy, ux)); lat = (-uy, ux)
+    for sg in (-1, 1):
+        B(g, f"Entrée {code} (poteau)", x + lat[0] * sg * 130 - ux * 20, y + lat[1] * sg * 130 - uy * 20, 40, 40, 260, COMMON["wood"], zs - 5, yaw)
+    B(g, f"Entrée {code} (auvent)", x - ux * 20, y - uy * 20, 300, 340, 30, (0.55, 0.3, 0.2), zs + 260, yaw)
+
+def puits(grp, v, code, px, py, ux, uy, floor0, zs):
+    """Puits : sol incliné (25 deg) de (px, py) (sol à floor0) jusqu'à la surface zs sous un trou ; murets, mur de tête, palier.
+    Renvoie le centre (x, y) du trou (unités locales) ; enregistre le trou dans HOLES_OUT."""
+    L = (zs - floor0) / PUITS_PENTE - PUITS_FIN
     lat = (-uy, ux)
-    P = lambda s, o=0: (x0 + ux * s + lat[0] * o, y0 + uy * s + lat[1] * o)
+    P = lambda s, o=0: (px + ux * s + lat[0] * o, py + uy * s + lat[1] * o)
+    X = P(L)
     s_top = L + PUITS_FIN
-    d = (ux * (s_top - s_end), uy * (s_top - s_end), -floor_end)
-    n3 = math.sqrt(sum(k * k for k in d)); m = P((s_end + s_top) / 2)
+    wx, wy = local_to_world(v, X[0] / M, X[1] / M)
+    wx2, wy2 = local_to_world(v, (X[0] + ux * 100) / M, (X[1] + uy * 100) / M)
+    n_ = math.hypot(wx2 - wx, wy2 - wy)
+    SHAFTS.append(dict(v=v, code=code, floor_end=floor0, t_end=-L, zs=zs, start=(round(px, 1), round(py, 1), floor0), top=(round(X[0], 1), round(X[1], 1))))
+    HOLES_OUT.append(dict(v=v, code=code, x=wx, y=wy, ux=(wx2 - wx) / n_, uy=(wy2 - wy) / n_, zs=zs, tier=niveau(math.hypot(X[0], X[1]) / M)))
+    d = (ux * s_top, uy * s_top, zs - floor0)
+    n3 = math.sqrt(sum(k * k for k in d)); m = P(s_top / 2)
     W2 = PUITS_LARG + 2 * T
-    G(grp, v, code, "puits", f"{code} puits (sol)", (m[0], m[1], floor_end / 2 - T / 2), (n3 * 1.03, W2, T), d, SOUS["puits"])
+    G(grp, v, code, "puits", f"{code} puits (sol)", (m[0], m[1], (floor0 + zs) / 2 - T / 2), (n3 * 1.03, W2, T), d, SOUS["puits"])
     m = P(s_top + 80)
-    G(grp, v, code, "puits", f"{code} palier", (m[0], m[1], -2 - T / 2), (200, W2, T), (ux, uy, 0), SOUS["puits"])
-    n = math.ceil((s_top - s_end - T) / 200); ln = (s_top - s_end - T) / n
+    G(grp, v, code, "puits", f"{code} palier", (m[0], m[1], zs - 2 - T / 2), (200, W2, T), (ux, uy, 0), SOUS["puits"])
+    n = math.ceil((s_top - T) / 200); ln = (s_top - T) / n
     for i in range(n):
-        s = s_end + T + (i + 0.5) * ln
-        zf = sol_puits(s - L)
-        zlo, zhi = zf - ln * PUITS_PENTE / 2 - T, -1
+        s = T + (i + 0.5) * ln
+        zf = floor0 + s * PUITS_PENTE
+        zlo, zhi = zf - ln * PUITS_PENTE / 2 - T, zs - 1
         for sg in (-1, 1):
             m = P(s, sg * (PUITS_LARG / 2 + T / 2))
             G(grp, v, code, "puits", f"{code} muret", (m[0], m[1], (zlo + zhi) / 2), (ln * 1.03, T, zhi - zlo), (ux, uy, 0), SOUS["mur"])
-    zlo = floor_end - T
+    zlo = floor0 - T
     side = (W2 - TW) / 2
     for sg in (-1, 1):
-        m = P(s_end + T / 2, sg * (TW / 2 + side / 2))
-        G(grp, v, code, "puits", f"{code} mur de tête", (m[0], m[1], (zlo - 1) / 2), (T, side, -1 - zlo), (ux, uy, 0), SOUS["mur"])
-    m = P(s_end + T / 2)
-    G(grp, v, code, "puits", f"{code} linteau", (m[0], m[1], (floor_end + TH - 1) / 2), (T, TW, -1 - floor_end - TH), (ux, uy, 0), SOUS["mur"])
+        m = P(T / 2, sg * (TW / 2 + side / 2))
+        G(grp, v, code, "puits", f"{code} mur de tête", (m[0], m[1], (zlo + zs - 1) / 2), (T, side, zs - 1 - zlo), (ux, uy, 0), SOUS["mur"])
+    m = P(T / 2)
+    G(grp, v, code, "puits", f"{code} linteau", (m[0], m[1], (floor0 + TH + zs - 1) / 2), (T, TW, zs - 1 - floor0 - TH), (ux, uy, 0), SOUS["mur"])
+    return X
 
 # ── Villages
 SPAWN_OFFS = ((-500, 500), (500, 500), (-500, -500), (500, -500))
@@ -461,7 +550,7 @@ for v, style in STYLES.items():
     B(g, "Route vers le centre", 0, (gy + end) / 2, 640, gy - end, 5, COMMON["road"], hl(0, (gy + end) / 2), 0, False)
     # Souterrains (repère local du village, z monde)
     lines.append(f'var {v}Sous = new GameObject( {v}, true, "Souterrains" );')
-    souterrains(v, lst, f"{v}Sous")
+    souterrains(v, lst, f"{v}Sous", g)
 
 # ── Murs invisibles du monde
 E = INNER + 2400
@@ -553,7 +642,7 @@ using ( scene.Push() )
 		{
 			foreach ( var c in o.Children )
 			{
-				if ( c.Name == "Sol neutre" || c.Name.StartsWith( "Route" ) || ( c.Components.Get<ModelRenderer>() is not null && Bad( c.WorldPosition ) ) ) kill.Add( c );
+				if ( c.Name == "Sol neutre" || c.Name.StartsWith( "Route" ) || ( c.Children.Count == 0 && Bad( c.WorldPosition ) ) ) kill.Add( c );
 				else Walk( c );
 			}
 		}
@@ -579,4 +668,5 @@ footer = '''
 return $"{count} volumes";
 '''
 open(OUT, "w", encoding="utf-8").write(header + "\n".join("\t" + l for l in "\n".join(lines).split("\n")) + footer)
+json.dump(HOLES_OUT, open(os.path.join(src, "trous.holes"), "w"), indent=0)   # lu par tools/relief.py (extension != .json : pas pris pour un plan)
 print(f"{len(lines)} lignes, {len(UNDER)} boîtes souterraines -> {os.path.abspath(OUT)}")
