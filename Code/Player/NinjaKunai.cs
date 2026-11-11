@@ -44,9 +44,9 @@ public sealed class NinjaKunai : Component
 	/// <summary>Pose « swing » de l'AnimGraph : son b_attack est un grand geste du bras droit (taillade et lancer).</summary>
 	public const int HoldTypeMeleeWeapons = 6;
 
-	/// <summary>Pose au repos, kunai dégainé : 5 = garde poings levés. Le bras ne passe en pose 6 que le temps d'un coup.</summary>
+	/// <summary>Pose au repos, kunai dégainé. 6 = debout, bras armé ; 5 = garde poings levés mais très accroupie.</summary>
 	[Property, Group( "Placement en main" )]
-	public int HoldType { get; set; } = 5;
+	public int HoldType { get; set; } = HoldTypeMeleeWeapons;
 
 	/// <summary>Durée de la pose d'attaque après un coup ou un lancer.</summary>
 	const float AttackPoseSeconds = 0.7f;
@@ -58,7 +58,7 @@ public sealed class NinjaKunai : Component
 
 	/// <summary>Indique si le kunai est dégainé en main ou rengainé (mains nues).</summary>
 	[Sync( SyncFlags.FromHost )]
-	public bool IsDrawn { get; set; } = true;
+	public bool IsDrawn { get; set; } // rangé à l'apparition : posture normale en ville, H pour dégainer
 
 	TimeSince _serverLastThrow = 10f;
 	TimeSince _serverLastMelee = 10f;

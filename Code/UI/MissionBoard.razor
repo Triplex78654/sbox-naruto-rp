@@ -198,17 +198,13 @@
 
 	protected override void OnUpdate()
 	{
-		if ( Visible && Input.EscapePressed )
-		{
-			Close();
-		}
-
-		NinjaPlayer.InputBlocked = Visible;
+		// Échap est géré par PauseMenu (un seul endroit, sinon deux menus réagissent à la même touche).
+		NinjaPlayer.SetMenuOpen( "missions", Visible );
 	}
 
 	protected override void OnDisabled()
 	{
-		NinjaPlayer.InputBlocked = false;
+		NinjaPlayer.SetMenuOpen( "missions", false );
 	}
 
 	static string VillageIcon( string v ) => v?.ToLowerInvariant() switch

@@ -1,0 +1,159 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Core;
+@using NarutoRp.Player;
+@using NarutoRp.Characters;
+@using NarutoRp.Shop;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* Menu Échap : reprendre, paramètres, touches, quitter. *@
+<root>
+	@if ( IsOpen )
+	{
+		<div class="overlay">
+			<div class="side">
+				<div class="brand">NARUTO RP</div>
+				@if ( Me.IsValid() && Me.CharacterId > 0 )
+				{
+					<div class="who">@Me.CharacterName</div>
+					<div class="who-sub">@($"{CharacterRules.Label( Me.Village )} · {CharacterRules.Label( Me.Grade )} · Niv. {Me.Level}")</div>
+				}
+
+				<div class="nav">
+					<div class="nav-button primary" onclick=@Close>Reprendre</div>
+					<div class="nav-button @(Tab == "settings" ? "active" : "")" onclick=@(() => Tab = "settings")>Paramètres</div>
+					<div class="nav-button @(Tab == "keys" ? "active" : "")" onclick=@(() => Tab = "keys")>Touches</div>
+				</div>
+
+				<div class="nav-button danger" onclick=@Quit>@(_confirmQuit ? "Cliquer encore pour quitter" : "Quitter le serveur")</div>
+			</div>
+
+			<div class="content">
+				@if ( Tab == "settings" )
+				{
+					<div class="content-title">Paramètres</div>
+
+					<div class="setting">
+						<div class="setting-label">Volume général</div>
+						<div class="stepper">
+							<div class="step" onclick=@(() => GameSettings.SetVolume( GameSettings.Volume - 0.1f ))>−</div>
+							<div class="step-value">@($"{GameSettings.Volume * 100f:0} %")</div>
+							<div class="step" onclick=@(() => GameSettings.SetVolume( GameSettings.Volume + 0.1f ))>+</div>
+						</div>
+					</div>
+
+					<div class="setting">
+						<div class="setting-label">Taille de l'interface</div>
+						<div class="stepper">
+							<div class="step" onclick=@(() => GameSettings.SetHudScale( GameSettings.HudScale - 0.1f ))>−</div>
+							<div class="step-value">@($"{GameSettings.HudScale * 100f:0} %")</div>
+							<div class="step" onclick=@(() => GameSettings.SetHudScale( GameSettings.HudScale + 0.1f ))>+</div>
+						</div>
+					</div>
+
+					<div class="setting">
+						<div class="setting-label">Afficher l'interface en jeu</div>
+						<div class="toggle @(GameSettings.HudVisible ? "on" : "")" onclick=@(() => GameSettings.SetHudVisible( !GameSettings.HudVisible ))>
+							@(GameSettings.HudVisible ? "Oui" : "Non")
+						</div>
+					</div>
+
+					<div class="hint">@SettingsHint</div>
+				}
+				else
+				{
+					<div class="content-title">Touches</div>
+					<div class="keys">
+						@foreach ( var (action, label) in Keys )
+						{
+							<div class="key-row">
+								<div class="key-label">@label</div>
+								<div class="key-cap">@KeyName( action )</div>
+							</div>
+						}
+					</div>
+					<div class="hint">@KeysHint</div>
+				}
+			</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	/// <summary>Le menu Échap est ouvert sur ce client.</summary>
+	public static bool IsOpen { get; private set; }
+
+	// En texte C# : un « & » nu dans le balisage Razor peut être pris pour une entité HTML.
+	const string SettingsHint = "La sensibilité de la souris, le champ de vision et le micro se règlent dans les options de s&box (elles s'appliquent à tous les jeux).";
+	const string KeysHint = "Les touches se changent dans les options de s&box.";
+
+	string Tab = "settings";
+	bool _confirmQuit;
+
+	NinjaPlayer Me => NinjaPlayer.Local;
+
+	static readonly (string Action, string Label)[] Keys =
+	[
+		( "Attack1", "Frapper (poing ou kunai)" ),
+		( "Attack2", "Garde" ),
+		( "ToggleWeapon", "Dégainer / ranger le kunai" ),
+		( "Reload", "Lancer un kunai" ),
+		( "ThrowShuriken", "Volée de shurikens" ),
+		( "ExplosiveTag", "Poser un parchemin explosif" ),
+		( "DetonateTag", "Faire exploser les parchemins" ),
+		( "SmokeBomb", "Bombe fumigène" ),
+		( "SoldierPill", "Pilule du soldat" ),
+		( "Substitution", "Substitution" ),
+		( "Dodge", "Esquive" ),
+		( "Run", "Course ninja" ),
+		( "Use", "Utiliser / parler" ),
+		( "Slot1", "Jutsus (1 à 6)" ),
+		( "Slot7", "Barre de jutsus précédente" ),
+		( "Slot8", "Barre de jutsus suivante" ),
+		( "Voice", "Parler au micro" ),
+		( "Chat", "Écrire dans le chat" ),
+	];
+
+	static string KeyName( string action ) => Input.GetButtonOrigin( action )?.ToUpperInvariant() ?? "—";
+
+	void Close()
+	{
+		IsOpen = false;
+		_confirmQuit = false;
+	}
+
+	void Quit()
+	{
+		// Deux clics : un clic raté ne doit pas faire quitter le serveur.
+		if ( !_confirmQuit ) { _confirmQuit = true; return; }
+		Game.Close();
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( Input.EscapePressed )
+		{
+			// On garde la touche pour nous : sinon s&box ouvre son propre menu par-dessus.
+			Input.EscapePressed = false;
+
+			// Échap ferme d'abord le menu déjà ouvert ; sinon il ouvre / ferme celui-ci.
+			if ( MissionBoardState.IsOpen ) MissionBoardState.Close();
+			else if ( ShopState.IsOpen ) ShopState.Close();
+			else if ( IsOpen ) Close();
+			else IsOpen = true;
+		}
+
+		NinjaPlayer.SetMenuOpen( "pause", IsOpen );
+	}
+
+	protected override void OnDisabled()
+	{
+		IsOpen = false;
+		NinjaPlayer.SetMenuOpen( "pause", false );
+	}
+
+	protected override int BuildHash() => System.HashCode.Combine(
+		IsOpen, Tab, _confirmQuit, GameSettings.Volume, GameSettings.HudScale, GameSettings.HudVisible, Me?.CharacterName, Me?.Level );
+}

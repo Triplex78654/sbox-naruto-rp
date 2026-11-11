@@ -190,6 +190,16 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 	/// les vêtements créés partent avec lui chez les clients, et le propriétaire qui rhabille au réveil
 	/// relit la même liste. Village inconnu ou sans perso : pas de bandeau.
 	/// </summary>
+	// shortcut: même tenue pour tout le monde, à remplacer par une tenue par perso (colonne appearance) quand on pourra en changer.
+	static string[] StarterOutfit =>
+	[
+		"models/citizen_clothes/jumper/sleeveless_jumper/sleeveless_jumper_grey.clothing",
+		"models/citizen_clothes/trousers/loosetrousers/loose_trousers.clothing",
+		"models/citizen_clothes/shoes/boots/black_boots.clothing",
+		"models/citizen_clothes/gloves/fingerless_gloves/fingerless_gloves.clothing",
+		"models/ninja/katana_dos/katana_dos.clothing",
+	];
+
 	static void DressVillage( GameObject player, string village )
 	{
 		var dresser = player.GetComponentInChildren<Dresser>( true );
@@ -202,8 +212,11 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 			return;
 		}
 
+		// Tenue de genin de départ + katana dans le dos. Une pièce introuvable est ignorée.
+		var outfit = StarterOutfit.Select( ResourceLibrary.Get<Clothing> ).Where( c => c is not null ).Prepend( headband );
+
 		dresser.Source = Dresser.ClothingSource.Manual;
-		dresser.Clothing = [new ClothingContainer.ClothingEntry( headband )];
+		dresser.Clothing = outfit.Select( c => new ClothingContainer.ClothingEntry( c ) ).ToList();
 		_ = dresser.Apply();
 	}
 

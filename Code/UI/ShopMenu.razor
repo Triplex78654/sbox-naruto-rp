@@ -135,6 +135,14 @@
 		ShopTrigger.PurchaseItemRpc( itemId );
 	}
 
+	protected override void OnUpdate() => NinjaPlayer.SetMenuOpen( "shop", Visible );
+
+	protected override void OnDisabled() => NinjaPlayer.SetMenuOpen( "shop", false );
+
+	// Sans ça le panneau n'est construit qu'une fois (fermé) et ne s'affiche jamais.
+	protected override int BuildHash() => System.HashCode.Combine(
+		Visible, Me?.Ryo, Inventory?.Serialize(), ShopState.StatusMessage, HasStatus, SelectedCategory, ShopState.CurrentShopName );
+
 	void Close()
 	{
 		ShopState.Close();

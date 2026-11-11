@@ -10,13 +10,14 @@
 
 @* HUD Ninja complet : Portrait, PV, Chakra, Ryô, Buffs/Debuffs, Kunai, et Barre de 6 Jutsus avec pagination *@
 <root>
-	@if ( Stats is not null )
+	@if ( Stats is not null && GameSettings.HudVisible )
 	{
 		<!-- ================= BLOC IDENTITÉ & STATS (BAS GAUCHE) ================= -->
-		<div class="hud-profile-card">
+		<div class="hud-profile-card" style="transform: scale( @GameSettings.HudScale ); transform-origin: left bottom;">
 			<!-- Portrait & Village -->
 			<div class="avatar-frame @Me.Village">
-				<div class="avatar-emblem">@VillageIcon( Me.Village )</div>
+				<div class="avatar-portrait" @ref="PortraitPanel"></div>
+				<div class="avatar-village">@VillageIcon( Me.Village )</div>
 				<div class="avatar-rank-badge">@RankShort( Me.Grade )</div>
 			</div>
 
@@ -137,7 +138,7 @@
 		}
 
 		<!-- ================= BARRE DE 6 JUTSUS & PAGINATION (BAS CENTRE) ================= -->
-		<div class="action-bar-wrapper">
+		<div class="action-bar-wrapper" style="transform: scale( @GameSettings.HudScale ); transform-origin: center bottom;">
 			<!-- Flèche Page Précédente -->
 			<Button class="page-nav prev @(Page == 0 ? "disabled" : "")" onclick=@PrevPage>
 				◀
@@ -213,6 +214,8 @@
 		Components.GetOrCreate<MissionTrackerHud>();
 		Components.GetOrCreate<MissionBoard>();
 		Components.GetOrCreate<ShopMenu>();
+		Components.GetOrCreate<PauseMenu>();
+		GameSettings.Load();
 	}
 
 	NinjaPlayer Me => NinjaPlayer.Local;
@@ -226,6 +229,42 @@
 	NinjaConsumables Consumables => Me?.GetComponent<NinjaConsumables>();
 
 	int Page = 0;
+
+	/// <summary>Portrait : une petite caméra à part, braquée sur la tête du perso, qui dessine dans une texture.</summary>
+	Panel PortraitPanel { get; set; }
+	CameraComponent _portraitCam;
+	Texture _portraitTex;
+
+	void UpdatePortrait()
+	{
+		if ( PortraitPanel is null || !Me.IsValid() ) return;
+		var body = Me.Components.Get<SkinnedModelRenderer>( FindMode.EverythingInSelfAndDescendants );
+		if ( body is null || !body.TryGetBoneTransform( "head", out var head ) ) return;
+
+		if ( !_portraitCam.IsValid() )
+		{
+			var go = new GameObject( true, "PortraitCamera" ) { NetworkMode = NetworkMode.Never };
+			_portraitTex = Texture.CreateRenderTarget( "nrp_portrait", ImageFormat.RGBA8888, new Vector2( 192, 192 ) );
+			_portraitCam = go.Components.Create<CameraComponent>();
+			_portraitCam.IsMainCamera = false;
+			_portraitCam.FieldOfView = 30f;
+			_portraitCam.ZNear = 2f;
+			_portraitCam.ZFar = 150f; // ne dessine que le perso, pas la carte entière
+			_portraitCam.BackgroundColor = new Color( 0.09f, 0.11f, 0.15f );
+			_portraitCam.RenderTarget = _portraitTex;
+		}
+
+		var face = body.WorldRotation;
+		var target = head.Position + Vector3.Up * 3f;
+		_portraitCam.WorldPosition = target + face.Forward * 30f + face.Left * 8f + Vector3.Up * 1.5f;
+		_portraitCam.WorldRotation = Rotation.LookAt( target - _portraitCam.WorldPosition );
+		PortraitPanel.Style.SetBackgroundImage( _portraitTex );
+	}
+
+	protected override void OnDestroy()
+	{
+		if ( _portraitCam.IsValid() ) _portraitCam.GameObject.Destroy();
+	}
 
 	List<JutsuDefinition> AvailableJutsus => Caster?.Slots
 		.Where( j => j is not null && j.Id != "base_coup_de_poing" && j.Id != "taijutsu_coup_de_poing" )
@@ -294,6 +333,8 @@
 			_castStart = 0;
 		}
 
+		UpdatePortrait();
+
 		// Raccourci flèche gauche / droite ou touches pour paginer
 		if ( !NinjaPlayer.InputBlocked )
 		{
@@ -318,7 +359,7 @@
 			System.HashCode.Combine(
 				System.HashCode.Combine( s?.MaxHealth, Me?.CharacterName, Me?.Level, Me?.PlayTimeSeconds ),
 				System.HashCode.Combine( Consumables?.DeployedTagCount, MathF.Ceiling( Consumables?.ExplosiveTagCooldownRemaining ?? 0 ), MathF.Ceiling( Consumables?.SmokeBombCooldownRemaining ?? 0 ) ),
-				System.HashCode.Combine( MathF.Ceiling( Shuriken?.ThrowCooldownRemaining ?? 0 ), Inventory?.Serialize(), Inventory?.SoldierPillCooldown > 0 ),
+				System.HashCode.Combine( MathF.Ceiling( Shuriken?.ThrowCooldownRemaining ?? 0 ), Inventory?.Serialize(), Inventory?.SoldierPillCooldown > 0, GameSettings.HudScale, GameSettings.HudVisible, Kunai?.IsDrawn ),
 				MathF.Round( CastProgress * 40 ) ) );
 	}
 }

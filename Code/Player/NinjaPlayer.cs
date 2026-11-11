@@ -58,7 +58,16 @@ public sealed class NinjaPlayer : Component
 	static NinjaPlayer _local;
 
 	/// <summary>Un menu (panel staff...) a le clavier : pas de jutsu ni de défense. Client local seulement.</summary>
-	public static bool InputBlocked { get; set; }
+	public static bool InputBlocked => _openMenus.Count > 0;
+
+	static readonly HashSet<string> _openMenus = new();
+
+	/// <summary>Chaque menu dit s'il est ouvert : plusieurs menus ne s'écrasent plus l'un l'autre.</summary>
+	public static void SetMenuOpen( string menu, bool open )
+	{
+		if ( open ) _openMenus.Add( menu );
+		else _openMenus.Remove( menu );
+	}
 
 	TimeSince _secondTimer;
 

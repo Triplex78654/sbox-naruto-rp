@@ -152,10 +152,10 @@
 	{
 		if ( Input.Pressed( "StaffMenu" ) && Me.IsValid() && StaffPermissions.IsStaff( Me.StaffRank ) )
 			_open = !_open;
-		NinjaPlayer.InputBlocked = Visible;
+		NinjaPlayer.SetMenuOpen( "staff", Visible );
 	}
 
-	protected override void OnDisabled() => NinjaPlayer.InputBlocked = false;
+	protected override void OnDisabled() => NinjaPlayer.SetMenuOpen( "staff", false );
 
 	protected override int BuildHash()
 	{
