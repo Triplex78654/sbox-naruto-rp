@@ -38,6 +38,8 @@ server_secrets.json
 Thumbs.db
 desktop.ini
 .superpowers/
+node_modules/
+.wrangler/
 
 # Sorties generees des scripts tools/
 tools/out/
