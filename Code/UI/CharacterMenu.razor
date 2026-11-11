@@ -27,7 +27,7 @@
 						<div class="character">
 							<div class="info">
 								<div class="name">@c.Name</div>
-								<div class="sub">@($"{CharacterRules.Label( c.Village )} · {CharacterRules.Label( c.Grade )} · {CharacterRules.Label( c.Path )}")</div>
+								<div class="sub">@($"{CharacterRules.Label( c.Village )} · {CharacterRules.Label( c.Grade )} · {CharacterRules.Label( c.Path )} · Niv. {c.Level}")</div>
 							</div>
 							<Button class="primary" disabled=@CharacterMenuState.Busy onclick=@(() => Play( c.Id ))>Jouer</Button>
 						</div>

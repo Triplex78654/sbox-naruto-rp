@@ -15,8 +15,9 @@ public interface IApiClient
 	/// <summary>Crée un perso, renvoie son id. Lève ApiException (UserMessage lisible) si refusé.</summary>
 	Task<long> CreateCharacterAsync( ulong steamId, NewCharacter character, CancellationToken ct = default );
 
-	/// <summary>Sauvegarde de l'état de jeu modifiable (ryô).</summary>
-	Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default );
+
+	/// <summary>Sauvegarde de l'état de jeu modifiable (ryô, temps de jeu, niveau, stock d'outils).</summary>
+	Task SaveStateAsync( long characterId, long ryo, int playTime, int level, string inventory, CancellationToken ct = default );
 
 	// Actions staff : staffSteamId = staff connecté, revérifié par le Worker. Lèvent ApiException (UserMessage) si refusé.
 	Task SetGradeAsync( long characterId, string grade, string reason, ulong staffSteamId, CancellationToken ct = default );

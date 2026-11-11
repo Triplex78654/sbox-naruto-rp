@@ -14,7 +14,7 @@ SBOX_HUMAN = "D:/SteamLibrary/steamapps/common/sbox/addons/citizen/Assets/models
 REF_MALE = SBOX_HUMAN + "/citizen_human_male_REF.fbx"
 REF_FEMALE = SBOX_HUMAN + "/citizen_human_female_REF.fbx"
 PROJECT = "C:/Users/Estam/Documents/sbox-naruto-rp/nrp"
-SCRATCH = "C:/Users/Estam/AppData/Local/Temp/claude/90d6aa067d8f8955/7ad55e10-0ee3-4cb2-bcd1-864ff66fea98/scratchpad/blender"
+SCRATCH = PROJECT + "/tools/out/blender"  # .blend + rendus de contrôle (ignoré par Git : tools/out/)
 
 
 def args():

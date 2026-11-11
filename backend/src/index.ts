@@ -154,7 +154,13 @@ async function createCharacter(env: Env, b: Json) {
 async function saveState(env: Env, id: number, b: Json) {
 	await getAliveCharacter(env, id);
 	if (!Number.isSafeInteger(b.ryo) || (b.ryo as number) < 0 || (b.ryo as number) > 1_000_000_000) bad('ryo invalide');
-	await env.DB.prepare('UPDATE characters SET ryo = ?, updated_at = ? WHERE id = ? AND dead_at IS NULL').bind(b.ryo, Date.now(), id).run();
+	const playTime = typeof b.play_time === 'number' && Number.isSafeInteger(b.play_time) && b.play_time >= 0 ? b.play_time : 0;
+	const level = typeof b.level === 'number' && Number.isSafeInteger(b.level) && b.level >= 1 ? b.level : 1;
+	// Stock d'outils : 5 compteurs séparés par des virgules. Absent ou invalide : on garde celui en base.
+	const inventory = typeof b.inventory === 'string' && /^\d{1,6}(,\d{1,6}){4}$/.test(b.inventory) ? b.inventory : null;
+	await env.DB.prepare(`UPDATE characters SET ryo = ?, play_time = ?, level = ?, inventory = COALESCE(?, inventory), updated_at = ?
+		WHERE id = ? AND dead_at IS NULL`)
+		.bind(b.ryo, playTime, level, inventory, Date.now(), id).run();
 	return json({ ok: true });
 }
 

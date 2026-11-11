@@ -240,9 +240,7 @@
         "__guid": "87e21c0c-12ec-4aae-9fec-b1f86228dc9d",
         "__enabled": true,
         "Flags": 0,
-        "Slots": [
-          "data/jutsus/taijutsu/taijutsu_coup_de_poing.jutsu"
-        ]
+        "Slots": []
       },
       {
         "__type": "NarutoRp.Combat.NinjaDefense",

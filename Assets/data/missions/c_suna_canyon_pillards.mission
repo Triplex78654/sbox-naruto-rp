@@ -1,0 +1,27 @@
+{
+  "Id": "c_suna_canyon_pillards",
+  "Title": "Élimination des 3 pillards dans le canyon",
+  "Description": "Une bande de renégats s'est installée dans les failles escarpées du désert du Vent, tendant des embuscades aux convois de ravitaillement. Pénétrez dans le défilé et éliminez les 3 coupeurs de route.",
+  "Rank": "C",
+  "Village": "Suna",
+  "RewardRyo": 1000,
+  "MinGrade": "Genin",
+  "Objectives": [
+    {
+      "Type": "PatrolPoint",
+      "Description": "S'infiltrer dans la gorge du grand canyon",
+      "TargetCount": 1,
+      "TargetLocation": "28000,28000,20",
+      "TargetTag": "entree_canyon",
+      "TargetRadius": 350
+    },
+    {
+      "Type": "DefeatEnemies",
+      "Description": "Éliminer les 3 pillards du canyon",
+      "TargetCount": 3,
+      "TargetLocation": "27000,27000,20",
+      "TargetTag": "bandit_suna",
+      "TargetRadius": 500
+    }
+  ]
+}

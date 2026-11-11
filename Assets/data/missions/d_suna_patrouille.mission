@@ -1,0 +1,27 @@
+{
+  "Id": "d_suna_patrouille",
+  "Title": "Ronde de surveillance des remparts de Suna",
+  "Description": "Les vents violents et les tempêtes de sable réduisent la visibilité autour de l'enceinte de Suna. Effectuez une patrouille le long du chemin de ronde des remparts pour contrôler l'absence d'infiltrations.",
+  "Rank": "D",
+  "Village": "Suna",
+  "RewardRyo": 400,
+  "MinGrade": "Genin",
+  "Objectives": [
+    {
+      "Type": "PatrolPoint",
+      "Description": "Contrôler la tour de guet Nord des remparts",
+      "TargetCount": 1,
+      "TargetLocation": "47500,48500,340",
+      "TargetTag": "tour_rempart_nord",
+      "TargetRadius": 250
+    },
+    {
+      "Type": "PatrolPoint",
+      "Description": "Inspecter la grande porte fortifiée de la gorge",
+      "TargetCount": 1,
+      "TargetLocation": "45000,45000,40",
+      "TargetTag": "porte_suna",
+      "TargetRadius": 250
+    }
+  ]
+}

@@ -48,15 +48,20 @@ public sealed class JutsuCaster : Component
 		}
 
 		if ( Input.Pressed( "Attack1" ) )
-			RequestBasicAttack( Controller.EyeAngles.Forward );
+		{
+			// Si le joueur a une arme équipée ET dégainée, c'est l'arme qui frappe.
+			// Le coup de poing à mains nues ne se déclenche que si le joueur a les mains nues (arme rangée ou absente).
+			var kunai = GetComponent<NinjaKunai>();
+			if ( kunai is null || !kunai.Enabled || !kunai.IsDrawn )
+				RequestBasicAttack( Controller.EyeAngles.Forward );
+		}
 	}
 
 	/// <summary>Id de la fiche d'attaque de base (clic gauche), connue de tous sans déblocage.</summary>
 	public const string BasicAttackId = "base_coup_de_poing";
 
 	/// <summary>
-	/// Attaque du clic gauche : coup de poing pour l'instant.
-	/// Plus tard : l'arme équipée fournira sa propre fiche (ex. petit coup d'épée) et la remplacera ici.
+	/// Attaque du clic gauche à mains nues : coup de poing de base.
 	/// </summary>
 	public JutsuDefinition BasicAttack => _basicAttack ??= ResourceLibrary.GetAll<JutsuDefinition>().FirstOrDefault( j => j.Id == BasicAttackId );
 	JutsuDefinition _basicAttack;
@@ -175,8 +180,11 @@ public sealed class JutsuCaster : Component
 
 			case JutsuDeliveryType.Contact:
 				var target = TraceTarget( eye, eye + _castAim * jutsu.Range, jutsu.HitRadius );
-				BroadcastImpactFx( jutsu, target is not null ? target.WorldPosition + Vector3.Up * 40f : eye + _castAim * jutsu.Range, 32f * jutsu.FxSize );
+				var bandit = target is null ? TraceBandit( eye, eye + _castAim * jutsu.Range, jutsu.HitRadius ) : null;
+				var impactPos = target is not null ? target.WorldPosition + Vector3.Up * 40f : (bandit is not null ? bandit.WorldPosition + Vector3.Up * 40f : eye + _castAim * jutsu.Range);
+				BroadcastImpactFx( jutsu, impactPos, 32f * jutsu.FxSize );
 				if ( target is not null ) Apply( jutsu, target );
+				else if ( bandit is not null ) ApplyBandit( jutsu, bandit );
 				break;
 
 			case JutsuDeliveryType.Area:
@@ -193,6 +201,18 @@ public sealed class JutsuCaster : Component
 						.Run();
 					if ( los.Hit && los.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>() == other )
 						Apply( jutsu, other );
+				}
+				foreach ( var b in Scene.GetAllComponents<AiBanditController>() )
+				{
+					if ( b.IsDefeated ) continue;
+					if ( b.WorldPosition.Distance( WorldPosition ) > jutsu.Range ) continue;
+
+					var los = Scene.Trace.Ray( eye, b.WorldPosition + Vector3.Up * 40f )
+						.IgnoreGameObjectHierarchy( GameObject )
+						.WithoutTags( Core.NetConstants.TagInvisible )
+						.Run();
+					if ( los.Hit && (los.GameObject == b.GameObject || los.GameObject?.Components.GetInAncestorsOrSelf<AiBanditController>() == b) )
+						ApplyBandit( jutsu, b );
 				}
 				break;
 
@@ -263,7 +283,9 @@ public sealed class JutsuCaster : Component
 			{
 				BroadcastImpactFx( p.Jutsu, tr.HitPosition, 40f * p.Jutsu.FxSize );
 				var target = tr.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>();
+				var bandit = tr.GameObject?.Components.GetInAncestorsOrSelf<AiBanditController>();
 				if ( target is not null ) Apply( p.Jutsu, target );
+				else if ( bandit is not null ) ApplyBandit( p.Jutsu, bandit );
 				_projectiles.RemoveAt( i );
 			}
 			else if ( p.Travelled >= p.Jutsu.Range )
@@ -276,7 +298,7 @@ public sealed class JutsuCaster : Component
 	// ─── Effets visuels (hôte -> tout le monde, purement décoratif) ──────────
 
 	[Rpc.Broadcast( NetFlags.HostOnly | NetFlags.Unreliable )]
-	void BroadcastCastFx( JutsuDefinition jutsu, Vector3 position ) => JutsuFx.Cast( jutsu, position );
+	void BroadcastCastFx( JutsuDefinition jutsu, Vector3 position ) => JutsuFx.Cast( jutsu, position, GameObject );
 
 	[Rpc.Broadcast( NetFlags.HostOnly | NetFlags.Unreliable )]
 	void BroadcastImpactFx( JutsuDefinition jutsu, Vector3 position, float radius ) => JutsuFx.Burst( jutsu, position, radius );
@@ -293,6 +315,28 @@ public sealed class JutsuCaster : Component
 			.Run();
 
 		return tr.Hit ? tr.GameObject?.Components.GetInAncestorsOrSelf<NinjaStats>() : null;
+	}
+
+	AiBanditController TraceBandit( Vector3 from, Vector3 to, float radius )
+	{
+		var tr = Scene.Trace.Ray( from, to )
+			.Radius( radius )
+			.IgnoreGameObjectHierarchy( GameObject )
+			.WithoutTags( Core.NetConstants.TagInvisible )
+			.Run();
+
+		return tr.Hit ? tr.GameObject?.Components.GetInAncestorsOrSelf<AiBanditController>() : null;
+	}
+
+	void ApplyBandit( JutsuDefinition jutsu, AiBanditController bandit )
+	{
+		if ( bandit is null || bandit.IsDefeated ) return;
+
+		foreach ( var e in jutsu.Effects )
+		{
+			if ( e.Type == JutsuEffectType.Damage )
+				bandit.TakeDamage( e.Amount, GameObject );
+		}
 	}
 
 	void Apply( JutsuDefinition jutsu, NinjaStats target )

@@ -165,6 +165,15 @@ public sealed class NinjaStats : Component
 		Health = MathF.Min( MaxHealth, Health + amount );
 	}
 
+	/// <summary>Restaure du chakra. Hôte seulement.</summary>
+	public void RestoreChakra( float amount )
+	{
+		if ( !Networking.IsHost || IsDowned ) return;
+		if ( !float.IsFinite( amount ) || amount <= 0f ) return;
+
+		Chakra = MathF.Min( MaxChakra, Chakra + amount );
+	}
+
 	/// <summary>Dépense du chakra si possible. Hôte seulement.</summary>
 	public bool TrySpendChakra( float amount )
 	{

@@ -111,21 +111,27 @@ public sealed class MemoryApiClient : IApiClient
 			{
 				Id = _nextId++, Slot = c.Slot, FirstName = c.FirstName.Trim(), LastName = c.LastName.Trim(),
 				Village = c.Village, Nature = c.Nature, Path = c.Path, Clan = string.IsNullOrWhiteSpace( c.Clan ) ? null : c.Clan.Trim(),
-				Grade = "eleve", IsMedic = true, Ryo = 100,
+				Grade = "eleve", IsMedic = true, Ryo = 100, PlayTime = 0, Level = 1,
 				// Volontairement au-dessus du grade (élève) : pour tester tous les types de jutsus en éditeur.
-				Jutsus = { "katon_boule_de_feu", "raiton_champ_electrique", "medical_soin_mineur", "taijutsu_coup_de_poing", "suiton_requin", "shunshin" },
+				Jutsus = { "katon_boule_de_feu", "raiton_champ_electrique", "medical_soin_mineur", "futon_lame_de_vent", "suiton_requin", "shunshin" },
 			};
 			p.Characters.Add( created );
 			return Task.FromResult( created.Id );
 		}
 	}
 
-	public Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default )
+	public Task SaveStateAsync( long characterId, long ryo, int playTime, int level, string inventory, CancellationToken ct = default )
 	{
 		lock ( Players )
 		{
 			var c = Players.Values.SelectMany( p => p.Characters ).FirstOrDefault( c => c.Id == characterId );
-			if ( c is not null ) c.Ryo = ryo;
+			if ( c is not null )
+			{
+				c.Ryo = ryo;
+				c.PlayTime = playTime;
+				c.Level = level;
+				c.Inventory = inventory ?? c.Inventory;
+			}
 		}
 		return Task.CompletedTask;
 	}

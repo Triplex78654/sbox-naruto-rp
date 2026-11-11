@@ -1,0 +1,426 @@
+MissionBoard {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	font-family: Poppins, sans-serif;
+	color: #ffffff;
+	pointer-events: none;
+	z-index: 200;
+}
+
+.overlay {
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	justify-content: center;
+	align-items: center;
+	pointer-events: all;
+	background-color: rgba(5, 8, 14, 0.75);
+}
+
+.window {
+	width: 1040px;
+	height: 720px;
+	flex-direction: column;
+	padding: 24px;
+	gap: 16px;
+	background-color: rgba(18, 22, 31, 0.98);
+	border: 1px solid rgba(241, 196, 15, 0.35);
+	border-radius: 12px;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+}
+
+// ─── En-tête ──────────────────────────────────────────────────────────
+.header {
+	align-items: center;
+	justify-content: space-between;
+	padding-bottom: 14px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+	.header-left {
+		align-items: center;
+		gap: 14px;
+
+		.village-symbol {
+			font-size: 32px;
+		}
+
+		.title-block {
+			flex-direction: column;
+
+			.main-title {
+				font-size: 20px;
+				font-weight: 800;
+				letter-spacing: 1.5px;
+				color: #f1c40f;
+				text-shadow: 0 0 10px rgba(241, 196, 15, 0.3);
+			}
+
+			.sub-title {
+				font-size: 13px;
+				color: rgba(255, 255, 255, 0.6);
+				margin-top: 2px;
+			}
+		}
+	}
+
+	.header-right {
+		align-items: center;
+		gap: 16px;
+
+		.player-ryo {
+			align-items: center;
+			gap: 6px;
+			background-color: rgba(241, 196, 15, 0.12);
+			border: 1px solid rgba(241, 196, 15, 0.3);
+			border-radius: 8px;
+			padding: 6px 14px;
+
+			.ryo-icon {
+				font-size: 16px;
+			}
+
+			.ryo-value {
+				font-size: 15px;
+				font-weight: 700;
+				color: #f1c40f;
+			}
+		}
+
+		.btn-close {
+			width: 34px;
+			height: 34px;
+			justify-content: center;
+			align-items: center;
+			background-color: rgba(255, 255, 255, 0.08);
+			border-radius: 8px;
+			color: rgba(255, 255, 255, 0.7);
+			font-size: 16px;
+			cursor: pointer;
+			transition: background-color 0.15s ease;
+
+			&:hover {
+				background-color: rgba(231, 76, 60, 0.7);
+				color: #ffffff;
+			}
+		}
+	}
+}
+
+// ─── Bannière de Mission en cours ─────────────────────────────────────
+.active-mission-banner {
+	align-items: center;
+	justify-content: space-between;
+	padding: 12px 18px;
+	background-color: rgba(46, 204, 113, 0.1);
+	border: 1px solid rgba(46, 204, 113, 0.4);
+	border-radius: 8px;
+
+	.active-info {
+		align-items: center;
+		gap: 12px;
+
+		.badge-status {
+			font-size: 11px;
+			font-weight: 800;
+			letter-spacing: 1px;
+			color: #2ecc71;
+			background-color: rgba(46, 204, 113, 0.2);
+			padding: 4px 8px;
+			border-radius: 4px;
+		}
+
+		.active-rank-badge {
+			font-size: 11px;
+			font-weight: 800;
+			padding: 4px 8px;
+			border-radius: 4px;
+
+			&.rank-d {
+				background-color: #27ae60;
+				color: white;
+			}
+
+			&.rank-c {
+				background-color: #2980b9;
+				color: white;
+			}
+		}
+
+		.active-title {
+			font-size: 14px;
+			font-weight: 700;
+			color: #ffffff;
+		}
+
+		.active-objective {
+			font-size: 13px;
+			color: rgba(255, 255, 255, 0.75);
+		}
+	}
+
+	.btn-abandon {
+		background-color: rgba(231, 76, 60, 0.2);
+		border: 1px solid rgba(231, 76, 60, 0.5);
+		border-radius: 6px;
+		padding: 6px 14px;
+		font-size: 12px;
+		font-weight: 600;
+		color: #e74c3c;
+		cursor: pointer;
+		transition: all 0.15s ease;
+
+		&:hover {
+			background-color: #e74c3c;
+			color: #ffffff;
+		}
+	}
+}
+
+// ─── Onglets de filtrage ──────────────────────────────────────────────
+.filter-tabs {
+	gap: 10px;
+
+	.tab-btn {
+		padding: 8px 18px;
+		border-radius: 6px;
+		background-color: rgba(255, 255, 255, 0.05);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: rgba(255, 255, 255, 0.7);
+		font-size: 13px;
+		font-weight: 600;
+		cursor: pointer;
+		transition: all 0.15s ease;
+
+		&:hover {
+			background-color: rgba(255, 255, 255, 0.1);
+			color: #ffffff;
+		}
+
+		&.active {
+			background-color: rgba(241, 196, 15, 0.18);
+			border-color: #f1c40f;
+			color: #f1c40f;
+			font-weight: 700;
+		}
+
+		&.rank-d.active {
+			background-color: rgba(46, 204, 113, 0.2);
+			border-color: #2ecc71;
+			color: #2ecc71;
+		}
+
+		&.rank-c.active {
+			background-color: rgba(52, 152, 219, 0.2);
+			border-color: #3498db;
+			color: #3498db;
+		}
+	}
+}
+
+// ─── Zone des missions scrollable ─────────────────────────────────────
+.missions-scroll {
+	flex-grow: 1;
+	overflow-y: scroll;
+	padding-right: 6px;
+
+	.empty-notice {
+		padding: 40px;
+		text-align: center;
+		color: rgba(255, 255, 255, 0.4);
+		font-size: 14px;
+		justify-content: center;
+	}
+
+	.missions-grid {
+		flex-direction: column;
+		gap: 12px;
+	}
+}
+
+// ─── Carte de mission ─────────────────────────────────────────────────
+.mission-card {
+	flex-direction: column;
+	background-color: rgba(255, 255, 255, 0.03);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 8px;
+	padding: 16px;
+	gap: 10px;
+	transition: border-color 0.15s ease;
+
+	&.rank-d {
+		border-left: 4px solid #2ecc71;
+	}
+
+	&.rank-c {
+		border-left: 4px solid #3498db;
+	}
+
+	&.current {
+		border-color: rgba(241, 196, 15, 0.6);
+		background-color: rgba(241, 196, 15, 0.04);
+	}
+
+	&:hover {
+		border-color: rgba(255, 255, 255, 0.2);
+	}
+
+	.card-top {
+		align-items: center;
+		justify-content: space-between;
+
+		.rank-badge {
+			font-size: 11px;
+			font-weight: 800;
+			letter-spacing: 0.5px;
+			padding: 3px 8px;
+			border-radius: 4px;
+
+			&.rank-d {
+				background-color: rgba(46, 204, 113, 0.25);
+				color: #2ecc71;
+			}
+
+			&.rank-c {
+				background-color: rgba(52, 152, 219, 0.25);
+				color: #3498db;
+			}
+		}
+
+		.card-village {
+			font-size: 13px;
+			color: rgba(255, 255, 255, 0.7);
+			font-weight: 500;
+		}
+
+		.card-reward {
+			align-items: center;
+			gap: 5px;
+			background-color: rgba(241, 196, 15, 0.1);
+			padding: 3px 10px;
+			border-radius: 6px;
+
+			.ryo-icon {
+				font-size: 13px;
+			}
+
+			.ryo-number {
+				font-size: 14px;
+				font-weight: 700;
+				color: #f1c40f;
+			}
+		}
+	}
+
+	.card-title {
+		font-size: 16px;
+		font-weight: 700;
+		color: #ffffff;
+	}
+
+	.card-description {
+		font-size: 13px;
+		line-height: 18px;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
+	.card-meta {
+		align-items: center;
+		gap: 20px;
+		padding: 6px 0;
+
+		.meta-item {
+			align-items: center;
+			gap: 6px;
+			font-size: 12px;
+
+			.meta-label {
+				color: rgba(255, 255, 255, 0.45);
+			}
+
+			.meta-value {
+				color: rgba(255, 255, 255, 0.85);
+				font-weight: 600;
+
+				&.ok {
+					color: #2ecc71;
+				}
+
+				&.warn {
+					color: #e74c3c;
+				}
+			}
+		}
+	}
+
+	.card-objectives {
+		flex-direction: column;
+		gap: 4px;
+		background-color: rgba(0, 0, 0, 0.2);
+		padding: 8px 12px;
+		border-radius: 6px;
+
+		.step-line {
+			align-items: center;
+			gap: 8px;
+			font-size: 12px;
+
+			.step-num {
+				color: #f1c40f;
+				font-weight: 700;
+			}
+
+			.step-desc {
+				color: rgba(255, 255, 255, 0.8);
+			}
+		}
+	}
+
+	.card-actions {
+		justify-content: flex-end;
+		margin-top: 4px;
+
+		.btn-accept {
+			background-color: #27ae60;
+			border-radius: 6px;
+			padding: 8px 20px;
+			font-size: 13px;
+			font-weight: 700;
+			color: #ffffff;
+			cursor: pointer;
+			transition: background-color 0.15s ease;
+
+			&:hover {
+				background-color: #2ecc71;
+			}
+		}
+
+		.status-btn {
+			font-size: 12px;
+			font-weight: 600;
+			padding: 7px 16px;
+			border-radius: 6px;
+
+			&.active-state {
+				background-color: rgba(241, 196, 15, 0.15);
+				color: #f1c40f;
+				border: 1px solid rgba(241, 196, 15, 0.4);
+			}
+
+			&.disabled-state {
+				background-color: rgba(255, 255, 255, 0.05);
+				color: rgba(255, 255, 255, 0.4);
+			}
+
+			&.locked-state {
+				background-color: rgba(231, 76, 60, 0.15);
+				color: #e74c3c;
+				border: 1px solid rgba(231, 76, 60, 0.3);
+			}
+		}
+	}
+}

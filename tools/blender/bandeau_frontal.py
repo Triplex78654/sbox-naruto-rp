@@ -1,6 +1,6 @@
 # Génère le bandeau frontal ninja ajusté à la tête de citizen_human_male_REF.
 # blender.exe --background --factory-startup --python bandeau_frontal.py -- \
-#     [--emblem konoha|suna|kumo|none] [--cloth R,G,B] [--no-render]
+#     [<village> | --emblem konoha|suna|kumo|none] [--cloth R,G,B] [--no-render]
 # Sorties : Assets/models/ninja/bandeau_frontal/bandeau_<village>.fbx (+ _color/_normal.png),
 #           bandeau_frontal.fbx pour "none" (plaque vierge), .blend + rendus dans SCRATCH.
 import math
@@ -16,8 +16,14 @@ import emblemes  # noqa: E402
 import nrp_blender as nb  # noqa: E402
 
 A = nb.args()
-EMBLEM = A[A.index("--emblem") + 1] if "--emblem" in A else "none"
-assert EMBLEM in emblemes.VILLAGES, f"--emblem inconnu : {EMBLEM}"
+if "--emblem" in A:
+    EMBLEM = A[A.index("--emblem") + 1]
+elif A and not A[0].startswith("--"):
+    EMBLEM = A[0]
+else:
+    EMBLEM = "none"
+
+assert EMBLEM in emblemes.VILLAGES, f"Village/emblème inconnu : {EMBLEM}"
 emblem_fn, default_cloth = emblemes.VILLAGES[EMBLEM]
 CLOTH_RGB = tuple(float(c) for c in A[A.index("--cloth") + 1].split(",")) if "--cloth" in A else default_cloth
 METAL_RGB = (0.62, 0.64, 0.68)
@@ -122,22 +128,32 @@ bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 bmesh.ops.solidify(bm, geom=bm.faces[:], thickness=-PLATE_T)
 plate = nb.mesh_obj("plate", bm, mat_metal)
 
-# --- Rivets : 4 petits dômes aux coins ---
+# --- 6 Rivets : 3 de chaque côté (haut, milieu, bas), dômes bien définis et propres ---
 rivets = []
+margin_x = 0.0080  # 8.0 mm du bord latéral de la plaque
+margin_z = 0.0075  # 7.5 mm du bord haut/bas (le milieu est à zc)
+rivet_r = 0.0028   # rayon 2.8 mm (diamètre 5.6 mm)
+
 for sx in (-1, 1):
-    for sz in (-1, 1):
-        a = sx * (half_ang - 0.009 / R_plate)
-        d = nb.ring_dir(a)
-        pos = Vector((C.x, C.y, zc + sz * (PLATE_H / 2 - 0.0075))) + d * (plate_r(a) + PLATE_T)
+    a = sx * (half_ang - margin_x / R_plate)
+    d = nb.ring_dir(a)
+    u_rivet = 0.5 + sx * (half_ang - margin_x / R_plate) / (2 * half_ang)
+    for sz in (-1, 0, 1):
+        z_offset = sz * (PLATE_H / 2 - margin_z)
+        v_rivet = 0.5 + z_offset / PLATE_H
+        pos = Vector((C.x, C.y, zc + z_offset)) + d * (plate_r(a) + PLATE_T)
         bm = bmesh.new()
         uv = bm.loops.layers.uv.new("UVMap")
-        bmesh.ops.create_uvsphere(bm, u_segments=8, v_segments=4, radius=0.0032,
-                                  matrix=Matrix.Translation(pos) @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
-                                  @ Matrix.Diagonal((1, 1, 0.55, 1)))
+        mat_trans = (Matrix.Translation(pos)
+                     @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
+                     @ Matrix.Diagonal((1, 1, 0.55, 1)))
+        bmesh.ops.create_uvsphere(bm, u_segments=10, v_segments=5, radius=rivet_r, matrix=mat_trans)
+        mat_inv = mat_trans.inverted()
         for f in bm.faces:
             for l in f.loops:
-                l[uv].uv = (0.02, 0.02)  # coin de texture = métal nu (hors emblème)
-        rivets.append(nb.mesh_obj("rivet", bm, mat_metal))
+                local_p = mat_inv @ l.vert.co
+                l[uv].uv = (u_rivet + local_p.x / PLATE_W, v_rivet + local_p.y / PLATE_H)
+        rivets.append(nb.mesh_obj(f"rivet_{sx}_{sz}", bm, mat_metal))
 
 # --- Nœud + deux pans à l'arrière ---
 back = nb.ring_dir(math.pi)
@@ -176,27 +192,29 @@ for side in (-1, 1):
     wdirs, widths = [], []
     for k, p in enumerate(pts):
         t = (pts[min(k + 1, TS)] - pts[max(k - 1, 0)]).normalized()
-        base = (X - t * X.dot(t)).normalized()
+        base_dir = (X - t * X.dot(t)).normalized()
         tw = side * math.radians(55) * (k / TS) ** 1.3
-        wdirs.append(Matrix.Rotation(tw, 3, t) @ base)
+        wdirs.append(Matrix.Rotation(tw, 3, t) @ base_dir)
         widths.append(BAND_H * (0.80 - 0.12 * k / TS))
     tails.append(nb.ribbon("tail", pts, wdirs, widths, CLOTH_T, mat_cloth))
 
 hb = nb.join([band, plate] + knot_parts + rivets + tails, NAME)
 
-# --- Emblème : texture couleur (rainure foncée) + normal map (rainure creusée), UV = face avant de la plaque ---
-if emblem_fn:
-    col, nrm = emblemes.bake(emblem_fn(), PLATE_W * 1000, PLATE_H * 1000, METAL_RGB)
-    img_c = nb.save_png(f"{OUT_DIR}/{NAME}_color.png", col)
-    img_n = nb.save_png(f"{OUT_DIR}/{NAME}_normal.png", nrm, non_color=True)
-    nt = mat_metal.node_tree
-    bsdf = nt.nodes["Principled BSDF"]
-    tc, tn = nt.nodes.new("ShaderNodeTexImage"), nt.nodes.new("ShaderNodeTexImage")
-    nm = nt.nodes.new("ShaderNodeNormalMap")
-    tc.image, tn.image = img_c, img_n
-    nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
-    nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
-    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+# --- Plaque métal : fond en acier brossé + emblème à l'échelle fit() ---
+base = emblemes.brushed_steel(PLATE_W * 1000, PLATE_H * 1000, METAL_RGB)
+strokes = emblemes.fit(emblem_fn(), PLATE_H * 1000, fill=0.72) if emblem_fn else None
+col, nrm = emblemes.bake(strokes, PLATE_W * 1000, PLATE_H * 1000, METAL_RGB, base=base)
+
+img_c = nb.save_png(f"{OUT_DIR}/{NAME}_color.png", col)
+img_n = nb.save_png(f"{OUT_DIR}/{NAME}_normal.png", nrm, non_color=True)
+nt = mat_metal.node_tree
+bsdf = nt.nodes["Principled BSDF"]
+tc, tn = nt.nodes.new("ShaderNodeTexImage"), nt.nodes.new("ShaderNodeTexImage")
+nm = nt.nodes.new("ShaderNodeNormalMap")
+tc.image, tn.image = img_c, img_n
+nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
+nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
 
 # --- Skin : 100 % sur l'os "head" de la référence ---
 vg = hb.vertex_groups.new(name="head")

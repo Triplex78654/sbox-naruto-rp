@@ -1,0 +1,27 @@
+{
+  "Id": "c_kumo_ruines_relique",
+  "Title": "Sécurisation d'un rouleau secret dans les ruines",
+  "Description": "Un parchemin scellé d'une valeur inestimable repose dans le temple en ruines des terres neutres. Frayez-vous un chemin jusqu'au sanctuaire et sécurisez la relique avant qu'un village rival ne s'en empare.",
+  "Rank": "C",
+  "Village": "Kumo",
+  "RewardRyo": 950,
+  "MinGrade": "Genin",
+  "Objectives": [
+    {
+      "Type": "PatrolPoint",
+      "Description": "Atteindre le temple antique au coeur des ruines neutres",
+      "TargetCount": 1,
+      "TargetLocation": "2000,-2000,20",
+      "TargetTag": "ruines_temple",
+      "TargetRadius": 350
+    },
+    {
+      "Type": "InteractProp",
+      "Description": "Récupérer le rouleau scellé sur l'autel de pierre",
+      "TargetCount": 1,
+      "TargetLocation": "0,0,40",
+      "TargetTag": "rouleau_secret",
+      "TargetRadius": 200
+    }
+  ]
+}

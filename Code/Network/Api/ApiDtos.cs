@@ -44,6 +44,10 @@ public sealed class CharacterDto
 	[JsonPropertyName( "grade" )] public string Grade { get; set; }
 	[JsonPropertyName( "is_medic" )] public bool IsMedic { get; set; }
 	[JsonPropertyName( "ryo" )] public long Ryo { get; set; }
+	[JsonPropertyName( "play_time" )] public int PlayTime { get; set; }
+	[JsonPropertyName( "level" )] public int Level { get; set; } = 1;
+	/// <summary>Stock d'outils ninja (format de NinjaInventory.Serialize), null = stock de départ.</summary>
+	[JsonPropertyName( "inventory" )] public string Inventory { get; set; }
 	[JsonPropertyName( "jutsus" )] public List<string> Jutsus { get; set; } = new();
 
 	public string FullName => $"{FirstName} {LastName}";

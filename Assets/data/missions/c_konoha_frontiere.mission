@@ -1,0 +1,27 @@
+{
+  "Id": "c_konoha_frontiere",
+  "Title": "Reconnaissance de l'avant-poste de la frontière du Feu",
+  "Description": "Des ninjas inconnus ont été aperçus aux abords de la frontière sud-est du Pays du Feu. Rendez-vous au poste avancé, confirmez la présence ennemie et neutralisez les éclaireurs suspects.",
+  "Rank": "C",
+  "Village": "Konoha",
+  "RewardRyo": 800,
+  "MinGrade": "Genin",
+  "Objectives": [
+    {
+      "Type": "PatrolPoint",
+      "Description": "Rejoindre l'avant-poste frontalier du Feu",
+      "TargetCount": 1,
+      "TargetLocation": "-22000,22000,20",
+      "TargetTag": "poste_frontiere_feu",
+      "TargetRadius": 300
+    },
+    {
+      "Type": "DefeatEnemies",
+      "Description": "Neutraliser 2 éclaireurs ennemis infiltrés",
+      "TargetCount": 2,
+      "TargetLocation": "-21000,21500,20",
+      "TargetTag": "bandit_konoha",
+      "TargetRadius": 400
+    }
+  ]
+}

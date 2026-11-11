@@ -1,0 +1,27 @@
+{
+  "Id": "d_konoha_livraison",
+  "Title": "Livraison de remèdes à l'hôpital de Konoha",
+  "Description": "L'hôpital central de Konoha manque de fournitures médicales critiques. Récupérez la boîte de cataplasmes et baumes régénérants chez l'herboriste et livrez-la sans tarder au médecin de garde.",
+  "Rank": "D",
+  "Village": "Konoha",
+  "RewardRyo": 350,
+  "MinGrade": "Élève",
+  "Objectives": [
+    {
+      "Type": "DeliverItem",
+      "Description": "Prendre en charge la caisse de remèdes chez l'herboriste",
+      "TargetCount": 1,
+      "TargetLocation": "-48500,48000,20",
+      "TargetTag": "remedes_box",
+      "TargetRadius": 200
+    },
+    {
+      "Type": "PatrolPoint",
+      "Description": "Livrer les remèdes à l'hôpital de Konoha",
+      "TargetCount": 1,
+      "TargetLocation": "-47000,46500,20",
+      "TargetTag": "hopital_konoha",
+      "TargetRadius": 250
+    }
+  ]
+}

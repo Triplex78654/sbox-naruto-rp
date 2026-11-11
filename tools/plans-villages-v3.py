@@ -42,16 +42,22 @@ COMMON = [
     ("D3", "Domaines", "Domaine caché (nord)", "domain", (28, 22), "milieu", 272, None, "Contre la limite du niveau, accès par une seule ruelle.", True),
     ("D4", "Domaines", "Domaine (sud-est)", "domain", (30, 24), "milieu", 295, None, "Grande propriété murée."),
     ("D5", "Domaines", "Domaine caché (sud-ouest)", "domain", (26, 20), "milieu", 262, None, "Peu visible depuis les rues.", True),
+    ("D6", "Domaines", "Domaine noble (nord-est)", "domain", (32, 26), "milieu", 236, 280, "Grande propriété murée pour un clan noble du village."),
+    ("D7", "Domaines", "Domaine traditionnel (nord-ouest)", "domain", (30, 24), "milieu", 288, 280, "Demeure traditionnelle de clan avec dojo et cour intérieure."),
+    ("D8", "Domaines", "Domaine d'entraînement (centre-milieu)", "domain", (28, 24), "milieu", 270, 420, "Domaine de clan axé sur l'entraînement avec cour intérieure."),
     ("M1", "Métiers", "Boutique officielle du village", "built", (20, 16), "bas", 258, 616, "La boutique du village (prix fixés par le staff)."),
     ("M2", "Métiers", "Forge et armurerie", "built", (24, 18), "bas", 295, None, "Fabrication et réparation d'armes (V2)."),
     ("M3", "Métiers", "Atelier de parchemins", "built", (20, 16), "bas", 240, None, "Fabrication de parchemins et sceaux (V2)."),
     ("M4", "Métiers", "Herboristerie", "built", (18, 14), "bas", 234, None, "Ingrédients médicaux, plantes récoltées dans le pays."),
     ("M5", "Métiers", "Comptoir des ressources", "built", (24, 18), "bas", 302, None, "Achat et vente des ressources récoltées (minerai, bois, plantes)."),
     ("M6", "Métiers", "Banque du village", "built", (20, 18), "bas", 280, None, "Coffres des habitants. Lieu sensible pour le RP."),
+    ("M10", "Métiers", "Serres botaniques", "built", (26, 18), "milieu", 280, 340, "Culture de plantes médicinales et de spécimens rares pour les soins."),
     ("V1", "Vie du village", "Maison de thé", "built", (16, 14), "bas", 250, None, "Lieu de rencontre et de discussion RP."),
     ("V2", "Vie du village", "Auberge des voyageurs", "built", (26, 18), "bas", 288, 658, "Pour les étrangers et les voyageurs de passage."),
     ("V4", "Vie du village", "Volière des messagers", "built", (16, 16), "bas", 240, 672, "Oiseaux messagers vers les autres villages."),
     ("V5", "Vie du village", "Mémorial et cimetière", "zone", (34, 24), "bas", 306, 672, "Noms des ninjas tombés. Cérémonies RP."),
+    ("V9", "Vie du village", "Maison de jeux & Casino", "built", (24, 18), "bas", 276, 590, "Maison de jeux et paris d'inspiration Tanzaku."),
+    ("U6", "Unités", "Tour de guet & Poste d'observation", "built", (14, 14), "bas", 248, 684, "Poste de guet et vigie sur les remparts."),
 ]
 
 # Éléments propres à chaque village. `fixed` : position donnée ; `extra` : placés automatiquement (même format que COMMON).
@@ -68,6 +74,7 @@ VILLAGES = {
     ], extra=[
         ("V3", "Vie du village", "Échoppe de ramen", "tower", (12, 10), "bas", 255, 630, "Le restaurant préféré des ninjas."),
         ("V7", "Vie du village", "Parc", "park", 30, "bas", 232, None, "Arbres et bancs."),
+        ("V10", "Vie du village", "Bains chauds traditionnels (Onsen)", "water", 22, "bas", 284, 590, "Bains chauds traditionnels en plein air, détente RP."),
         ("F3", "Formation", "Arène des examens chûnin", "rock2", 34, "bas", 270, 532, "Examens de grade et duels encadrés."),
     ]),
     "suna": dict(status="propose", house_style="dome", houses=(18, 18, 16), fixed=[

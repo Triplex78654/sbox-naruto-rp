@@ -4,9 +4,10 @@ namespace NarutoRp.Combat;
 
 /// <summary>
 /// Effets visuels et sonores des jutsus, créés localement chez chaque client (objets non réseau).
-/// Construits en code avec des assets du moteur. Les jutsus Katon utilisent le kit d'effets élémentaires
-/// (JutsuFxKit : flammes en particules, traînée, braises, explosion, onde, brûlure, tremblement) ;
-/// les autres gardent l'effet simple (sphère + lumière) en attendant leur variante.
+/// Construits en code avec des assets du moteur. Les 5 natures élémentaires (Katon, Suiton, Raiton,
+/// Fûton, Doton) utilisent le kit d'effets élémentaires (JutsuFxKit) : particules stylisées, traînées,
+/// explosions, gerbes d'eau, arcs électriques, tourbillons d'air, rochers et poussière, ondes au sol,
+/// secousses de caméra et lumières dynamiques.
 /// Purement décoratif : aucune logique de jeu ici.
 /// </summary>
 public static class JutsuFx
@@ -27,20 +28,26 @@ public static class JutsuFx
 		burst.MaxRadius = MathF.Max( 16f, radius );
 	}
 
-	/// <summary>Petite lueur sur le lanceur pendant les signes.</summary>
-	public static void Cast( JutsuDefinition jutsu, Vector3 position )
+	/// <summary>Lueur et particules d'incantation sur le lanceur pendant les signes.</summary>
+	public static void Cast( JutsuDefinition jutsu, Vector3 position, GameObject caster = null )
 	{
 		if ( Disabled || jutsu is null ) return;
 		if ( jutsu.CastSound is not null ) Sound.Play( jutsu.CastSound, position );
-		if ( IsElemental( jutsu ) ) { ElementalCast( jutsu, position ); return; }
+		if ( IsElemental( jutsu ) ) { ElementalCast( jutsu, position, caster ); return; }
 
 		var go = Create( "Jutsu FX cast", position, jutsu.FxColor );
+		if ( caster.IsValid() )
+		{
+			var follow = go.Components.Create<JutsuFxFollow>();
+			follow.Target = caster;
+			follow.Offset = position - caster.WorldPosition;
+		}
 		var burst = go.Components.Create<JutsuFxBurst>();
 		burst.MaxRadius = 14f;
 		burst.Duration = MathF.Max( 0.2f, jutsu.CastSeconds );
 	}
 
-	/// <summary>Boule qui avance en ligne droite (le vrai projectile est simulé par l'hôte).</summary>
+	/// <summary>Boule ou projectile qui avance en ligne droite (le vrai projectile est simulé par l'hôte).</summary>
 	public static void Projectile( JutsuDefinition jutsu, Vector3 start, Vector3 direction, GameObject caster )
 	{
 		if ( Disabled || jutsu is null ) return;
@@ -49,18 +56,53 @@ public static class JutsuFx
 		if ( IsElemental( jutsu ) )
 		{
 			go = JutsuFxKit.Root( "Jutsu FX projectile", start, 0 );
-			var pal = FxPalette.From( jutsu.FxColor );
+			var pal = FxPalette.For( jutsu.Nature, jutsu.FxColor );
 			var r = MathF.Max( 8f, jutsu.HitRadius * jutsu.FxSize );
-			JutsuFxKit.FlameBall( go, pal, r );
-			JutsuFxKit.Trail( go, pal, r * 0.7f );
-			JutsuFxKit.Embers( go, pal, r * 0.5f, 0, 30, 1, r * 2f, max: 30 ).Components.Get<ParticleSphereEmitter>().Loop = true;
-			JutsuFxKit.Light( go, pal.Body * 2f, r * 9f, 0 );
+
+			switch ( jutsu.Nature )
+			{
+				case ChakraNature.Katon:
+					JutsuFxKit.FlameBall( go, pal, r );
+					JutsuFxKit.Trail( go, pal, r * 0.7f );
+					JutsuFxKit.Embers( go, pal, r * 0.5f, 0, 30, 1, r * 2f, max: 30 ).Components.Get<ParticleSphereEmitter>().Loop = true;
+					JutsuFxKit.Light( go, pal.Body * 2f, r * 9f, 0 );
+					break;
+
+				case ChakraNature.Suiton:
+					JutsuFxKit.WaterOrb( go, pal, r );
+					JutsuFxKit.Trail( go, pal, r * 0.75f );
+					JutsuFxKit.WaterDroplets( go, pal, r * 0.5f, 0, 25, 1, r * 1.5f, max: 25 ).Components.Get<ParticleSphereEmitter>().Loop = true;
+					JutsuFxKit.Light( go, pal.Body * 1.8f, r * 8f, 0, flicker: 0.1f );
+					break;
+
+				case ChakraNature.Raiton:
+					JutsuFxKit.LightningOrb( go, pal, r );
+					JutsuFxKit.Trail( go, pal, r * 0.45f );
+					JutsuFxKit.LightningSparks( go, pal, r * 0.4f, 0, 30, 1, r * 2.5f, max: 30 ).Components.Get<ParticleSphereEmitter>().Loop = true;
+					JutsuFxKit.Light( go, pal.Body * 2.5f, r * 11f, 0, flicker: 0.45f );
+					break;
+
+				case ChakraNature.Futon:
+					JutsuFxKit.WindBlade( go, pal, r );
+					JutsuFxKit.Trail( go, pal, r * 0.6f );
+					JutsuFxKit.Leaves( go, pal, r * 0.4f, 0, 15, 1, r * 1.2f, max: 20 ).Components.Get<ParticleSphereEmitter>().Loop = true;
+					JutsuFxKit.Light( go, pal.Body * 1.4f, r * 7f, 0, flicker: 0.08f );
+					break;
+
+				case ChakraNature.Doton:
+					JutsuFxKit.RockProjectile( go, pal, r );
+					JutsuFxKit.Trail( go, pal, r * 0.8f );
+					JutsuFxKit.RockDebris( go, pal, r * 0.5f, 0, 20, 1, r * 1.8f, max: 25 ).Components.Get<ParticleSphereEmitter>().Loop = true;
+					JutsuFxKit.Light( go, pal.Body * 1.5f, r * 6f, 0, flicker: 0.12f );
+					break;
+			}
 		}
 		else
 		{
 			go = Create( "Jutsu FX projectile", start, jutsu.FxColor );
 			go.WorldScale = MathF.Max( 0.1f, jutsu.HitRadius / 32f * jutsu.FxSize );
 		}
+
 		var p = go.Components.Create<JutsuFxProjectile>();
 		p.Velocity = direction.Normal * MathF.Max( 1f, jutsu.ProjectileSpeed );
 		p.Range = jutsu.Range;
@@ -68,52 +110,62 @@ public static class JutsuFx
 		p.HitRadius = jutsu.HitRadius;
 	}
 
-	/// <summary>Jutsus qui ont leur effet élémentaire (pour l'instant : le feu).</summary>
-	static bool IsElemental( JutsuDefinition jutsu ) => jutsu.Nature == ChakraNature.Katon;
+	/// <summary>Jutsus qui ont leur effet élémentaire complet (les 5 natures).</summary>
+	static bool IsElemental( JutsuDefinition jutsu ) =>
+		jutsu.Nature is ChakraNature.Katon or ChakraNature.Suiton or ChakraNature.Raiton or ChakraNature.Futon or ChakraNature.Doton;
 
-	/// <summary>Signes : lueur, braises et flammes qui montent autour du lanceur, onde au sol, lumière qui s'éteint.</summary>
-	static void ElementalCast( JutsuDefinition jutsu, Vector3 position )
+	/// <summary>Signes : particules élémentaires montant le long du corps, onde au sol, lueur et lumière.</summary>
+	static void ElementalCast( JutsuDefinition jutsu, Vector3 position, GameObject caster )
 	{
 		var seconds = MathF.Max( 0.3f, jutsu.CastSeconds );
-		var pal = FxPalette.From( jutsu.FxColor );
+		var pal = FxPalette.For( jutsu.Nature, jutsu.FxColor );
 		var go = JutsuFxKit.Root( "Jutsu FX cast", position, seconds + 1.2f );
 
-		var glow = JutsuFxKit.Layer( go, "textures/particles/particle_glow_07.vtex", true, 10, 2, 1, 12, seconds );
-		glow.Lifetime = new ParticleFloat( 0.15f, 0.3f );
-		glow.Scale = JutsuFxKit.OverLife( 14f, 26f );
-		glow.Gradient = pal.Core;
-		glow.Alpha = JutsuFxKit.OverLife( 1f, 0f );
-		glow.Brightness = 3f;
+		if ( caster.IsValid() )
+		{
+			var follow = go.Components.Create<JutsuFxFollow>();
+			follow.Target = caster;
+			follow.Offset = position - caster.WorldPosition;
+		}
 
-		var embers = JutsuFxKit.Embers( go, pal, 26f, 4, 45, seconds, 40f, max: 40 );
-		embers.WorldPosition = position + Vector3.Down * 40f; // au niveau des jambes, elles montent le long du corps
-		embers.Components.Get<ParticleSphereEmitter>().DistanceBias = new Vector3( 1, 1, 0.2f );
+		switch ( jutsu.Nature )
+		{
+			case ChakraNature.Katon:
+				JutsuFxKit.KatonCast( go, pal, seconds, position );
+				break;
 
-		// Aura de flammes qui montent le long du corps + onde au sol à la fin des signes.
-		var aura = JutsuFxKit.Layer( go, "textures/particles/particle_noisesphere_color.vtex", true, 30, 22, 0, 40, seconds );
-		aura.WorldPosition = position + Vector3.Down * 30f;
-		aura.Components.Get<ParticleSphereEmitter>().DistanceBias = new Vector3( 1, 1, 0.3f );
-		aura.Lifetime = new ParticleFloat( 0.3f, 0.5f );
-		aura.Scale = JutsuFxKit.OverLife( 16f, 4f );
-		aura.Gradient = pal.Body;
-		aura.Alpha = JutsuFxKit.OverLife( 0.8f, 0f );
-		aura.Force = true;
-		aura.ForceDirection = Vector3.Up * 300f;
+			case ChakraNature.Suiton:
+				JutsuFxKit.SuitonCast( go, pal, seconds, position );
+				break;
 
-		var ground = Game.ActiveScene.Trace.Ray( position, position + Vector3.Down * 120f ).WithoutTags( Core.NetConstants.TagPlayer ).Run();
-		if ( ground.Hit ) JutsuFxKit.GroundRing( ground.HitPosition, ground.Normal, pal, 40f, seconds );
+			case ChakraNature.Raiton:
+				JutsuFxKit.RaitonCast( go, pal, seconds, position );
+				break;
 
-		JutsuFxKit.Light( go, pal.Body, 160f, seconds + 0.3f, 0.25f );
+			case ChakraNature.Futon:
+				JutsuFxKit.FutonCast( go, pal, seconds, position );
+				break;
+
+			case ChakraNature.Doton:
+				JutsuFxKit.DotonCast( go, pal, seconds, position );
+				break;
+		}
 	}
 
-	/// <summary>Impact : explosion, lumière forte, onde et brûlure au sol, tremblement pour les joueurs proches.</summary>
+	/// <summary>Impact : explosion/gerbe/foudre/vent/roche, lumière, onde et décalque au sol, tremblement de caméra.</summary>
 	static void ElementalBurst( JutsuDefinition jutsu, Vector3 position, float radius )
 	{
-		var pal = FxPalette.From( jutsu.FxColor );
+		var pal = FxPalette.For( jutsu.Nature, jutsu.FxColor );
 		radius = MathF.Max( 16f, radius );
 
+		// Jutsu de zone (Area) : onde et effet circulaire étendu sur le terrain
+		if ( jutsu.Delivery == JutsuDeliveryType.Area )
+		{
+			ElementalArea( jutsu, pal, position, radius );
+			return;
+		}
+
 		// Surface touchée la plus proche (le point d'impact est collé au mur ou au sol) : sa normale sort l'explosion du mur.
-		// Rayons tirés de l'extérieur vers le point (sol + 8 directions) : celui qui touche le plus près du point donne la face.
 		SceneTraceResult surface = default;
 		var best = float.MaxValue;
 		for ( int i = -1; i < 8; i++ )
@@ -127,17 +179,107 @@ public static class JutsuFx
 		var center = surface.Hit ? surface.HitPosition + surface.Normal * radius * 0.5f : position;
 
 		var go = JutsuFxKit.Root( "Jutsu FX impact", center, 2.6f );
-		JutsuFxKit.Explosion( go, pal, radius );
-		JutsuFxKit.Light( go, pal.Body * 3f, radius * 10f, 1.4f, 0.2f );
-		JutsuFxKit.Shake( center, MathF.Min( 8f, radius * 0.12f ), radius * 14f );
 
-		// Onde de choc sur le sol sous l'explosion (les joueurs ne comptent pas).
+		switch ( jutsu.Nature )
+		{
+			case ChakraNature.Katon:
+				JutsuFxKit.Explosion( go, pal, radius );
+				JutsuFxKit.Light( go, pal.Body * 3f, radius * 10f, 1.4f, 0.2f );
+				JutsuFxKit.Shake( center, MathF.Min( 8f, radius * 0.12f ), radius * 14f, 0.45f, 25f );
+				break;
+
+			case ChakraNature.Suiton:
+				JutsuFxKit.WaterSplash( go, pal, radius );
+				JutsuFxKit.Light( go, pal.Body * 2.2f, radius * 8f, 1.2f, 0.1f );
+				JutsuFxKit.Shake( center, MathF.Min( 5f, radius * 0.08f ), radius * 10f, 0.4f, 18f );
+				break;
+
+			case ChakraNature.Raiton:
+				JutsuFxKit.LightningBurst( go, pal, radius );
+				JutsuFxKit.Light( go, pal.Core * 3.5f, radius * 12f, 0.9f, 0.45f );
+				JutsuFxKit.Shake( center, MathF.Min( 9f, radius * 0.14f ), radius * 15f, 0.25f, 38f );
+				break;
+
+			case ChakraNature.Futon:
+				JutsuFxKit.WindBurst( go, pal, radius );
+				JutsuFxKit.Light( go, pal.Body * 1.5f, radius * 7f, 1.0f, 0.08f );
+				JutsuFxKit.Shake( center, MathF.Min( 7f, radius * 0.10f ), radius * 12f, 0.35f, 22f );
+				break;
+
+			case ChakraNature.Doton:
+				JutsuFxKit.EarthQuake( go, pal, radius );
+				JutsuFxKit.Light( go, pal.Body * 1.8f, radius * 7f, 1.3f, 0.12f );
+				JutsuFxKit.Shake( center, MathF.Min( 10f, radius * 0.16f ), radius * 18f, 0.65f, 15f );
+				break;
+		}
+
+		// Onde de choc sur le sol sous l'explosion
 		var ground = Game.ActiveScene.Trace.Ray( center, center + Vector3.Down * radius * 3f ).WithoutTags( Core.NetConstants.TagPlayer ).Run();
-		if ( ground.Hit && !ground.StartedSolid ) JutsuFxKit.GroundRing( ground.HitPosition, ground.Normal, pal, radius * 1.6f );
+		if ( ground.Hit && !ground.StartedSolid )
+			JutsuFxKit.GroundRing( ground.HitPosition, ground.Normal, pal, radius * 1.6f );
 
-		// Brûlure sur la surface touchée. Les décalques ne s'affichent pas sur le Terrain (vérifié) : pas de brûlure au sol nu.
+		// Décalque sur la surface touchée (ne s'affiche pas sur le Terrain, uniquement props/murs)
 		if ( surface.Hit && surface.GameObject?.Components.Get<Terrain>() is null )
-			JutsuFxKit.Scorch( surface.HitPosition, surface.Normal, radius * 2.2f );
+		{
+			switch ( jutsu.Nature )
+			{
+				case ChakraNature.Katon:
+				case ChakraNature.Raiton:
+					JutsuFxKit.Scorch( surface.HitPosition, surface.Normal, radius * 2.2f );
+					break;
+				case ChakraNature.Doton:
+					JutsuFxKit.ImpactDecal( surface.HitPosition, surface.Normal, radius * 2.0f );
+					break;
+			}
+		}
+	}
+
+	/// <summary>Effet de zone au sol (Vague Suiton, Champ électrique Raiton, Rafale Fûton, Séisme Doton).</summary>
+	static void ElementalArea( JutsuDefinition jutsu, FxPalette pal, Vector3 position, float radius )
+	{
+		var ground = Game.ActiveScene.Trace.Ray( position, position + Vector3.Down * 150f ).WithoutTags( Core.NetConstants.TagPlayer ).Run();
+		var center = ground.Hit ? ground.HitPosition + Vector3.Up * 5f : position;
+		var normal = ground.Hit ? ground.Normal : Vector3.Up;
+
+		var go = JutsuFxKit.Root( "Jutsu FX area", center, 3.2f );
+
+		switch ( jutsu.Nature )
+		{
+			case ChakraNature.Suiton: // ex. Suiton : Vague déferlante
+				JutsuFxKit.WaterGeyser( go, pal, radius, 1.8f );
+				JutsuFxKit.GroundRing( center, normal, pal, radius * 1.2f, 1.2f );
+				JutsuFxKit.Light( go, pal.Body * 2.5f, radius * 2f, 1.8f, 0.1f );
+				JutsuFxKit.Shake( center, 6f, radius * 2.5f, 0.6f, 20f );
+				break;
+
+			case ChakraNature.Raiton: // ex. Raiton : Champ électrique
+				JutsuFxKit.LightningField( go, pal, radius, 1.6f );
+				JutsuFxKit.GroundRing( center, normal, pal, radius * 1.1f, 0.8f );
+				JutsuFxKit.Light( go, pal.Core * 3.5f, radius * 2.2f, 1.5f, 0.45f );
+				JutsuFxKit.Shake( center, 8f, radius * 2.5f, 0.5f, 35f );
+				break;
+
+			case ChakraNature.Futon: // ex. Fûton : Rafale
+				JutsuFxKit.WindBurst( go, pal, radius * 0.7f );
+				JutsuFxKit.GroundRing( center, normal, pal, radius * 1.3f, 1.0f );
+				JutsuFxKit.Light( go, pal.Body * 1.8f, radius * 1.8f, 1.4f, 0.08f );
+				JutsuFxKit.Shake( center, 7f, radius * 2.2f, 0.55f, 24f );
+				break;
+
+			case ChakraNature.Doton: // ex. Doton : Séisme
+				JutsuFxKit.EarthRupture( go, pal, radius, 2.0f );
+				JutsuFxKit.GroundRing( center, normal, pal, radius * 1.4f, 1.4f );
+				JutsuFxKit.Light( go, pal.Body * 2.0f, radius * 2f, 1.8f, 0.12f );
+				JutsuFxKit.Shake( center, 11f, radius * 3f, 0.85f, 14f );
+				break;
+
+			default:
+				JutsuFxKit.Explosion( go, pal, radius * 0.6f );
+				JutsuFxKit.GroundRing( center, normal, pal, radius * 1.2f, 1.2f );
+				JutsuFxKit.Light( go, pal.Body * 3f, radius * 2f, 1.6f, 0.2f );
+				JutsuFxKit.Shake( center, 8f, radius * 2.2f, 0.5f, 25f );
+				break;
+		}
 	}
 
 	static GameObject Create( string name, Vector3 position, Color color )
@@ -203,9 +345,16 @@ public sealed class JutsuFxProjectile : Component
 
 		if ( tr.Hit || _travelled >= Range )
 		{
-			// Effet en particules : on laisse finir les flammes déjà lancées au lieu de tout couper.
-			if ( Components.Get<JutsuFxTimer>() is null && GetComponentInChildren<ParticleEffect>() is not null ) { JutsuFxKit.Release( GameObject ); Enabled = false; }
-			else GameObject.Destroy();
+			// Effet en particules : on laisse finir les particules déjà lancées au lieu de tout couper brutalement.
+			if ( Components.Get<JutsuFxTimer>() is null && GetComponentInChildren<ParticleEffect>() is not null )
+			{
+				JutsuFxKit.Release( GameObject );
+				Enabled = false;
+			}
+			else
+			{
+				GameObject.Destroy();
+			}
 			return;
 		}
 		WorldPosition = next;

@@ -376,8 +376,8 @@ def emprise_entree(r, ax, p, nx, ny, sx_, sy_, Ls):
     a = (r["cx"] + ox, r["cy"] + oy)
     b = (sx_ + nx * (Ls + PUITS_FIN + 180), sy_ + ny * (Ls + PUITS_FIN + 180))
     hw = PUITS_LARG / 2 + T
-    return (min(a[0], b[0]) - (hw if ax == "y" else 0), min(a[1], b[1]) - (hw if ax == "x" else 0),
-            max(a[0], b[0]) + (hw if ax == "y" else 0), max(a[1], b[1]) + (hw if ax == "x" else 0))
+    return (min(a[0], b[0]) - hw, min(a[1], b[1]) - hw,
+            max(a[0], b[0]) + hw, max(a[1], b[1]) + hw)
 
 def empiete(rooms, code, q, entrees):
     """L'emprise q d'une entrée touche-t-elle une AUTRE salle (on n'entre que par sa porte) ou une entrée déjà posée (deux puits
@@ -872,6 +872,152 @@ for i, (x, y) in enumerate(tirage(rng, 12, 220, bande=BANDE)):
     else: TS("konoha", NEUTRE, "Bois coupé", x, y, 400, 80, 80, COMMON["wood"], rng.randrange(180))
 
 
+# ── Camps de bandits belligérants (alignés sur BanditSpawner.cs) :
+# 1. Camp des Forêts (Konoha) : (-27000, 30000) dans la clairière boisée du Pays du Feu.
+# 2. Repaire du Canyon (Suna) : (40000, 12000) sous les falaises rouges du canyon de la Mesa de Suna.
+# 3. Ruines Neutres : (0, -7500) au sud du Temple antique sur le plateau commun.
+def decor_camp_bandits(t, grp, nom_camp, cx, cy, yaw_deg, couleurs_tentes):
+    """Génère le décor d'un camp de bandits complet :
+    - 1 feu de camp central (foyer de cendres, braises incandescentes, bûches croisées, cercle de pierres)
+    - 3 tentes en toile/cuir inclinées (toile gauche/droite, faîte, poteaux, tapis de sol)
+    - 1 tour de guet en bois rustique (plateforme sur pilotis à 4 m / 160 u de haut, rambardes, toit, échelle)
+    - Palissade circulaire de rondins de bois pointus délimitant le camp avec brèche d'entrée et pieux défensifs
+    - Caisses de ravitaillement empilées et barils de provisions
+    """
+    hz_camp = height_at(cx, cy)
+
+    # 1. Feu de camp central
+    TS(t, grp, f"{nom_camp} (foyer cendres)", cx, cy, 140, 140, 25, (0.22, 0.20, 0.18))
+    TB(t, grp, f"{nom_camp} (braises)", cx, cy, 75, 75, 20, (0.95, 0.28, 0.05), hz_camp + 18, collide=False)
+    TB(t, grp, f"{nom_camp} (braises coeur)", cx, cy, 40, 40, 26, (1.0, 0.65, 0.12), hz_camp + 20, collide=False)
+    TB(t, grp, f"{nom_camp} (bûche 1)", cx, cy, 100, 20, 16, COMMON["wood"], hz_camp + 26, yaw_deg + 35)
+    TB(t, grp, f"{nom_camp} (bûche 2)", cx, cy, 100, 20, 16, COMMON["wood"], hz_camp + 28, yaw_deg + 125)
+    for k in range(8):
+        a_st = math.radians(k * 45 + 15)
+        px, py = cx + math.cos(a_st) * 80, cy + math.sin(a_st) * 80
+        TS(t, grp, f"{nom_camp} (pierre foyer {k + 1})", px, py, 30, 30, 24, (0.50, 0.48, 0.46), k * 45)
+
+    # 2. Trois tentes en toile/cuir
+    configs_tentes = [
+        (yaw_deg + 65, 360, 210, 160, 130, couleurs_tentes[0]),
+        (yaw_deg + 155, 380, 230, 170, 135, couleurs_tentes[1]),
+        (yaw_deg + 245, 350, 200, 150, 125, couleurs_tentes[2]),
+    ]
+    for ti, (a_deg, dist_c, long_t, larg_t, haut_t, col_toile) in enumerate(configs_tentes, 1):
+        rad_t = math.radians(a_deg)
+        tx, ty = cx + math.cos(rad_t) * dist_c, cy + math.sin(rad_t) * dist_c
+        hz_t = height_at(tx, ty)
+        yaw_t = a_deg - 90
+        rad_yt = math.radians(yaw_t)
+        ux, uy = math.cos(rad_yt), math.sin(rad_yt)
+        nx, ny = -uy, ux
+
+        TS(t, grp, f"{nom_camp} (tente {ti} sol)", tx, ty, long_t * 0.9, larg_t * 0.9, 25, (0.36, 0.30, 0.22), yaw_t, False)
+
+        for sg, nom_p in ((1, "av"), (-1, "ar")):
+            px_p = tx + ux * sg * (long_t / 2 - 10)
+            py_p = ty + uy * sg * (long_t / 2 - 10)
+            TS(t, grp, f"{nom_camp} (tente {ti} poteau {nom_p})", px_p, py_p, 16, 16, haut_t + 10, COMMON["wood"], yaw_t)
+
+        TB(t, grp, f"{nom_camp} (tente {ti} faîte)", tx, ty, long_t + 20, 16, 16, COMMON["wood"], hz_t + haut_t - 8, yaw_t)
+
+        p_sommet = (tx, ty, hz_t + haut_t)
+        p_gnd_gauche = (tx + nx * (larg_t / 2), ty + ny * (larg_t / 2), hz_t)
+        p_gnd_droite = (tx - nx * (larg_t / 2), ty - ny * (larg_t / 2), hz_t)
+        TG(t, grp, f"{nom_camp} (tente {ti} toile gauche)", p_gnd_gauche, p_sommet, long_t, 10, col_toile)
+        TG(t, grp, f"{nom_camp} (tente {ti} toile droite)", p_gnd_droite, p_sommet, long_t, 10, col_toile)
+
+    # 3. Tour de guet en bois rustique (plateforme à 4 m / 160 u de haut)
+    rad_tour = math.radians(yaw_deg - 50)
+    wx, wy = cx + math.cos(rad_tour) * 440, cy + math.sin(rad_tour) * 440
+    hz_w = height_at(wx, wy)
+    yaw_w = yaw_deg - 50
+    rad_yw = math.radians(yaw_w)
+    w_ux, w_uy = math.cos(rad_yw), math.sin(rad_yw)
+    w_nx, w_ny = -w_uy, w_ux
+    demi_w = 60
+
+    for sx_ in (-1, 1):
+        for sy_ in (-1, 1):
+            px_pil = wx + w_ux * sx_ * demi_w + w_nx * sy_ * demi_w
+            py_pil = wy + w_uy * sx_ * demi_w + w_ny * sy_ * demi_w
+            TS(t, grp, f"{nom_camp} (tour pilier)", px_pil, py_pil, 22, 22, 175, COMMON["wood"], yaw_w)
+
+    for sx_, sy_, yaw_s in ((1, 0, yaw_w + 90), (-1, 0, yaw_w + 90), (0, 1, yaw_w), (0, -1, yaw_w)):
+        bx_ = wx + w_ux * sx_ * demi_w + w_nx * sy_ * demi_w
+        by_ = wy + w_uy * sx_ * demi_w + w_ny * sy_ * demi_w
+        TB(t, grp, f"{nom_camp} (tour traverse)", bx_, by_, 120, 14, 14, COMMON["wood"], hz_w + 80, yaw_s)
+
+    TB(t, grp, f"{nom_camp} (tour plateforme)", wx, wy, 150, 150, 14, (0.44, 0.30, 0.16), hz_w + 160, yaw_w, collide=True)
+
+    for sx_, sy_, yaw_s in ((1, 0, yaw_w + 90), (0, 1, yaw_w), (0, -1, yaw_w)):
+        bx_ = wx + w_ux * sx_ * (demi_w + 5) + w_nx * sy_ * (demi_w + 5)
+        by_ = wy + w_uy * sx_ * (demi_w + 5) + w_ny * sy_ * (demi_w + 5)
+        TB(t, grp, f"{nom_camp} (tour garde-corps)", bx_, by_, 135, 10, 40, COMMON["wood"], hz_w + 165, yaw_s, collide=True)
+
+    for sx_ in (-1, 1):
+        for sy_ in (-1, 1):
+            px_r = wx + w_ux * sx_ * (demi_w - 5) + w_nx * sy_ * (demi_w - 5)
+            py_r = wy + w_uy * sx_ * (demi_w - 5) + w_ny * sy_ * (demi_w - 5)
+            TB(t, grp, f"{nom_camp} (tour poteau toit)", px_r, py_r, 14, 14, 90, COMMON["wood"], hz_w + 174, yaw_w)
+    TB(t, grp, f"{nom_camp} (tour toit)", wx, wy, 165, 165, 18, (0.48, 0.32, 0.18), hz_w + 260, yaw_w)
+
+    p_ech_bas = (wx - w_ux * (demi_w + 40), wy - w_uy * (demi_w + 40), hz_w)
+    p_ech_haut = (wx - w_ux * demi_w, wy - w_uy * demi_w, hz_w + 160)
+    for sg_ech in (-1, 1):
+        p_b = (p_ech_bas[0] + w_nx * sg_ech * 20, p_ech_bas[1] + w_ny * sg_ech * 20, p_ech_bas[2])
+        p_h = (p_ech_haut[0] + w_nx * sg_ech * 20, p_ech_haut[1] + w_ny * sg_ech * 20, p_ech_haut[2])
+        TG(t, grp, f"{nom_camp} (tour échelle montant)", p_b, p_h, 8, 12, COMMON["wood"])
+
+    # 4. Palissades de rondins pointus (rayon ~640 u avec brèche d'entrée de 70°)
+    r_pal = 640
+    nb_rondins = 16
+    arc_pal = 290.0
+    for pi in range(nb_rondins):
+        a_p = yaw_deg + 35 + (pi + 0.5) * (arc_pal / nb_rondins)
+        rad_p = math.radians(a_p)
+        px_pal, py_pal = cx + math.cos(rad_p) * r_pal, cy + math.sin(rad_p) * r_pal
+        h_rondin = 110 + (pi % 3) * 15
+        TS(t, grp, f"{nom_camp} (palissade rondin {pi + 1})", px_pal, py_pal, 26, 26, h_rondin, COMMON["wood"], a_p)
+        hz_pal = height_at(px_pal, py_pal)
+        TB(t, grp, f"{nom_camp} (palissade pointe {pi + 1})", px_pal, py_pal, 18, 18, 22, (0.38, 0.24, 0.14), hz_pal + h_rondin, a_p)
+
+    for sg_barr, nom_barr in ((-1, "gauche"), (1, "droite")):
+        a_b = math.radians(yaw_deg + sg_barr * 32)
+        bx_b, by_b = cx + math.cos(a_b) * r_pal, cy + math.sin(a_b) * r_pal
+        hz_b = height_at(bx_b, by_b)
+        TS(t, grp, f"{nom_camp} (barricade {nom_barr} socle)", bx_b, by_b, 100, 30, 25, COMMON["wood"], yaw_deg)
+        p_pieu_bas = (bx_b, by_b, hz_b + 10)
+        p_pieu_haut = (bx_b + math.cos(math.radians(yaw_deg)) * 60, by_b + math.sin(math.radians(yaw_deg)) * 60, hz_b + 55)
+        TG(t, grp, f"{nom_camp} (barricade {nom_barr} pieu)", p_pieu_bas, p_pieu_haut, 18, 18, (0.40, 0.26, 0.15))
+
+    # 5. Caisses de ravitaillement et barils en bois
+    rad_c1 = math.radians(yaw_deg + 95)
+    c1x, c1y = cx + math.cos(rad_c1) * 260, cy + math.sin(rad_c1) * 260
+    hz_c1 = TS(t, grp, f"{nom_camp} (caisse 1)", c1x, c1y, 45, 45, 45, (0.55, 0.38, 0.22), yaw_deg + 15)
+    TB(t, grp, f"{nom_camp} (caisse 1 empilée)", c1x, c1y, 35, 35, 35, (0.58, 0.40, 0.24), hz_c1, yaw_deg + 25)
+    TS(t, grp, f"{nom_camp} (baril 1)", c1x + 35, c1y + 30, 32, 32, 52, (0.36, 0.24, 0.14), yaw_deg)
+
+    c2x, c2y = wx + w_nx * 70, wy + w_ny * 70
+    hz_c2 = TS(t, grp, f"{nom_camp} (caisse 2)", c2x, c2y, 50, 42, 38, (0.52, 0.36, 0.20), yaw_w + 35)
+    TS(t, grp, f"{nom_camp} (caisse coffre)", c2x + 40, c2y - 20, 65, 32, 28, (0.38, 0.26, 0.16), yaw_w - 10)
+    TS(t, grp, f"{nom_camp} (baril 2)", c2x - 30, c2y + 35, 32, 32, 52, (0.36, 0.24, 0.14), yaw_w)
+
+    rad_c3 = math.radians(yaw_deg + 185)
+    c3x, c3y = cx + math.cos(rad_c3) * 270, cy + math.sin(rad_c3) * 270
+    TS(t, grp, f"{nom_camp} (caisse 3)", c3x, c3y, 42, 42, 42, (0.56, 0.40, 0.24), yaw_deg - 40)
+    TS(t, grp, f"{nom_camp} (baril 3)", c3x + 35, c3y - 25, 30, 30, 50, (0.35, 0.23, 0.14), yaw_deg)
+
+
+# Déploiement des 3 camps canoniques
+decor_camp_bandits("konoha", FEU, "Camp des Forêts", -27000, 30000, 45,
+                   [(0.48, 0.38, 0.25), (0.68, 0.62, 0.48), (0.35, 0.42, 0.30)])
+decor_camp_bandits("suna", "Canyon de Suna", "Repaire du Canyon", 40000, 12000, 135,
+                   [(0.78, 0.68, 0.52), (0.62, 0.46, 0.32), (0.82, 0.72, 0.58)])
+decor_camp_bandits("centre", CENTRE, "Ruines Neutres", 0, -7500, 270,
+                   [(0.42, 0.32, 0.24), (0.65, 0.60, 0.52), (0.30, 0.28, 0.26)])
+
+
 # Centre commun : temple, pierres levées le long de la frontière (ouvertes sur les routes), marché, arène, minerais rares,
 # panneaux des routes. Le centre est plat (relief nul), tout est quand même posé avec height_at.
 def hors_routes(x, y, marge):
@@ -882,7 +1028,32 @@ for yaw in (0, 45):
     top = TS("centre", CENTRE, "Temple en ruine", 0, 0, 2400, 2400, 120, COMMON["rock2"], yaw)
 for i in range(8):
     a = math.radians(i * 45)
-    TB("centre", CENTRE, "Colonne du temple", math.cos(a) * 1000, math.sin(a) * 1000, 160, 160, 500 if i % 3 == 0 else 1000, COMMON["rock2"], top)
+    h_col = 500 if i % 3 == 0 else 1000
+    TB("centre", CENTRE, "Colonne du temple", math.cos(a) * 1000, math.sin(a) * 1000, 160, 160, h_col, COMMON["rock2"], top)
+    if h_col >= 900:
+        TB("centre", CENTRE, f"Chapiteau colonne {i + 1}", math.cos(a) * 1000, math.sin(a) * 1000, 220, 220, 40, COMMON["rock2"], top + h_col)
+
+# Autel central millénaire et vasque cérémonielle sacrée
+TB("centre", CENTRE, "Autel central (socle bas)", 0, 0, 520, 520, 35, (0.55, 0.52, 0.48), top)
+TB("centre", CENTRE, "Autel central (socle haut)", 0, 0, 400, 400, 35, (0.58, 0.55, 0.50), top + 35)
+TB("centre", CENTRE, "Autel central (table sacrée)", 0, 0, 280, 280, 60, (0.62, 0.58, 0.52), top + 70)
+TB("centre", CENTRE, "Autel central (vasque)", 0, 0, 140, 140, 30, (0.45, 0.42, 0.40), top + 130)
+TB("centre", CENTRE, "Autel central (flamme éternelle)", 0, 0, 60, 60, 18, (0.95, 0.55, 0.12), top + 155, collide=False)
+
+# Colonnade extérieure brisée (aspect solennel et millénaire)
+col_ext_h = [350, 800, 500, 1050, 280, 900, 420, 1100, 600, 750, 320, 950]
+for j, h_ext in enumerate(col_ext_h):
+    a_ext = math.radians(j * 30 + 15)
+    cx_c, cy_c = math.cos(a_ext) * 1450, math.sin(a_ext) * 1450
+    TB("centre", CENTRE, f"Colonnade extérieure {j + 1}", cx_c, cy_c, 160, 160, h_ext, COMMON["rock2"], top)
+    if h_ext >= 900:
+        TB("centre", CENTRE, f"Chapiteau extérieur {j + 1}", cx_c, cy_c, 210, 210, 35, COMMON["rock2"], top + h_ext)
+
+# Tambours et architraves brisées effondrées sur le parvis
+for ti, (tx_, ty_, yaw_t) in enumerate([(650, 400, 35), (-550, 700, 115), (-450, -650, 70), (800, -500, 20)]):
+    TB("centre", CENTRE, f"Tambour effondré {ti + 1}", tx_, ty_, 220, 150, 150, COMMON["rock2"], top, yaw_t)
+TB("centre", CENTRE, "Architrave effondrée 1", 720, 850, 320, 130, 80, COMMON["rock2"], top, 42)
+TB("centre", CENTRE, "Architrave effondrée 2", -850, -400, 280, 120, 70, COMMON["rock2"], top, -28)
 for i in range(24):
     a = i * 15; ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
     rb = next(r for r in range(0, 2 * INNER, 100) if territoire(ca * r, sa * r) != "centre")   # bord du centre dans cette direction
@@ -893,12 +1064,64 @@ for i in range(6):   # marché : à l'est, entre les routes de Suna et de Kumo
     a = math.radians(-30 + i * 12)
     x, y = math.cos(a) * 5500, math.sin(a) * 5500
     top = TS("centre", CENTRE, f"Étal {i + 1}", x, y, 500, 400, 220, STYLES["konoha"]["built"])
-    TB("centre", CENTRE, f"Toile {i + 1}", x, y, 600, 500, 20, STYLES["konoha"]["roofs"][i % 4], top)
+    TB("centre", CENTRE, f"Toile {i + 1}", x, y, 600, 500, 20, STYLES["konoha"]["roofs"][i % 4], top + 105)
+    for sg_x in (-1, 1):
+        for sg_y in (-1, 1):
+            TB("centre", CENTRE, f"Étal {i + 1} poteau", x + sg_x * 240, y + sg_y * 190, 14, 14, 110, COMMON["wood"], top)
+
+# 2e rangée d'étals de marchands sous auvents en toile colorée
+COULEURS_MARCHE = [(0.82, 0.62, 0.18), (0.18, 0.38, 0.65), (0.22, 0.55, 0.28), (0.78, 0.22, 0.16)]
+for j in range(4):
+    a2 = math.radians(-24 + j * 14)
+    x2, y2 = math.cos(a2) * 6200, math.sin(a2) * 6200
+    top2 = TS("centre", CENTRE, f"Étal marché {j + 1}", x2, y2, 480, 360, 210, STYLES["suna"]["built"])
+    for sg_x in (-1, 1):
+        for sg_y in (-1, 1):
+            TB("centre", CENTRE, f"Étal marché {j + 1} poteau", x2 + sg_x * 230, y2 + sg_y * 170, 14, 14, 105, COMMON["wood"], top2)
+    TB("centre", CENTRE, f"Toile marché {j + 1}", x2, y2, 550, 440, 20, COULEURS_MARCHE[j % 4], top2 + 100)
+
+# Caisses de marchandises exotiques empilées et barils d'épices
+for ci, (a_c, r_c, sx_c, sy_c, sz_c, yaw_c) in enumerate([
+    (-28, 5150, 55, 55, 50, 20), (-26, 5160, 45, 45, 40, 45), (-16, 5180, 60, 48, 42, 10),
+    (-6, 5190, 50, 50, 48, 30), (6, 5200, 55, 40, 38, 15), (16, 5210, 48, 48, 45, 60),
+    (-12, 5850, 65, 45, 40, 25), (2, 5860, 52, 52, 46, 40), (14, 5870, 58, 42, 38, 15)
+], 1):
+    rad_c = math.radians(a_c)
+    cx_m, cy_m = math.cos(rad_c) * r_c, math.sin(rad_c) * r_c
+    TS("centre", CENTRE, f"Marché caisse exotique {ci}", cx_m, cy_m, sx_c, sy_c, sz_c, (0.58, 0.42, 0.26), yaw_c)
+    if ci % 3 == 0:
+        TS("centre", CENTRE, f"Marché baril épices {ci}", cx_m + 35, cy_m + 25, 30, 30, 50, (0.38, 0.26, 0.16), yaw_c)
+
+# Comptoir de troc / marché noir (auvent de cuir sombre et coffres de contrebande)
+a_troc = math.radians(-38)
+x_tr, y_tr = math.cos(a_troc) * 5100, math.sin(a_troc) * 5100
+top_tr = TS("centre", CENTRE, "Comptoir de troc (comptoir)", x_tr, y_tr, 550, 260, 230, (0.32, 0.22, 0.16), -38)
+for sg_x in (-1, 1):
+    for sg_y in (-1, 1):
+        TB("centre", CENTRE, "Comptoir de troc poteau", x_tr + sg_x * 260, y_tr + sg_y * 140, 16, 16, 120, (0.28, 0.18, 0.12), top_tr, -38)
+TB("centre", CENTRE, "Comptoir de troc (auvent cuir)", x_tr, y_tr, 640, 360, 20, (0.22, 0.20, 0.18), top_tr + 115, -38)
+TS("centre", CENTRE, "Marché noir (coffre armes)", x_tr - 70, y_tr + 100, 70, 35, 30, (0.24, 0.24, 0.26), -38)
+TS("centre", CENTRE, "Marché noir (tonnelet contrebande)", x_tr + 150, y_tr - 30, 32, 32, 54, (0.28, 0.18, 0.10), -38)
 for i in range(20):  # arène neutre : au nord, entre les routes de Konoha et de Suna, ouverte vers le temple
     a = i * 18
     if 260 < a < 280: continue
-    TS("centre", CENTRE, f"Arène neutre {i}", math.cos(math.radians(a)) * 1800, 7500 + math.sin(math.radians(a)) * 1800, 200,
-       2 * math.pi * 1800 / 20 * 1.04, 300, COMMON["rock2"], a)
+    ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+    # Gradins en pierre étagés pour les spectateurs des tournois RP inter-villages
+    r1, w1 = 1280, 2 * math.pi * 1280 / 20 * 1.05
+    TS("centre", CENTRE, f"Gradin arène (rang 1) {i}", ca * r1, 7500 + sa * r1, 160, w1, 80, (0.68, 0.65, 0.60), a)
+    r2, w2 = 1480, 2 * math.pi * 1480 / 20 * 1.05
+    TS("centre", CENTRE, f"Gradin arène (rang 2) {i}", ca * r2, 7500 + sa * r2, 160, w2, 160, (0.65, 0.62, 0.58), a)
+    r3, w3 = 1680, 2 * math.pi * 1680 / 20 * 1.05
+    TS("centre", CENTRE, f"Gradin arène (rang 3) {i}", ca * r3, 7500 + sa * r3, 160, w3, 240, (0.62, 0.60, 0.55), a)
+    r4, w4 = 1860, 2 * math.pi * 1860 / 20 * 1.05
+    TS("centre", CENTRE, f"Arène neutre (parapet) {i}", ca * r4, 7500 + sa * r4, 180, w4, 320, COMMON["rock2"], a)
+# Tribune d'honneur des Kages & Juges au nord de l'arène (angle 90°)
+top_tribune = TS("centre", CENTRE, "Tribune des Kages (estrade)", 0, 7500 + 1720, 520, 320, 280, COMMON["rock2"], 0)
+for sg_x in (-1, 1):
+    for sg_y in (-1, 1):
+        TB("centre", CENTRE, "Tribune des Kages (pilier auvent)", sg_x * 240, 7500 + 1720 + sg_y * 140, 18, 18, 120, (0.65, 0.60, 0.55), top_tribune)
+TB("centre", CENTRE, "Tribune des Kages (balustrade)", 0, 7500 + 1720 - 150, 500, 20, 45, COMMON["rock2"], top_tribune)
+TB("centre", CENTRE, "Tribune des Kages (auvent)", 0, 7500 + 1720, 580, 380, 25, (0.75, 0.18, 0.15), top_tribune + 115)
 for i in range(4):
     a = math.radians(i * 90 + 20)
     TS("centre", CENTRE, "Minerai rare", math.cos(a) * 9000, math.sin(a) * 9000, 300, 300, 260, (0.55, 0.35, 0.7), 30)

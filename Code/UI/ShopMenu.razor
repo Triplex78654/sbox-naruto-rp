@@ -1,0 +1,142 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Player;
+@using NarutoRp.Shop;
+@using NarutoRp.Characters;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@if ( Visible )
+{
+	<root>
+		<div class="shop-overlay">
+			<div class="shop-window">
+				<!-- En-tête de la Boutique -->
+				<div class="shop-header">
+					<div class="header-left">
+						<span class="shop-icon">🏮</span>
+						<div class="title-block">
+							<div class="main-title">@ShopState.CurrentShopName.ToUpper()</div>
+							<div class="sub-title">Comptoir officiel de ravitaillement pour shinobi</div>
+						</div>
+					</div>
+					<div class="header-right">
+						<div class="player-ryo">
+							<span class="ryo-icon">🪙</span>
+							<span class="ryo-value">@($"{Me.Ryo:N0} 両")</span>
+						</div>
+						<Button class="btn-close" onclick=@Close>✕</Button>
+					</div>
+				</div>
+
+				<!-- Notification d'achat ou d'erreur -->
+				@if ( HasStatus )
+				{
+					<div class="status-banner">
+						@ShopState.StatusMessage
+					</div>
+				}
+
+				<!-- Onglets de catégories -->
+				<div class="category-tabs">
+					<Button class="tab-btn @(SelectedCategory == "all" ? "active" : "")" onclick=@(() => SetCategory( "all" ))>
+						Tous les articles
+					</Button>
+					<Button class="tab-btn @(SelectedCategory == "Armes de jet" ? "active" : "")" onclick=@(() => SetCategory( "Armes de jet" ))>
+						Armes de jet
+					</Button>
+					<Button class="tab-btn @(SelectedCategory == "Consommables & Pièges" ? "active" : "")" onclick=@(() => SetCategory( "Consommables & Pièges" ))>
+						Consommables & Pièges
+					</Button>
+					<Button class="tab-btn @(SelectedCategory == "Rations & Médical" ? "active" : "")" onclick=@(() => SetCategory( "Rations & Médical" ))>
+						Rations & Médical
+					</Button>
+				</div>
+
+				<!-- Liste des articles -->
+				<div class="items-scroll-view">
+					<div class="items-grid">
+						@foreach ( var item in FilteredItems )
+						{
+							var canAfford = Me.Ryo >= item.PriceRyo;
+							var currentStock = GetStock( item.Id );
+
+							<div class="item-card @(!canAfford ? "unaffordable" : "")">
+								<div class="item-visual">
+									<span class="item-emoji">@item.Icon</span>
+									<span class="category-tag">@item.Category</span>
+								</div>
+
+								<div class="item-content">
+									<div class="item-title-row">
+										<div class="item-name">@item.Name</div>
+										<div class="item-stock">@($"En réserve : {currentStock}")</div>
+									</div>
+									<div class="item-desc">@item.Description</div>
+								</div>
+
+								<div class="item-actions">
+									<div class="item-price">
+										<span class="coin">🪙</span>
+										<span class="price-val">@($"{item.PriceRyo:N0} 両")</span>
+									</div>
+									<Button class="btn-buy @(!canAfford ? "disabled" : "")" onclick=@(() => Buy( item.Id ))>
+										Acheter
+									</Button>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+
+				<!-- Pied de page -->
+				<div class="shop-footer">
+					<span class="footer-hint">Conseil : Gagnez des 両 (Ryô) en montant de niveau shinobi ou en accomplissant des missions au bureau.</span>
+					<Button class="btn-back" onclick=@Close>Fermer l'échoppe</Button>
+				</div>
+			</div>
+		</div>
+	</root>
+}
+
+@code
+{
+	NinjaPlayer Me => NinjaPlayer.Local;
+	NinjaInventory Inventory => Me?.GetComponent<NinjaInventory>();
+
+	bool Visible => ShopState.IsOpen && Me.IsValid() && !Me.IsProxy;
+	bool HasStatus => !string.IsNullOrEmpty( ShopState.StatusMessage ) && ShopState.TimeSinceStatus < 4f;
+
+	string SelectedCategory = "all";
+
+	void SetCategory( string cat ) => SelectedCategory = cat;
+
+	IEnumerable<ShopItemDefinition> FilteredItems =>
+		SelectedCategory == "all"
+			? ShopState.CurrentCatalog
+			: ShopState.CurrentCatalog.Where( x => x.Category == SelectedCategory );
+
+	int GetStock( string itemId )
+	{
+		if ( Inventory is null ) return 0;
+		return itemId?.ToLower() switch
+		{
+			"kunai" => Inventory.KunaiCount,
+			"shuriken" => Inventory.ShurikenCount,
+			"explosive_tag" => Inventory.ExplosiveTagCount,
+			"smoke_bomb" => Inventory.SmokeBombCount,
+			"soldier_pill" => Inventory.SoldierPillCount,
+			_ => 0
+		};
+	}
+
+	void Buy( string itemId )
+	{
+		ShopTrigger.PurchaseItemRpc( itemId );
+	}
+
+	void Close()
+	{
+		ShopState.Close();
+	}
+}

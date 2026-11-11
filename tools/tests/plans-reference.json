@@ -1,1272 +1,1529 @@
 {
-"konoha|A1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"konoha|A2": {
-"domaine": false,
-"porte": null,
-"taille": [
-47.5,
-6
-]
-},
-"konoha|A3": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-12
-]
-},
-"konoha|D1": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"konoha|D2": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"konoha|D3": {
-"domaine": true,
-"porte": null,
-"taille": [
-28,
-22
-]
-},
-"konoha|D4": {
-"domaine": true,
-"porte": null,
-"taille": [
-30,
-24
-]
-},
-"konoha|D5": {
-"domaine": true,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"konoha|F1": {
-"domaine": false,
-"porte": null,
-"taille": [
-40,
-28
-]
-},
-"konoha|F2": {
-"domaine": false,
-"porte": null,
-"taille": [
-42,
-34
-]
-},
-"konoha|F3": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-6
-]
-},
-"konoha|H1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"konoha|M1": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"konoha|M2": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"konoha|M3": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"konoha|M4": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-14
-]
-},
-"konoha|M5": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"konoha|M6": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-18
-]
-},
-"konoha|M7": {
-"domaine": false,
-"porte": null,
-"taille": [
-12,
-30
-]
-},
-"konoha|M8": {
-"domaine": false,
-"porte": null,
-"taille": [
-12,
-30
-]
-},
-"konoha|P1": {
-"domaine": false,
-"porte": null,
-"taille": 19
-},
-"konoha|P2": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-22
-]
-},
-"konoha|P3": {
-"domaine": false,
-"porte": null,
-"taille": [
-30,
-20
-]
-},
-"konoha|P4": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"konoha|P5": {
-"domaine": false,
-"porte": null,
-"taille": [
-85,
-30
-]
-},
-"konoha|P6": {
-"domaine": false,
-"porte": null,
-"taille": [
-50,
-5
-]
-},
-"konoha|Q1": {
-"domaine": false,
-"porte": null,
-"taille": [
-32,
-25
-]
-},
-"konoha|Q2": {
-"domaine": false,
-"porte": null,
-"taille": [
-30,
-25
-]
-},
-"konoha|Q3": {
-"domaine": false,
-"porte": null,
-"taille": [
-28,
-25
-]
-},
-"konoha|R1": {
-"domaine": false,
-"porte": null,
-"taille": 20
-},
-"konoha|S1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Kage"
-},
-"taille": [
-14,
-12
-]
-},
-"konoha|S2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "SpecialUnit"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S3": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Police"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S4": {
-"domaine": false,
-"porte": {
-"domain": "konoha-D1",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S5": {
-"domaine": false,
-"porte": {
-"domain": "konoha-D2",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S6": {
-"domaine": false,
-"porte": {
-"domain": "konoha-D3",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S7": {
-"domaine": false,
-"porte": {
-"domain": "konoha-D4",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|S8": {
-"domaine": false,
-"porte": {
-"domain": "konoha-D5",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"konoha|T1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "Kage"
-},
-"taille": 3
-},
-"konoha|T2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "SpecialUnit"
-},
-"taille": 3
-},
-"konoha|U1": {
-"domaine": false,
-"porte": null,
-"taille": [
-36,
-24
-]
-},
-"konoha|U2": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-26
-]
-},
-"konoha|U3": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"konoha|U4": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-28
-]
-},
-"konoha|V1": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-14
-]
-},
-"konoha|V2": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-18
-]
-},
-"konoha|V3": {
-"domaine": false,
-"porte": null,
-"taille": [
-12,
-10
-]
-},
-"konoha|V4": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-16
-]
-},
-"konoha|V5": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-24
-]
-},
-"konoha|V6": {
-"domaine": false,
-"porte": null,
-"taille": 30
-},
-"konoha|V7": {
-"domaine": false,
-"porte": null,
-"taille": 30
-},
-"konoha|X1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"konoha|X2": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"kumo|A1": {
-"domaine": false,
-"porte": null,
-"taille": 40
-},
-"kumo|A2": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-40
-]
-},
-"kumo|A3": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-12
-]
-},
-"kumo|D1": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"kumo|D2": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"kumo|D3": {
-"domaine": true,
-"porte": null,
-"taille": [
-28,
-22
-]
-},
-"kumo|D4": {
-"domaine": true,
-"porte": null,
-"taille": [
-30,
-24
-]
-},
-"kumo|D5": {
-"domaine": true,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"kumo|F1": {
-"domaine": false,
-"porte": null,
-"taille": [
-40,
-28
-]
-},
-"kumo|F2": {
-"domaine": false,
-"porte": null,
-"taille": [
-42,
-34
-]
-},
-"kumo|F3": {
-"domaine": false,
-"porte": null,
-"taille": [
-28,
-6
-]
-},
-"kumo|H1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"kumo|M1": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"kumo|M2": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"kumo|M3": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"kumo|M4": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-14
-]
-},
-"kumo|M5": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"kumo|M6": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-18
-]
-},
-"kumo|P1": {
-"domaine": false,
-"porte": null,
-"taille": 26
-},
-"kumo|P2": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-22
-]
-},
-"kumo|P3": {
-"domaine": false,
-"porte": null,
-"taille": [
-30,
-20
-]
-},
-"kumo|P4": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"kumo|P5": {
-"domaine": false,
-"porte": null,
-"taille": [
-50,
-8
-]
-},
-"kumo|Q1": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-25
-]
-},
-"kumo|Q2": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-25
-]
-},
-"kumo|Q3": {
-"domaine": false,
-"porte": null,
-"taille": [
-15,
-25
-]
-},
-"kumo|R1": {
-"domaine": false,
-"porte": null,
-"taille": 16
-},
-"kumo|S1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Kage"
-},
-"taille": [
-14,
-12
-]
-},
-"kumo|S2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "SpecialUnit"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S3": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Police"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S4": {
-"domaine": false,
-"porte": {
-"domain": "kumo-D1",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S5": {
-"domaine": false,
-"porte": {
-"domain": "kumo-D2",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S6": {
-"domaine": false,
-"porte": {
-"domain": "kumo-D3",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S7": {
-"domaine": false,
-"porte": {
-"domain": "kumo-D4",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|S8": {
-"domaine": false,
-"porte": {
-"domain": "kumo-D5",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"kumo|T1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "Kage"
-},
-"taille": 3
-},
-"kumo|T2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "SpecialUnit"
-},
-"taille": 3
-},
-"kumo|U1": {
-"domaine": false,
-"porte": null,
-"taille": [
-36,
-24
-]
-},
-"kumo|U2": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-26
-]
-},
-"kumo|U3": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"kumo|U4": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-28
-]
-},
-"kumo|U5": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-44
-]
-},
-"kumo|V1": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-14
-]
-},
-"kumo|V2": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-18
-]
-},
-"kumo|V3": {
-"domaine": false,
-"porte": null,
-"taille": 20
-},
-"kumo|V4": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-16
-]
-},
-"kumo|V5": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-24
-]
-},
-"kumo|V6": {
-"domaine": false,
-"porte": null,
-"taille": 30
-},
-"kumo|X1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"kumo|X2": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"suna|A1": {
-"domaine": false,
-"porte": null,
-"taille": 30
-},
-"suna|A2": {
-"domaine": false,
-"porte": null,
-"taille": [
-22,
-36
-]
-},
-"suna|A3": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-12
-]
-},
-"suna|D1": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"suna|D2": {
-"domaine": true,
-"porte": null,
-"taille": [
-32,
-26
-]
-},
-"suna|D3": {
-"domaine": true,
-"porte": null,
-"taille": [
-28,
-22
-]
-},
-"suna|D4": {
-"domaine": true,
-"porte": null,
-"taille": [
-30,
-24
-]
-},
-"suna|D5": {
-"domaine": true,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"suna|F1": {
-"domaine": false,
-"porte": null,
-"taille": [
-40,
-28
-]
-},
-"suna|F2": {
-"domaine": false,
-"porte": null,
-"taille": [
-42,
-34
-]
-},
-"suna|F3": {
-"domaine": false,
-"porte": null,
-"taille": [
-28,
-6
-]
-},
-"suna|H1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"suna|M1": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"suna|M2": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"suna|M3": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-16
-]
-},
-"suna|M4": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-14
-]
-},
-"suna|M5": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"suna|M6": {
-"domaine": false,
-"porte": null,
-"taille": [
-20,
-18
-]
-},
-"suna|M7": {
-"domaine": false,
-"porte": null,
-"taille": [
-12,
-30
-]
-},
-"suna|M8": {
-"domaine": false,
-"porte": null,
-"taille": [
-12,
-30
-]
-},
-"suna|M9": {
-"domaine": false,
-"porte": null,
-"taille": [
-28,
-20
-]
-},
-"suna|P1": {
-"domaine": false,
-"porte": null,
-"taille": 28
-},
-"suna|P2": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-22
-]
-},
-"suna|P3": {
-"domaine": false,
-"porte": null,
-"taille": [
-30,
-20
-]
-},
-"suna|P4": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-20
-]
-},
-"suna|P5": {
-"domaine": false,
-"porte": null,
-"taille": [
-56,
-6
-]
-},
-"suna|Q1": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-25
-]
-},
-"suna|Q2": {
-"domaine": false,
-"porte": null,
-"taille": [
-18,
-25
-]
-},
-"suna|Q3": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-25
-]
-},
-"suna|R1": {
-"domaine": false,
-"porte": null,
-"taille": 16
-},
-"suna|S1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Kage"
-},
-"taille": [
-14,
-12
-]
-},
-"suna|S2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "SpecialUnit"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S3": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": false,
-"rule": "Police"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S4": {
-"domaine": false,
-"porte": {
-"domain": "suna-D1",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S5": {
-"domaine": false,
-"porte": {
-"domain": "suna-D2",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S6": {
-"domaine": false,
-"porte": {
-"domain": "suna-D3",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S7": {
-"domaine": false,
-"porte": {
-"domain": "suna-D4",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|S8": {
-"domaine": false,
-"porte": {
-"domain": "suna-D5",
-"oneWay": false,
-"rule": "Clan"
-},
-"taille": [
-20,
-16
-]
-},
-"suna|T1": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "Kage"
-},
-"taille": 3
-},
-"suna|T2": {
-"domaine": false,
-"porte": {
-"domain": null,
-"oneWay": true,
-"rule": "SpecialUnit"
-},
-"taille": 3
-},
-"suna|U1": {
-"domaine": false,
-"porte": null,
-"taille": [
-36,
-24
-]
-},
-"suna|U2": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-26
-]
-},
-"suna|U3": {
-"domaine": false,
-"porte": null,
-"taille": [
-24,
-18
-]
-},
-"suna|U4": {
-"domaine": false,
-"porte": null,
-"taille": [
-38,
-28
-]
-},
-"suna|V1": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-14
-]
-},
-"suna|V2": {
-"domaine": false,
-"porte": null,
-"taille": [
-26,
-18
-]
-},
-"suna|V4": {
-"domaine": false,
-"porte": null,
-"taille": [
-16,
-16
-]
-},
-"suna|V5": {
-"domaine": false,
-"porte": null,
-"taille": [
-34,
-24
-]
-},
-"suna|V6": {
-"domaine": false,
-"porte": null,
-"taille": 30
-},
-"suna|V8": {
-"domaine": false,
-"porte": null,
-"taille": 22
-},
-"suna|X1": {
-"domaine": false,
-"porte": null,
-"taille": 3
-},
-"suna|X2": {
-"domaine": false,
-"porte": null,
-"taille": 3
-}
+  "konoha|A1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "konoha|A2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      47.5,
+      6
+    ]
+  },
+  "konoha|A3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      12
+    ]
+  },
+  "konoha|D1": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "konoha|D2": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "konoha|D3": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      22
+    ]
+  },
+  "konoha|D4": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "konoha|D5": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "konoha|D6": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "konoha|D7": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "konoha|D8": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      24
+    ]
+  },
+  "konoha|F1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      40,
+      28
+    ]
+  },
+  "konoha|F2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      42,
+      34
+    ]
+  },
+  "konoha|F3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      6
+    ]
+  },
+  "konoha|H1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "konoha|M1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|M10": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "konoha|M2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "konoha|M3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|M4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      14
+    ]
+  },
+  "konoha|M5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "konoha|M6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      18
+    ]
+  },
+  "konoha|M7": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      12,
+      30
+    ]
+  },
+  "konoha|M8": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      12,
+      30
+    ]
+  },
+  "konoha|P1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 19
+  },
+  "konoha|P2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      22
+    ]
+  },
+  "konoha|P3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      30,
+      20
+    ]
+  },
+  "konoha|P4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "konoha|P5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      85,
+      30
+    ]
+  },
+  "konoha|P6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      50,
+      5
+    ]
+  },
+  "konoha|Q1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      32,
+      25
+    ]
+  },
+  "konoha|Q2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      30,
+      25
+    ]
+  },
+  "konoha|Q3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      28,
+      25
+    ]
+  },
+  "konoha|R1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 20
+  },
+  "konoha|S1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      14,
+      12
+    ]
+  },
+  "konoha|S10": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D7",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S11": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D8",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S3": {
+    "domaine": false,
+    "porte": {
+      "rule": "Police",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S4": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D1",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S5": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D2",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S6": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D3",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S7": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D4",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S8": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D5",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|S9": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "konoha-D6",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "konoha|T1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "konoha|T2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "konoha|U1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      36,
+      24
+    ]
+  },
+  "konoha|U2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      26
+    ]
+  },
+  "konoha|U3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "konoha|U4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      28
+    ]
+  },
+  "konoha|U6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      14,
+      14
+    ]
+  },
+  "konoha|V1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      14
+    ]
+  },
+  "konoha|V10": {
+    "domaine": false,
+    "porte": null,
+    "taille": 22
+  },
+  "konoha|V2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "konoha|V3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      12,
+      10
+    ]
+  },
+  "konoha|V4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      16
+    ]
+  },
+  "konoha|V5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      24
+    ]
+  },
+  "konoha|V6": {
+    "domaine": false,
+    "porte": null,
+    "taille": 30
+  },
+  "konoha|V7": {
+    "domaine": false,
+    "porte": null,
+    "taille": 30
+  },
+  "konoha|V9": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "konoha|X1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "konoha|X2": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "kumo|A1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 40
+  },
+  "kumo|A2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      40
+    ]
+  },
+  "kumo|A3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      12
+    ]
+  },
+  "kumo|D1": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "kumo|D2": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "kumo|D3": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      22
+    ]
+  },
+  "kumo|D4": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "kumo|D5": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "kumo|D6": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "kumo|D7": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "kumo|D8": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      24
+    ]
+  },
+  "kumo|F1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      40,
+      28
+    ]
+  },
+  "kumo|F2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      42,
+      34
+    ]
+  },
+  "kumo|F3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      28,
+      6
+    ]
+  },
+  "kumo|H1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "kumo|M1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|M10": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "kumo|M2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "kumo|M3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|M4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      14
+    ]
+  },
+  "kumo|M5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "kumo|M6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      18
+    ]
+  },
+  "kumo|P1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 26
+  },
+  "kumo|P2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      22
+    ]
+  },
+  "kumo|P3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      30,
+      20
+    ]
+  },
+  "kumo|P4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "kumo|P5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      50,
+      8
+    ]
+  },
+  "kumo|Q1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      25
+    ]
+  },
+  "kumo|Q2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      25
+    ]
+  },
+  "kumo|Q3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      15,
+      25
+    ]
+  },
+  "kumo|R1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 16
+  },
+  "kumo|S1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      14,
+      12
+    ]
+  },
+  "kumo|S10": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D7",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S11": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D8",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S3": {
+    "domaine": false,
+    "porte": {
+      "rule": "Police",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S4": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D1",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S5": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D2",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S6": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D3",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S7": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D4",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S8": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D5",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|S9": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "kumo-D6",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "kumo|T1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "kumo|T2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "kumo|U1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      36,
+      24
+    ]
+  },
+  "kumo|U2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      26
+    ]
+  },
+  "kumo|U3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "kumo|U4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      28
+    ]
+  },
+  "kumo|U5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      44
+    ]
+  },
+  "kumo|U6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      14,
+      14
+    ]
+  },
+  "kumo|V1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      14
+    ]
+  },
+  "kumo|V2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "kumo|V3": {
+    "domaine": false,
+    "porte": null,
+    "taille": 20
+  },
+  "kumo|V4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      16
+    ]
+  },
+  "kumo|V5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      24
+    ]
+  },
+  "kumo|V6": {
+    "domaine": false,
+    "porte": null,
+    "taille": 30
+  },
+  "kumo|V9": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "kumo|X1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "kumo|X2": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "suna|A1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 30
+  },
+  "suna|A2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      22,
+      36
+    ]
+  },
+  "suna|A3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      12
+    ]
+  },
+  "suna|D1": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "suna|D2": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "suna|D3": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      22
+    ]
+  },
+  "suna|D4": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "suna|D5": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "suna|D6": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      32,
+      26
+    ]
+  },
+  "suna|D7": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      30,
+      24
+    ]
+  },
+  "suna|D8": {
+    "domaine": true,
+    "porte": null,
+    "taille": [
+      28,
+      24
+    ]
+  },
+  "suna|F1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      40,
+      28
+    ]
+  },
+  "suna|F2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      42,
+      34
+    ]
+  },
+  "suna|F3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      28,
+      6
+    ]
+  },
+  "suna|H1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "suna|M1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|M10": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "suna|M2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "suna|M3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|M4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      14
+    ]
+  },
+  "suna|M5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "suna|M6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      20,
+      18
+    ]
+  },
+  "suna|M7": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      12,
+      30
+    ]
+  },
+  "suna|M8": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      12,
+      30
+    ]
+  },
+  "suna|M9": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      28,
+      20
+    ]
+  },
+  "suna|P1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 28
+  },
+  "suna|P2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      22
+    ]
+  },
+  "suna|P3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      30,
+      20
+    ]
+  },
+  "suna|P4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      20
+    ]
+  },
+  "suna|P5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      56,
+      6
+    ]
+  },
+  "suna|Q1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      25
+    ]
+  },
+  "suna|Q2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      18,
+      25
+    ]
+  },
+  "suna|Q3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      25
+    ]
+  },
+  "suna|R1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 16
+  },
+  "suna|S1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      14,
+      12
+    ]
+  },
+  "suna|S10": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D7",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S11": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D8",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S3": {
+    "domaine": false,
+    "porte": {
+      "rule": "Police",
+      "domain": null,
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S4": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D1",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S5": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D2",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S6": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D3",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S7": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D4",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S8": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D5",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|S9": {
+    "domaine": false,
+    "porte": {
+      "rule": "Clan",
+      "domain": "suna-D6",
+      "oneWay": false
+    },
+    "taille": [
+      20,
+      16
+    ]
+  },
+  "suna|T1": {
+    "domaine": false,
+    "porte": {
+      "rule": "Kage",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "suna|T2": {
+    "domaine": false,
+    "porte": {
+      "rule": "SpecialUnit",
+      "domain": null,
+      "oneWay": true
+    },
+    "taille": 3
+  },
+  "suna|U1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      36,
+      24
+    ]
+  },
+  "suna|U2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      26
+    ]
+  },
+  "suna|U3": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "suna|U4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      38,
+      28
+    ]
+  },
+  "suna|U6": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      14,
+      14
+    ]
+  },
+  "suna|V1": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      14
+    ]
+  },
+  "suna|V2": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      26,
+      18
+    ]
+  },
+  "suna|V4": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      16,
+      16
+    ]
+  },
+  "suna|V5": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      34,
+      24
+    ]
+  },
+  "suna|V6": {
+    "domaine": false,
+    "porte": null,
+    "taille": 30
+  },
+  "suna|V8": {
+    "domaine": false,
+    "porte": null,
+    "taille": 22
+  },
+  "suna|V9": {
+    "domaine": false,
+    "porte": null,
+    "taille": [
+      24,
+      18
+    ]
+  },
+  "suna|X1": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  },
+  "suna|X2": {
+    "domaine": false,
+    "porte": null,
+    "taille": 3
+  }
 }

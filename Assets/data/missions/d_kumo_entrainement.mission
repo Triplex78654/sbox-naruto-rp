@@ -1,0 +1,19 @@
+{
+  "Id": "d_kumo_entrainement",
+  "Title": "Nettoyage des mannequins d'entraînement de Kumo",
+  "Description": "La dernière session des aspirants a laissé l'aire d'entraînement jonchée de mannequins brisés et de cibles endommagées. Inspectez et remettez en état les installations d'exercice physique.",
+  "Rank": "D",
+  "Village": "Kumo",
+  "RewardRyo": 300,
+  "MinGrade": "Élève",
+  "Objectives": [
+    {
+      "Type": "InteractProp",
+      "Description": "Remettre en état les 3 mannequins d'exercice du dojo",
+      "TargetCount": 3,
+      "TargetLocation": "48000,-47500,660",
+      "TargetTag": "mannequin_entrainement",
+      "TargetRadius": 300
+    }
+  ]
+}

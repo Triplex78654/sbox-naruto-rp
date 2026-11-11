@@ -29,6 +29,7 @@ public sealed partial class GameManager
 		public string Village { get; set; }
 		public string Grade { get; set; }
 		public string Path { get; set; }
+		public int Level { get; set; } = 1;
 	}
 
 	void OpenCharacterMenu( Connection channel, PlayerDto data, string message )
@@ -38,6 +39,7 @@ public sealed partial class GameManager
 		var list = data.Characters.OrderBy( c => c.Slot ).Select( c => new CharacterSummary
 		{
 			Id = c.Id, Slot = c.Slot, Name = c.FullName, Village = c.Village, Grade = c.Grade, Path = c.Path,
+			Level = c.Level > 0 ? c.Level : NinjaPlayer.CalculateLevel( c.PlayTime ),
 		} ).ToList();
 
 		using ( Rpc.FilterInclude( channel ) )

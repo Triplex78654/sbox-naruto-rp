@@ -1,0 +1,138 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Player;
+@using NarutoRp.Missions;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* Encart HUD supérieur droit : Suivi dynamique de la mission active, étape et repère GPS/boussole shinobi *@
+@if ( Visible )
+{
+	<root>
+		<div class="mission-hud-card @RankClass( Tracker.ActiveMissionRank )">
+			<!-- En-tête de l'encart -->
+			<div class="hud-card-header">
+				<div class="rank-tag @RankClass( Tracker.ActiveMissionRank )">
+					@($"RANG {Tracker.ActiveMissionRank}")
+				</div>
+				<div class="mission-name">@Tracker.ActiveMissionTitle</div>
+			</div>
+
+			<!-- Descriptif de l'objectif en cours -->
+			<div class="hud-card-body">
+				<div class="objective-row">
+					<span class="step-badge">@($"Étape {Tracker.CurrentObjectiveIndex + 1}")</span>
+					<div class="objective-text">@Tracker.ObjectiveDescription</div>
+				</div>
+
+				<!-- Compteur numérique & Jauge de progression (si TargetCount > 1) -->
+				@if ( Tracker.TargetCount > 1 )
+				{
+					<div class="progress-section">
+						<div class="progress-info">
+							<span class="progress-label">Progression</span>
+							<span class="progress-count">@($"{Tracker.CurrentProgress} / {Tracker.TargetCount}")</span>
+						</div>
+						<div class="progress-track">
+							<div class="progress-fill" style="width: @(ProgressPct * 100f)%"></div>
+						</div>
+					</div>
+				}
+
+				<!-- Localisation & Boussole vers la cible (si cible définie) -->
+				@if ( HasTargetLocation )
+				{
+					<div class="target-location-row">
+						<div class="compass-indicator" style="transform: rotate(@(BearingDegrees)deg)">
+							▲
+						</div>
+						<div class="distance-text">
+							@($"{DistanceMeters:N0} m")
+						</div>
+						<div class="direction-hint">@DirectionHint</div>
+					</div>
+				}
+			</div>
+		</div>
+	</root>
+}
+
+@code
+{
+	NinjaPlayer Me => NinjaPlayer.Local;
+	MissionTracker Tracker => Me?.GetComponent<MissionTracker>();
+
+	bool Visible => Me.IsValid() && Tracker?.HasActiveMission == true;
+
+	float ProgressPct => Tracker is null || Tracker.TargetCount <= 0
+		? 0f
+		: Math.Clamp( (float)Tracker.CurrentProgress / Tracker.TargetCount, 0f, 1f );
+
+	bool HasTargetLocation => Tracker is not null && Tracker.TargetLocation != Vector3.Zero;
+
+	float DistanceMeters
+	{
+		get
+		{
+			if ( !Me.IsValid() || !HasTargetLocation ) return 0f;
+			var distUnits = Vector3.DistanceBetween( Me.WorldPosition, Tracker.TargetLocation );
+			return MathF.Round( distUnits / 40f );
+		}
+	}
+
+	float BearingDegrees
+	{
+		get
+		{
+			if ( !Me.IsValid() || !HasTargetLocation ) return 0f;
+
+			var toTarget = (Tracker.TargetLocation - Me.WorldPosition).WithZ( 0 ).Normal;
+			var fwd = Me.WorldRotation.Forward.WithZ( 0 ).Normal;
+			var right = Me.WorldRotation.Right.WithZ( 0 ).Normal;
+
+			var dotFwd = Vector3.Dot( fwd, toTarget );
+			var dotRight = Vector3.Dot( right, toTarget );
+
+			return MathF.Atan2( dotRight, dotFwd ) * (180f / MathF.PI);
+		}
+	}
+
+	string DirectionHint
+	{
+		get
+		{
+			var angle = BearingDegrees;
+			if ( angle is >= -22.5f and <= 22.5f ) return "Devant";
+			if ( angle is > 22.5f and < 67.5f ) return "Avant droit";
+			if ( angle is >= 67.5f and <= 112.5f ) return "À droite";
+			if ( angle is > 112.5f and < 157.5f ) return "Arrière droit";
+			if ( angle is >= 157.5f or <= -157.5f ) return "Derrière";
+			if ( angle is < -112.5f and > -157.5f ) return "Arrière gauche";
+			if ( angle is <= -67.5f and >= -112.5f ) return "À gauche";
+			return "Avant gauche";
+		}
+	}
+
+	static string RankClass( MissionRank rank ) => rank switch
+	{
+		MissionRank.D => "rank-d",
+		MissionRank.C => "rank-c",
+		MissionRank.B => "rank-b",
+		MissionRank.A => "rank-a",
+		MissionRank.S => "rank-s",
+		_ => "rank-d"
+	};
+
+	protected override int BuildHash()
+	{
+		var t = Tracker;
+		return System.HashCode.Combine(
+			Visible,
+			t?.ActiveMissionId,
+			t?.CurrentObjectiveIndex,
+			t?.CurrentProgress,
+			t?.TargetCount,
+			MathF.Round( DistanceMeters / 5f ) * 5f,
+			MathF.Round( BearingDegrees / 15f ) * 15f );
+	}
+}

@@ -110,8 +110,8 @@ public sealed class WorkerApiClient : IApiClient
 	public Task AddSanctionAsync( ulong steamId, string type, string reason, int? durationMinutes, ulong staff, CancellationToken ct = default )
 		=> Send( "POST", "/sanctions", new { type, steamId = steamId.ToString(), reason, durationMinutes, staffSteamId = staff.ToString() }, ct );
 
-	public Task SaveStateAsync( long characterId, long ryo, CancellationToken ct = default )
-		=> Send( "PUT", $"/characters/{characterId}/state", new { ryo }, ct );
+	public Task SaveStateAsync( long characterId, long ryo, int playTime, int level, string inventory, CancellationToken ct = default )
+		=> Send( "PUT", $"/characters/{characterId}/state", new { ryo, play_time = playTime, level, inventory }, ct );
 
 	public async Task LogAsync( string type, ulong? actorSteamId, ulong? targetSteamId, object data, CancellationToken ct = default )
 	{

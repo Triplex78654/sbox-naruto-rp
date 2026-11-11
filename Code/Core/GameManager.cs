@@ -53,7 +53,11 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		_nextSave = SaveIntervalSeconds;
 
 		// Domaines de clan : chargés par l'hôte (un échec API laisse les domaines vides, le jeu continue).
-		if ( Networking.IsHost ) _ = NarutoRp.World.DomainRegistry.LoadAsync( GetApi() );
+		if ( Networking.IsHost )
+		{
+			_ = NarutoRp.World.DomainRegistry.LoadAsync( GetApi() );
+			BanditSpawner.SetupDefaultCamps( Scene );
+		}
 	}
 
 	/// <summary>L'API est créée à la demande, quand on sait qu'on est l'hôte.</summary>
@@ -165,11 +169,15 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		ninja.ClanValidated = c.ClanValidated;
 		ninja.IsMedic = c.IsMedic;
 		ninja.Ryo = c.Ryo;
+		ninja.PlayTimeSeconds = c.PlayTime;
+		ninja.Level = c.Level > 0 ? c.Level : NinjaPlayer.CalculateLevel( c.PlayTime );
+		ninja.Components.GetOrCreate<NinjaInventory>().Load( c.Inventory );
 
 		// Jutsus appris -> fiches. Un id inconnu (fiche supprimée) est ignoré avec un avertissement.
+		// Le coup de poing de base est exclu des slots de sorts (il est réservé à l'attaque mains nues).
 		if ( caster is null || c.Jutsus is null ) return;
 		var byId = ResourceLibrary.GetAll<JutsuDefinition>().Where( j => j.Id is not null ).GroupBy( j => j.Id ).ToDictionary( g => g.Key, g => g.First() );
-		foreach ( var id in c.Jutsus.Take( 9 ) )
+		foreach ( var id in c.Jutsus.Where( j => j != "taijutsu_coup_de_poing" && j != "base_coup_de_poing" ).Take( 9 ) )
 		{
 			var def = byId.GetValueOrDefault( id );
 			if ( def is null ) Log.Warning( $"[Core] jutsu inconnu « {id} » pour le perso {c.Id}" );
@@ -217,17 +225,19 @@ public sealed partial class GameManager : Component, Component.INetworkListener
 		// ne peut pas arriver après une plus récente.
 		var id = ninja.CharacterId;
 		var previous = _pendingSaves.GetValueOrDefault( id ) ?? Task.CompletedTask;
-		_pendingSaves[id] = SaveAfter( previous, id, Math.Max( 0, ninja.Ryo ), ninja.CharacterName );
+		// null (inventaire introuvable, ex. objet en cours de destruction) : le Worker garde le stock déjà en base.
+		var inventory = ninja.GetComponent<NinjaInventory>()?.Serialize();
+		_pendingSaves[id] = SaveAfter( previous, id, Math.Max( 0, ninja.Ryo ), ninja.PlayTimeSeconds, ninja.Level, inventory, ninja.CharacterName );
 	}
 
 	readonly Dictionary<long, Task> _pendingSaves = new();
 
-	async Task SaveAfter( Task previous, long characterId, long ryo, string name )
+	async Task SaveAfter( Task previous, long characterId, long ryo, int playTime, int level, string inventory, string name )
 	{
 		await previous;
 		try
 		{
-			await Api.SaveStateAsync( characterId, ryo );
+			await Api.SaveStateAsync( characterId, ryo, playTime, level, inventory );
 		}
 		catch ( Exception e )
 		{

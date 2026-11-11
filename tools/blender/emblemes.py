@@ -46,7 +46,7 @@ def kumo():
         arc = []
         for p in _arc(cx, cy, r, 0, 360, 96):
             inside_other = any(math.hypot(p[0] - ox, p[1] - oy) < orr - 0.05
-                               for j, (ox, oy, orr) in enumerate(circles) if j != i)
+                                for j, (ox, oy, orr) in enumerate(circles) if j != i)
             under_side = i != 1 and p[1] < cy and abs(p[0]) < abs(cx)  # pas d'arc intérieur en bas
             if p[1] >= ymin[i] and not inside_other and not under_side:
                 arc.append(p)
@@ -89,21 +89,76 @@ def _sdf(strokes, X, Y):
     return sd
 
 
-def bake(strokes, w_mm, h_mm, metal_rgb, res=(1024, 512), depth=0.45):
-    """Renvoie (couleur RGBA, normale RGBA) en float32 (lignes de bas en haut, comme bpy)."""
+def fit(strokes, h_mm, fill=0.72):
+    """Met l'emblème à l'échelle pour qu'il occupe `fill` de la hauteur de plaque (traits compris)."""
+    ext = max(max(abs(y) for pts, w in strokes for _, y in pts) + w / 2 for pts, w in strokes)
+    k = fill * h_mm / 2 / ext
+    return [([(x * k, y * k) for x, y in pts], w * k) for pts, w in strokes]
+
+
+def brushed_steel(w_mm=98.0, h_mm=44.0, metal_rgb=(0.62, 0.64, 0.68), res=(1024, 512), seed=42):
+    """Génère un fond en acier brossé (stries horizontales fines + léger grain) en float32 (ny, nx, 3)."""
+    nx, ny = res
+    rng = np.random.default_rng(seed)
+
+    # Octave 1 : stries moyennes interpolées horizontalement
+    n_pts1 = 28
+    raw1 = rng.normal(0, 1, size=(ny, n_pts1)).astype(np.float32)
+    x_idx1 = np.linspace(0, n_pts1 - 1, nx, dtype=np.float32)
+    i0 = np.floor(x_idx1).astype(int)
+    i1 = np.clip(i0 + 1, 0, n_pts1 - 1)
+    t = (x_idx1 - i0)[None, :]
+    s1 = raw1[:, i0] * (1 - t) + raw1[:, i1] * t
+
+    # Octave 2 : stries plus longues
+    n_pts2 = 10
+    raw2 = rng.normal(0, 1, size=(ny, n_pts2)).astype(np.float32)
+    x_idx2 = np.linspace(0, n_pts2 - 1, nx, dtype=np.float32)
+    i0 = np.floor(x_idx2).astype(int)
+    i1 = np.clip(i0 + 1, 0, n_pts2 - 1)
+    t = (x_idx2 - i0)[None, :]
+    s2 = raw2[:, i0] * (1 - t) + raw2[:, i1] * t
+
+    # Lignes 1D horizontales très fines (traversantes)
+    s_line = rng.normal(0, 1, size=(ny, 1)).astype(np.float32)
+
+    # Grain 2D fin
+    grain = rng.normal(0, 1, size=(ny, nx)).astype(np.float32)
+
+    # Reflet de courbure horizontale doux
+    x_lin = np.linspace(-1, 1, nx, dtype=np.float32)
+    highlight = np.cos(x_lin * (np.pi / 2))[None, :] * 0.035
+
+    # Modulation de luminance
+    mod = 0.040 * s1 + 0.028 * s2 + 0.022 * s_line + 0.010 * grain + highlight
+    base = np.clip(np.array(metal_rgb, dtype=np.float32)[None, None, :] * (1.0 + mod[:, :, None]), 0.0, 1.0)
+    return base
+
+
+def bake(strokes, w_mm, h_mm, metal_rgb, res=(1024, 512), depth=0.45, base=None):
+    """Renvoie (couleur RGBA, normale RGBA) en float32 (lignes de bas en haut, comme bpy).
+    base : fond (h, w, 3) optionnel (ex. acier brossé) à la place de la couleur unie metal_rgb."""
     nx, ny = res
     px = w_mm / nx
     X, Y = np.meshgrid((np.arange(nx) + 0.5) / nx * w_mm - w_mm / 2,
                        (np.arange(ny) + 0.5) / ny * h_mm - h_mm / 2)
-    sd = _sdf(strokes, X, Y)
+    sd = _sdf(strokes, X, Y) if strokes else np.full(X.shape, 1e9, np.float32)
     cov = np.clip(0.5 - sd / px, 0, 1)                                  # remplissage anti-aliasé
     wall = np.clip((0.15 - sd) / 0.4, 0, 1)
     h = -depth * wall * wall * (3 - 2 * wall)                           # profil de rainure (smoothstep)
+
+    # Si fond brossé fourni, micro-rugosité horizontale pour accrocher la lumière (anisotropie)
+    if base is not None:
+        base_gray = np.mean(base, axis=2)
+        h_brush = (base_gray - np.mean(base_gray)) * 0.015 * (1 - cov)
+        h = h + h_brush
+
     gy, gx = np.gradient(h, h_mm / ny, w_mm / nx)
     n = np.dstack([-gx, -gy, np.ones_like(h)])
     n /= np.linalg.norm(n, axis=2, keepdims=True)
     dark = np.array([0.07, 0.07, 0.08])
-    col = np.array(metal_rgb)[None, None] * (1 - cov[..., None]) + dark * cov[..., None]
+    bg = np.array(metal_rgb)[None, None] if base is None else base
+    col = bg * (1 - cov[..., None]) + dark * cov[..., None]
     a = np.ones((ny, nx, 1), np.float32)
     return (np.concatenate([col, a], 2).astype(np.float32),
             np.concatenate([n * 0.5 + 0.5, a], 2).astype(np.float32))
@@ -116,4 +171,7 @@ if __name__ == "__main__":
             xs = [p[0] for pts, _ in fn() for p in pts]
             ys = [p[1] for pts, _ in fn() for p in pts]
             assert max(map(abs, xs)) < 30 and max(map(abs, ys)) < 19, v
+    # test fond acier brosse
+    b = brushed_steel()
+    assert b.shape == (512, 1024, 3)
     print("emblemes OK")

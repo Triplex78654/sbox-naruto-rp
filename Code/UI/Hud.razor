@@ -3,109 +3,251 @@
 @using NarutoRp.Player;
 @using NarutoRp.Combat;
 @using NarutoRp.Characters;
+@using NarutoRp.Missions;
+@using NarutoRp.Jutsus;
 @inherits PanelComponent
 @namespace NarutoRp.UI
 
-@* HUD du joueur local : identité, jauges, défenses, barre de jutsus, incantation. Lecture seule. *@
+@* HUD Ninja complet : Portrait, PV, Chakra, Ryô, Buffs/Debuffs, Kunai, et Barre de 6 Jutsus avec pagination *@
 <root>
 	@if ( Stats is not null )
 	{
-		<div class="status">
-			<div class="identity">
-				<div class="name">@Me.CharacterName</div>
-				<div class="sub">@($"{CharacterRules.Label( Me.Village )} · {CharacterRules.Label( Me.Grade )}{(Me.IsMedic ? " · médic-nin" : "")}")</div>
+		<!-- ================= BLOC IDENTITÉ & STATS (BAS GAUCHE) ================= -->
+		<div class="hud-profile-card">
+			<!-- Portrait & Village -->
+			<div class="avatar-frame @Me.Village">
+				<div class="avatar-emblem">@VillageIcon( Me.Village )</div>
+				<div class="avatar-rank-badge">@RankShort( Me.Grade )</div>
 			</div>
 
-			@foreach ( var (kind, label, value, max) in Gauges() )
-			{
-				<div class="gauge @kind">
-					<div class="fill" style="width: @(max > 0 ? Math.Clamp( value / max, 0f, 1f ) * 100f : 0)%"></div>
-					<div class="label">@label</div>
-					<div class="value">@($"{MathF.Round( value )} / {max}")</div>
-				</div>
-			}
+			<!-- Informations identité & stats -->
+			<div class="profile-details">
+				<div class="identity-header">
+					<div class="identity-name-row">
+						<div class="ninja-name">@Me.CharacterName</div>
+						<div class="ninja-level-badge">@($"Niv. {Me.Level}")</div>
+					</div>
+					<div class="ninja-title">@($"{CharacterRules.Label( Me.Village )} · {CharacterRules.Label( Me.Grade )}{(Me.IsMedic ? " · Médic-nin" : "")}")</div>
 
-			@if ( Defense is not null )
-			{
-				<div class="defense">
-					@if ( Me.GetComponent<NinjaMovement>()?.IsNinjaRunning == true ) { <div class="tag ready">Course ninja</div> }
-					@if ( Me.GetComponent<NarutoRp.Staff.StaffCommands>() is { IsFlying: true } fly ) { <div class="tag ready">@($"Vol staff (vitesse {fly.FlySpeed:0})")</div> }
-					@if ( Defense.IsGuarding ) { <div class="tag guard">Garde</div> }
-					@if ( Defense.IsSubstitutionReady ) { <div class="tag ready">Substitution prête</div> }
-					<div class="tag @(Defense.SubstitutionCooldownRemaining > 0 ? "off" : "")">@($"[{Input.GetButtonOrigin( "Substitution" )}] Substitution{(Defense.SubstitutionCooldownRemaining > 0 ? $" {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s" : "")}")</div>
-					<div class="tag">@($"[{Input.GetButtonOrigin( "Dodge" )}] Esquive")</div>
-					<div class="tag">@($"[{Input.GetButtonOrigin( "Attack1" )}] Coup")</div>
+					<!-- Progression vers le prochain niveau Shinobi -->
+					<div class="level-progress-container" title="@LevelTooltip">
+						<div class="level-progress-track">
+							<div class="level-progress-fill" style="width: @(Me.LevelProgress * 100f)%"></div>
+						</div>
+						<div class="level-progress-info">
+							<span class="level-next-label">@LevelProgressText</span>
+						</div>
+					</div>
+
+					<div class="ninja-ryo">
+						<span class="ryo-icon">🪙</span>
+						<span class="ryo-amount">@($"{Me.Ryo:N0} 両")</span>
+					</div>
 				</div>
-			}
+
+				<!-- Jauge de Vie -->
+				<div class="gauge-bar health">
+					<div class="fill" style="width: @(HealthPct * 100f)%"></div>
+					<div class="gauge-glow"></div>
+					<div class="gauge-content">
+						<span class="gauge-label">PV</span>
+						<span class="gauge-numbers">@($"{MathF.Round( Stats.Health )} / {Stats.MaxHealth}")</span>
+					</div>
+				</div>
+
+				<!-- Jauge de Chakra -->
+				<div class="gauge-bar chakra">
+					<div class="fill" style="width: @(ChakraPct * 100f)%"></div>
+					<div class="gauge-glow"></div>
+					<div class="gauge-content">
+						<span class="gauge-label">CHAKRA</span>
+						<span class="gauge-numbers">@($"{MathF.Round( Stats.Chakra )} / {Stats.MaxChakra}")</span>
+					</div>
+				</div>
+
+				<!-- Buffs / Debuffs & Défenses -->
+				<div class="status-badges">
+					@if ( Stats.IsDowned ) { <div class="badge alert pulse">À terre</div> }
+					else if ( Stats.IsStunned ) { <div class="badge alert">Étourdi</div> }
+					@if ( Me.GetComponent<NinjaMovement>()?.IsNinjaRunning == true ) { <div class="badge buff">Course ninja</div> }
+					@if ( Defense?.IsGuarding == true ) { <div class="badge defense">Garde</div> }
+					@if ( Defense?.IsSubstitutionReady == true ) { <div class="badge active">Subst. Prête [Z]</div> }
+					else if ( (Defense?.SubstitutionCooldownRemaining ?? 0) > 0 ) { <div class="badge cooldown">@($"Subst. {MathF.Ceiling( Defense.SubstitutionCooldownRemaining )}s")</div> }
+					@if ( Kunai is not null )
+					{
+						@if ( Kunai.IsDrawn )
+						{
+							@if ( Kunai.ThrowCooldownRemaining <= 0 ) { <div class="badge active" onclick=@(() => Kunai.RequestToggleDrawn()) title="Kunai en main · Clic gauche taillade, [R] lancer. Appuyez sur [H] pour ranger">Kunai [H] (Prêt [R])</div> }
+							else { <div class="badge cooldown" onclick=@(() => Kunai.RequestToggleDrawn()) title="Kunai en main · Appuyez sur [H] pour ranger">@($"Kunai [H] ({MathF.Ceiling( Kunai.ThrowCooldownRemaining )}s)")</div> }
+						}
+						else
+						{
+							<div class="badge neutral" onclick=@(() => Kunai.RequestToggleDrawn()) title="Mains nues · Clic gauche coup de poing. Appuyez sur [H] pour dégainer">Mains nues [H]</div>
+						}
+					}
+					@if ( Shuriken is not null )
+					{
+						@if ( Shuriken.ThrowCooldownRemaining <= 0 ) { <div class="badge active" title="Lancer une volée de 3 shurikens en éventail [B]">@($"Shuriken [B]{(Inventory is not null ? $" x{Inventory.ShurikenCount}" : "")}")</div> }
+						else { <div class="badge cooldown" title="Rechargement des shurikens">@($"Shuriken {MathF.Ceiling( Shuriken.ThrowCooldownRemaining )}s")</div> }
+					}
+					@if ( Consumables is not null )
+					{
+						@if ( Consumables.DeployedTagCount > 0 ) { <div class="badge alert pulse" title="Faire détoner les parchemins posés">@($"Katsu [T] ({Consumables.DeployedTagCount})")</div> }
+						@if ( Consumables.ExplosiveTagCooldownRemaining <= 0 && Consumables.DeployedTagCount < NinjaConsumables.MaxExplosiveTags ) { <div class="badge active" title="Poser un parchemin explosif sur un mur ou sol">@($"Tag [F]{(Inventory is not null ? $" x{Inventory.ExplosiveTagCount}" : "")}")</div> }
+						else if ( Consumables.ExplosiveTagCooldownRemaining > 0 ) { <div class="badge cooldown">@($"Tag {MathF.Ceiling( Consumables.ExplosiveTagCooldownRemaining )}s")</div> }
+						@if ( Consumables.SmokeBombCooldownRemaining <= 0 ) { <div class="badge active" title="Lancer une bombe fumigène">@($"Fumigène [G]{(Inventory is not null ? $" x{Inventory.SmokeBombCount}" : "")}")</div> }
+						else { <div class="badge cooldown">@($"Fumigène {MathF.Ceiling( Consumables.SmokeBombCooldownRemaining )}s")</div> }
+					}
+					@if ( Inventory is not null )
+					{
+						@if ( Inventory.SoldierPillCooldown <= 0 ) { <div class="badge active" title="Pilule du soldat : +45 PV et +45 chakra">@($"Pilule [J] x{Inventory.SoldierPillCount}")</div> }
+						else { <div class="badge cooldown">@($"Pilule {MathF.Ceiling( Inventory.SoldierPillCooldown )}s")</div> }
+					}
+					@if ( Me.GetComponent<NarutoRp.Staff.StaffCommands>() is { IsFlying: true } fly ) { <div class="badge staff">@($"Vol staff ({fly.FlySpeed:0})")</div> }
+				</div>
+			</div>
 		</div>
 
+		<!-- ================= BARRE D'INCANTATION (CENTRE) ================= -->
 		@if ( Caster?.Casting is not null )
 		{
-			<div class="cast">
-				<div class="text">@Caster.Casting.DisplayName</div>
-				<div class="bar"><div class="fill" style="width: @(CastProgress * 100f)%; background-color: @Css( Caster.Casting.FxColor )"></div></div>
+			<div class="cast-container">
+				<div class="cast-name">@Caster.Casting.DisplayName</div>
+				<div class="cast-track">
+					<div class="cast-fill" style="width: @(CastProgress * 100f)%; background-color: @Css( Caster.Casting.FxColor )"></div>
+				</div>
 			</div>
 		}
 
+		<!-- ================= RELÈVE EN COURS ================= -->
 		@if ( ActiveRevive is not null )
 		{
-			<div class="revive">
-				<div class="text">@(ActiveRevive == Revive ? "Soins en cours…" : "Un médic-nin vous soigne…")</div>
-				<div class="bar"><div class="fill" style="width: @(ActiveRevive.ReviveProgress * 100f)%"></div></div>
+			<div class="revive-container">
+				<div class="revive-text">@(ActiveRevive == Revive ? "Soins médicaux en cours…" : "Un médic-nin vous soigne…")</div>
+				<div class="revive-track">
+					<div class="revive-fill" style="width: @(ActiveRevive.ReviveProgress * 100f)%"></div>
+				</div>
 			</div>
 		}
 
+		<!-- ================= NOTICES / ALIGNEMENT STAFF ================= -->
 		@if ( Notice is not null )
 		{
-			<div class="notice">@Notice</div>
+			<div class="hud-notice">@Notice</div>
 		}
 
-		@if ( Stats.IsDowned )
-		{
-			<div class="state downed">À terre — attends un médic-nin</div>
-		}
-		else if ( Stats.IsStunned )
-		{
-			<div class="state">Étourdi</div>
-		}
+		<!-- ================= BARRE DE 6 JUTSUS & PAGINATION (BAS CENTRE) ================= -->
+		<div class="action-bar-wrapper">
+			<!-- Flèche Page Précédente -->
+			<Button class="page-nav prev @(Page == 0 ? "disabled" : "")" onclick=@PrevPage>
+				◀
+			</Button>
 
-		@if ( Caster is not null && Caster.Slots.Count > 0 )
-		{
-			<div class="jutsus">
-				@for ( var i = 0; i < Caster.Slots.Count; i++ )
+			<!-- 6 Slots d'Action (exclut les coups de poing de base) -->
+			<div class="jutsu-slots-grid">
+				@{
+					var activeSlots = AvailableJutsus;
+				}
+				@for ( var slotIndex = 0; slotIndex < 6; slotIndex++ )
 				{
-					var j = Caster.Slots[i];
-					if ( j is null ) continue;
-					var cd = Caster.CooldownRemaining( j );
-					var noChakra = Stats.Chakra < j.ChakraCost;
-					<div class="slot @(Caster.Casting == j ? "casting" : "") @(cd > 0 || noChakra ? "unavailable" : "")">
-						<div class="strip" style="background-color: @Css( j.FxColor )"></div>
-						<div class="top">
-							<div class="key">@(i + 1)</div>
-							<div class="rank">@j.Rank</div>
+					var actualIndex = Page * 6 + slotIndex;
+					var jutsu = (activeSlots is not null && actualIndex < activeSlots.Count) ? activeSlots[actualIndex] : null;
+
+					if ( jutsu is not null )
+					{
+						var cd = Caster.CooldownRemaining( jutsu );
+						var noChakra = Stats.Chakra < jutsu.ChakraCost;
+						var isCasting = Caster.Casting == jutsu;
+
+						<div class="jutsu-slot @(isCasting ? "casting" : "") @(cd > 0 || noChakra ? "unavailable" : "")"
+							 style="border-top-color: @Css( jutsu.FxColor ); box-shadow: 0 0 10px @(isCasting ? Css( jutsu.FxColor ) : "transparent")">
+							<div class="slot-nature-strip" style="background-color: @Css( jutsu.FxColor )"></div>
+							
+							<div class="slot-header">
+								<span class="slot-key">@(slotIndex + 1)</span>
+								<span class="slot-rank">@jutsu.Rank</span>
+							</div>
+
+							<div class="slot-title">@jutsu.DisplayName</div>
+
+							<div class="slot-cost @(noChakra ? "insufficient" : "")">
+								@($"{jutsu.ChakraCost} CP")
+							</div>
+
+							@if ( cd > 0 )
+							{
+								<div class="slot-cooldown-overlay">
+									<span class="cd-number">@MathF.Ceiling( cd )</span>
+								</div>
+							}
 						</div>
-						<div class="name">@j.DisplayName</div>
-						<div class="cost @(noChakra ? "low" : "")">@($"{j.ChakraCost} chakra")</div>
-						@if ( cd > 0 )
-						{
-							<div class="cd">@MathF.Ceiling( cd )</div>
-						}
-					</div>
+					}
+					else
+					{
+						<!-- Emplacement vide -->
+						<div class="jutsu-slot empty">
+							<div class="slot-header">
+								<span class="slot-key">@(slotIndex + 1)</span>
+							</div>
+							<div class="empty-mark">—</div>
+						</div>
+					}
 				}
 			</div>
-		}
+
+			<!-- Flèche Page Suivante -->
+			<Button class="page-nav next @(Page >= MaxPages - 1 ? "disabled" : "")" onclick=@NextPage>
+				▶
+			</Button>
+			
+			<!-- Indicateur de page discret sous la barre -->
+			<div class="page-indicator">@($"Barre {Page + 1}/{MaxPages}")</div>
+		</div>
 	}
 </root>
 
 @code
 {
+	protected override void OnAwake()
+	{
+		Components.GetOrCreate<MissionTrackerHud>();
+		Components.GetOrCreate<MissionBoard>();
+		Components.GetOrCreate<ShopMenu>();
+	}
+
 	NinjaPlayer Me => NinjaPlayer.Local;
 	NinjaStats Stats => Me?.GetComponent<NinjaStats>();
 	JutsuCaster Caster => Me?.GetComponent<JutsuCaster>();
 	NinjaDefense Defense => Me?.GetComponent<NinjaDefense>();
 	ReviveAction Revive => Me?.GetComponent<ReviveAction>();
+	NinjaKunai Kunai => Me?.GetComponent<NinjaKunai>();
+	NinjaShuriken Shuriken => Me?.GetComponent<NinjaShuriken>();
+	NinjaInventory Inventory => Me?.GetComponent<NinjaInventory>();
+	NinjaConsumables Consumables => Me?.GetComponent<NinjaConsumables>();
 
-	/// <summary>Message du staff ou retour d'action, affiché 6 s.</summary>
+	int Page = 0;
+
+	List<JutsuDefinition> AvailableJutsus => Caster?.Slots
+		.Where( j => j is not null && j.Id != "base_coup_de_poing" && j.Id != "taijutsu_coup_de_poing" )
+		.ToList();
+
+	int MaxPages => Math.Max( 1, (int)MathF.Ceiling( (AvailableJutsus?.Count ?? 6) / 6f ) );
+
+	void NextPage()
+	{
+		if ( Page < MaxPages - 1 ) Page++;
+	}
+
+	void PrevPage()
+	{
+		if ( Page > 0 ) Page--;
+	}
+
+	float HealthPct => Stats is null || Stats.MaxHealth <= 0 ? 0 : Math.Clamp( Stats.Health / Stats.MaxHealth, 0f, 1f );
+	float ChakraPct => Stats is null || Stats.MaxChakra <= 0 ? 0 : Math.Clamp( Stats.Chakra / Stats.MaxChakra, 0f, 1f );
+	string LevelProgressText => Me is null ? "" : $"Niv. {Me.Level + 1} dans {NinjaPlayer.FormatDuration( Me.SecondsToNextLevel )}";
+	string LevelTooltip => Me is null ? "" : $"Niveau Shinobi {Me.Level} ({NinjaPlayer.FormatDuration( Me.PlayTimeSeconds )} de jeu) · {Me.SkillPoints} point(s) de compétence · Prochain niveau dans {NinjaPlayer.FormatDuration( Me.SecondsToNextLevel )} (+1 point)";
+
 	string Notice
 	{
 		get
@@ -115,19 +257,30 @@
 		}
 	}
 
-	/// <summary>Relève en cours où le joueur local est soigneur ou blessé.</summary>
 	ReviveAction ActiveRevive => Revive?.ReviveTarget is not null ? Revive
 		: Scene.GetAllComponents<ReviveAction>().FirstOrDefault( r => r.ReviveTarget is not null && r.ReviveTarget == Stats );
 
-	(string, string, float, float)[] Gauges() => new[]
-	{
-		("health", "Vie", Stats.Health, Stats.MaxHealth),
-		("chakra", "Chakra", Stats.Chakra, Stats.MaxChakra),
-	};
-
 	static string Css( Color c ) => $"rgba({(int)(c.r * 255)}, {(int)(c.g * 255)}, {(int)(c.b * 255)}, 1)";
 
-	// Progression de l'incantation, mesurée chez le client à partir du changement de Casting.
+	static string VillageIcon( string v ) => v?.ToLower() switch
+	{
+		"konoha" => "🍃",
+		"suna" => "⏳",
+		"kumo" => "⚡",
+		_ => "🍥"
+	};
+
+	static string RankShort( string g ) => g?.ToLower() switch
+	{
+		"aspirant" => "ASP",
+		"genin" => "GEN",
+		"chunin" or "chûnin" => "CHU",
+		"jonin" or "jônin" => "JON",
+		"anbu" => "ANBU",
+		"kage" => "KAGE",
+		_ => "NIN"
+	};
+
 	Jutsus.JutsuDefinition _castSeen;
 	TimeSince _castStart;
 	float CastProgress => Caster?.Casting is { CastSeconds: > 0 } j ? Math.Clamp( _castStart / j.CastSeconds, 0f, 1f ) : 1f;
@@ -140,21 +293,32 @@
 			_castSeen = casting;
 			_castStart = 0;
 		}
+
+		// Raccourci flèche gauche / droite ou touches pour paginer
+		if ( !NinjaPlayer.InputBlocked )
+		{
+			if ( Input.Pressed( "Slot7" ) ) PrevPage();
+			if ( Input.Pressed( "Slot8" ) ) NextPage();
+		}
 	}
 
 	protected override int BuildHash()
 	{
 		var s = Stats;
 		var c = Caster;
+		var kCd = Kunai?.ThrowCooldownRemaining ?? 0f;
 		return System.HashCode.Combine(
-			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ) ),
+			System.HashCode.Combine( MathF.Round( s?.Health ?? 0 ), MathF.Round( s?.Chakra ?? 0 ), Me?.Ryo, Page ),
 			System.HashCode.Combine( s?.IsDowned, s?.IsStunned, c?.Casting, Notice, Me?.Grade, Me?.IsMedic, Me?.GetComponent<NinjaMovement>()?.IsNinjaRunning ),
-			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ),
-				ActiveRevive, MathF.Round( (ActiveRevive?.ReviveProgress ?? 0) * 50 ) ),
+			System.HashCode.Combine( Defense?.IsGuarding, Defense?.IsSubstitutionReady, MathF.Ceiling( Defense?.SubstitutionCooldownRemaining ?? 0 ), kCd > 0, MathF.Ceiling( kCd ) ),
 			c?.Slots.Sum( j => j is null ? 0f : MathF.Ceiling( c.CooldownRemaining( j ) ) ),
 			System.HashCode.Combine( Me?.GetComponent<NarutoRp.Staff.StaffCommands>()?.IsFlying, Me?.GetComponent<NarutoRp.Staff.StaffCommands>()?.FlySpeed ),
 			c is null ? 0 : c.Slots.Aggregate( 17, ( h, j ) => System.HashCode.Combine( h, j?.Id ) ),
-			System.HashCode.Combine( s?.MaxHealth, Me?.CharacterName ),
-			MathF.Round( CastProgress * 40 ) );
+			// HashCode.Combine prend 8 valeurs au plus : le reste est regroupé ici.
+			System.HashCode.Combine(
+				System.HashCode.Combine( s?.MaxHealth, Me?.CharacterName, Me?.Level, Me?.PlayTimeSeconds ),
+				System.HashCode.Combine( Consumables?.DeployedTagCount, MathF.Ceiling( Consumables?.ExplosiveTagCooldownRemaining ?? 0 ), MathF.Ceiling( Consumables?.SmokeBombCooldownRemaining ?? 0 ) ),
+				System.HashCode.Combine( MathF.Ceiling( Shuriken?.ThrowCooldownRemaining ?? 0 ), Inventory?.Serialize(), Inventory?.SoldierPillCooldown > 0 ),
+				MathF.Round( CastProgress * 40 ) ) );
 	}
 }

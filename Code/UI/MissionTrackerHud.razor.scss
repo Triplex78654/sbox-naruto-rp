@@ -1,0 +1,183 @@
+MissionTrackerHud {
+	position: absolute;
+	right: 28px;
+	top: 28px;
+	font-family: Poppins, sans-serif;
+	color: #ffffff;
+	pointer-events: none;
+	z-index: 50;
+}
+
+.mission-hud-card {
+	width: 320px;
+	flex-direction: column;
+	background-color: rgba(16, 20, 28, 0.94);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 10px;
+	padding: 14px 16px;
+	gap: 10px;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+	&.rank-d {
+		border-left: 4px solid #2ecc71;
+	}
+
+	&.rank-c {
+		border-left: 4px solid #3498db;
+	}
+
+	&.rank-b {
+		border-left: 4px solid #f39c12;
+	}
+
+	&.rank-a {
+		border-left: 4px solid #e74c3c;
+	}
+
+	&.rank-s {
+		border-left: 4px solid #9b59b6;
+	}
+}
+
+// ─── En-tête ──────────────────────────────────────────────────────────
+.hud-card-header {
+	align-items: center;
+	gap: 10px;
+	padding-bottom: 8px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+	.rank-tag {
+		font-size: 10px;
+		font-weight: 800;
+		letter-spacing: 0.5px;
+		padding: 2px 7px;
+		border-radius: 4px;
+
+		&.rank-d {
+			background-color: rgba(46, 204, 113, 0.25);
+			color: #2ecc71;
+		}
+
+		&.rank-c {
+			background-color: rgba(52, 152, 219, 0.25);
+			color: #3498db;
+		}
+
+		&.rank-b {
+			background-color: rgba(243, 156, 18, 0.25);
+			color: #f39c12;
+		}
+
+		&.rank-a {
+			background-color: rgba(231, 76, 60, 0.25);
+			color: #e74c3c;
+		}
+
+		&.rank-s {
+			background-color: rgba(155, 89, 182, 0.25);
+			color: #9b59b6;
+		}
+	}
+
+	.mission-name {
+		font-size: 13px;
+		font-weight: 700;
+		color: #ffffff;
+		flex-grow: 1;
+	}
+}
+
+// ─── Corps ────────────────────────────────────────────────────────────
+.hud-card-body {
+	flex-direction: column;
+	gap: 8px;
+
+	.objective-row {
+		flex-direction: column;
+		gap: 3px;
+
+		.step-badge {
+			font-size: 10px;
+			font-weight: 700;
+			color: #f1c40f;
+			letter-spacing: 0.5px;
+			text-transform: uppercase;
+		}
+
+		.objective-text {
+			font-size: 12px;
+			line-height: 16px;
+			color: rgba(255, 255, 255, 0.9);
+			font-weight: 500;
+		}
+	}
+}
+
+// ─── Barre de progression ─────────────────────────────────────────────
+.progress-section {
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 2px;
+
+	.progress-info {
+		align-items: center;
+		justify-content: space-between;
+		font-size: 11px;
+
+		.progress-label {
+			color: rgba(255, 255, 255, 0.5);
+		}
+
+		.progress-count {
+			color: #f1c40f;
+			font-weight: 700;
+		}
+	}
+
+	.progress-track {
+		height: 5px;
+		background-color: rgba(255, 255, 255, 0.1);
+		border-radius: 3px;
+		overflow: hidden;
+
+		.progress-fill {
+			height: 100%;
+			background-color: #2ecc71;
+			border-radius: 3px;
+			transition: width 0.2s ease;
+		}
+	}
+}
+
+// ─── Localisation et Boussole ─────────────────────────────────────────
+.target-location-row {
+	align-items: center;
+	gap: 8px;
+	margin-top: 4px;
+	padding-top: 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+	.compass-indicator {
+		width: 18px;
+		height: 18px;
+		font-size: 11px;
+		justify-content: center;
+		align-items: center;
+		color: #f1c40f;
+		transform-origin: center center;
+		transition: transform 0.1s linear;
+	}
+
+	.distance-text {
+		font-size: 12px;
+		font-weight: 700;
+		color: #ffffff;
+	}
+
+	.direction-hint {
+		font-size: 11px;
+		color: rgba(255, 255, 255, 0.5);
+		flex-grow: 1;
+		text-align: right;
+	}
+}

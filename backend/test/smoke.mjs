@@ -93,6 +93,16 @@ test('sauvegarde des ryô, valeurs négatives refusées', async () => {
 	assert.equal((await call('PUT', `/characters/${id}/state`, { ryo: -5 })).status, 400);
 });
 
+test('sauvegarde du stock : gardé si absent ou invalide', async () => {
+	const stock = async () => (await call('GET', `/players/${PLAYER}`)).body.characters.find(c => c.id === id).inventory;
+	assert.equal(await stock(), null, 'nouveau perso : stock de départ');
+	await call('PUT', `/characters/${id}/state`, { ryo: 250, play_time: 60, level: 1, inventory: '5,10,2,2,1' });
+	assert.equal(await stock(), '5,10,2,2,1');
+	await call('PUT', `/characters/${id}/state`, { ryo: 250, inventory: '5,-1,x' });
+	await call('PUT', `/characters/${id}/state`, { ryo: 250 });
+	assert.equal(await stock(), '5,10,2,2,1');
+});
+
 test('grade : modérateur refusé (403), staff accepté, motif obligatoire', async () => {
 	assert.equal((await call('POST', `/characters/${id}/grade`, { grade: 'genin', staffSteamId: MODO, reason: 'examen réussi' })).status, 403);
 	assert.equal((await call('POST', `/characters/${id}/grade`, { grade: 'genin', staffSteamId: STAFF })).status, 400);

@@ -1,0 +1,244 @@
+@using Sandbox;
+@using Sandbox.UI;
+@using NarutoRp.Player;
+@using NarutoRp.Missions;
+@using NarutoRp.Characters;
+@inherits PanelComponent
+@namespace NarutoRp.UI
+
+@* Bureau des Missions Shinobi : affichage des missions du village et neutres, filtres par rang, acceptation et abandon *@
+@if ( Visible )
+{
+	<root>
+		<div class="overlay">
+			<div class="window">
+				<!-- En-tête du Bureau des Missions -->
+				<div class="header">
+					<div class="header-left">
+						<span class="village-symbol">@VillageIcon( DisplayVillage )</span>
+						<div class="title-block">
+							<div class="main-title">BUREAU DES MISSIONS SHINOBI</div>
+							<div class="sub-title">@($"Village de {CharacterRules.Label( DisplayVillage )} · Registre des contrats officiels")</div>
+						</div>
+					</div>
+					<div class="header-right">
+						<div class="player-ryo">
+							<span class="ryo-icon">🪙</span>
+							<span class="ryo-value">@($"{Me.Ryo:N0} 両")</span>
+						</div>
+						<Button class="btn-close" onclick=@Close>✕</Button>
+					</div>
+				</div>
+
+				<!-- Bannière de Mission en cours si active -->
+				@if ( Tracker?.HasActiveMission == true )
+				{
+					<div class="active-mission-banner">
+						<div class="active-info">
+							<div class="badge-status">CONTRAT EN COURS</div>
+							<div class="active-rank-badge @RankClass( Tracker.ActiveMissionRank )">@($"RANG {Tracker.ActiveMissionRank}")</div>
+							<div class="active-title">@Tracker.ActiveMissionTitle</div>
+							<div class="active-objective">@($"Étape {Tracker.CurrentObjectiveIndex + 1} : {Tracker.ObjectiveDescription}")</div>
+						</div>
+						<Button class="btn-abandon" onclick=@AbandonActiveMission>Abandonner le contrat</Button>
+					</div>
+				}
+
+				<!-- Onglets de filtrage par Rang -->
+				<div class="filter-tabs">
+					<Button class="tab-btn @(SelectedFilter == "all" ? "active" : "")" onclick=@(() => SetFilter( "all" ))>
+						Toutes les missions
+					</Button>
+					<Button class="tab-btn rank-d @(SelectedFilter == "D" ? "active" : "")" onclick=@(() => SetFilter( "D" ))>
+						RANG D (Aspirant / Genin)
+					</Button>
+					<Button class="tab-btn rank-c @(SelectedFilter == "C" ? "active" : "")" onclick=@(() => SetFilter( "C" ))>
+						RANG C (Genin expérimenté)
+					</Button>
+				</div>
+
+				<!-- Liste des cartes de missions -->
+				<div class="missions-scroll">
+					@if ( FilteredMissions.Count == 0 )
+					{
+						<div class="empty-notice">
+							Aucune mission disponible pour cette sélection ou votre rang shinobi.
+						</div>
+					}
+					else
+					{
+						<div class="missions-grid">
+							@foreach ( var mission in FilteredMissions )
+							{
+								var isCurrent = Tracker?.ActiveMissionId == mission.Id;
+								var hasActive = Tracker?.HasActiveMission == true;
+								var meetsGrade = MissionDefinition.SatisfiesGrade( Me.Grade, mission.MinGrade );
+
+								<div class="mission-card @RankClass( mission.Rank ) @(isCurrent ? "current" : "")">
+									<div class="card-top">
+										<div class="rank-badge @RankClass( mission.Rank )">@($"RANG {mission.Rank}")</div>
+										<div class="card-village">@($"{VillageIcon( mission.Village )} {mission.Village}")</div>
+										<div class="card-reward">
+											<span class="ryo-icon">🪙</span>
+											<span class="ryo-number">@($"{mission.RewardRyo:N0} 両")</span>
+										</div>
+									</div>
+
+									<div class="card-title">@mission.Title</div>
+									<div class="card-description">@mission.Description</div>
+
+									<div class="card-meta">
+										<div class="meta-item">
+											<span class="meta-label">Grade requis :</span>
+											<span class="meta-value @(meetsGrade ? "ok" : "warn")">@mission.MinGrade</span>
+										</div>
+										<div class="meta-item">
+											<span class="meta-label">Objectifs :</span>
+											<span class="meta-value">@($"{mission.Objectives.Count} étape(s)")</span>
+										</div>
+									</div>
+
+									<!-- Aperçu des étapes -->
+									<div class="card-objectives">
+										@for ( var i = 0; i < mission.Objectives.Count; i++ )
+										{
+											var step = mission.Objectives[i];
+											<div class="step-line">
+												<span class="step-num">@(i + 1).</span>
+												<span class="step-desc">@step.Description</span>
+											</div>
+										}
+									</div>
+
+									<!-- Bouton d'action -->
+									<div class="card-actions">
+										@if ( isCurrent )
+										{
+											<div class="status-btn active-state">En cours d'exécution</div>
+										}
+										else if ( hasActive )
+										{
+											<div class="status-btn disabled-state">Autre mission déjà active</div>
+										}
+										else if ( !meetsGrade )
+										{
+											<div class="status-btn locked-state">@($"Grade requis : {mission.MinGrade}")</div>
+										}
+										else
+										{
+											<Button class="btn-accept" onclick=@(() => AcceptMission( mission.Id ))>
+												Accepter le contrat
+											</Button>
+										}
+									</div>
+								</div>
+							}
+						</div>
+					}
+				</div>
+			</div>
+		</div>
+	</root>
+}
+
+@code
+{
+	NinjaPlayer Me => NinjaPlayer.Local;
+	MissionTracker Tracker => Me?.GetComponent<MissionTracker>();
+
+	string SelectedFilter = "all";
+
+	bool Visible => MissionBoardState.IsOpen && Me.IsValid();
+
+	string DisplayVillage => !string.IsNullOrEmpty( MissionBoardState.CurrentVillage )
+		? MissionBoardState.CurrentVillage
+		: (Me?.Village ?? "Konoha");
+
+	List<MissionDefinition> FilteredMissions
+	{
+		get
+		{
+			var playerVillage = Me?.Village ?? "Konoha";
+			var all = ResourceLibrary.GetAll<MissionDefinition>()
+				.Where( m => m is not null && !string.IsNullOrEmpty( m.Id ) )
+				.Where( m => MissionDefinition.IsVillageCompatible( playerVillage, m.Village ) );
+
+			if ( SelectedFilter == "D" )
+				all = all.Where( m => m.Rank == MissionRank.D );
+			else if ( SelectedFilter == "C" )
+				all = all.Where( m => m.Rank == MissionRank.C );
+
+			return all.OrderBy( m => m.Rank ).ThenBy( m => m.RewardRyo ).ToList();
+		}
+	}
+
+	void SetFilter( string filter )
+	{
+		SelectedFilter = filter;
+	}
+
+	void AcceptMission( string missionId )
+	{
+		if ( Tracker is not null )
+		{
+			Tracker.RequestAcceptMission( missionId );
+			MissionBoardState.Close();
+		}
+	}
+
+	void AbandonActiveMission()
+	{
+		Tracker?.RequestAbandonMission();
+	}
+
+	void Close()
+	{
+		MissionBoardState.Close();
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( Visible && Input.EscapePressed )
+		{
+			Close();
+		}
+
+		NinjaPlayer.InputBlocked = Visible;
+	}
+
+	protected override void OnDisabled()
+	{
+		NinjaPlayer.InputBlocked = false;
+	}
+
+	static string VillageIcon( string v ) => v?.ToLowerInvariant() switch
+	{
+		"konoha" => "🍃",
+		"suna" => "⏳",
+		"kumo" => "⚡",
+		_ => "🍥"
+	};
+
+	static string RankClass( MissionRank rank ) => rank switch
+	{
+		MissionRank.D => "rank-d",
+		MissionRank.C => "rank-c",
+		MissionRank.B => "rank-b",
+		MissionRank.A => "rank-a",
+		MissionRank.S => "rank-s",
+		_ => "rank-d"
+	};
+
+	protected override int BuildHash()
+	{
+		return System.HashCode.Combine(
+			Visible,
+			SelectedFilter,
+			Tracker?.ActiveMissionId,
+			Tracker?.CurrentObjectiveIndex,
+			Tracker?.CurrentProgress,
+			Me?.Ryo,
+			Me?.Grade,
+			MissionBoardState.CurrentVillage );
+	}
+}
